@@ -2,13 +2,10 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
-import HomeScreen from 'HomeScreen';
-import AddTaskScreen from 'AddTaskScreen';
-import EditTaskScreen from 'EditTaskScreen';
 
-export default class App extends React.Component {
+export default class EditTaskScreen extends React.Component {
   render(){
-    return <AppNavigator />;
+    return;
   }
 }
 
@@ -20,11 +17,3 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-
-const AppNavigator = createStackNavigator(
-  {
-    HomeScreen: HomeScreen,
-    AddTaskScreen: AddTaskScreen,
-    EditTaskScreen: EditTaskScreen,
-  },
-);
