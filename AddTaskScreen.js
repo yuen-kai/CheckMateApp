@@ -7,9 +7,12 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 var tasks = []
+var selectedTask
+
+var editIndex
 
 export default class AddTaskScreen extends React.Component {
-
+  edit = false
   state = {
     date: new Date(),
     mode: 'date',
@@ -20,12 +23,13 @@ export default class AddTaskScreen extends React.Component {
     length: 0,
     sortValue: 0,
     start: new Date(),
-    end: new Date()
+    end: new Date(),
   }
 
   componentDidMount(){
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
-			this.getData();  
+			this.getData();
+  
 		});
   }
 
@@ -52,9 +56,12 @@ export default class AddTaskScreen extends React.Component {
   getData = async () => {
       try {
         const jsonValue = await AsyncStorage.getItem('tasks')
-        if(jsonValue != null){
-          tasks = JSON.parse(jsonValue)
+        tasks =  jsonValue != null ? JSON.parse(jsonValue) : null;
+        if(tasks == null){
+          tasks=[]
         }
+        
+        this.editInfo()
         this.setState({ready:true})
       } catch(e) {
         alert(e)
@@ -62,18 +69,59 @@ export default class AddTaskScreen extends React.Component {
       
    }
 
-  
+  editInfo = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('editIndex')
+      
+      editIndex =  jsonValue != null ? JSON.parse(jsonValue) : null;
+      if(editIndex != null){
+        selectedTask = tasks[editIndex]
+        this.edit = true
+        this.setState({date:new Date(new Date(selectedTask.date).getTime()),name:selectedTask.name,importance:selectedTask.importance,length:selectedTask.length,color:'#fff'})
+        await AsyncStorage.removeItem('editIndex')
+      }
+    } catch(e) {
+      alert(e)
+    }
+ }
+
+  sortTask(task){
+    for(var i=tasks.length-1; i>=0; i--) {
+      
+      if(tasks[i].sortValue<=this.state.sortValue){
+        return i+1
+      }
+    }
+    return 0
+  }
 
   handleSave = async () => {
+    var sameName = false
+    await this.setState({sortValue: new Date(this.state.date).getTime()-(((this.state.importance*8)/100)*(this.state.length*1000*60))})
+    selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance}
+    if(this.edit == false){
+      tasks.forEach(element => {
+        if(element.name==selectedTask.name){
+          sameName = true
+        }
+      });
+    }
+    
     if(this.state.name==""||this.state.importance==0||this.state.length==0){
       alert('Not all parameters have been filled out!')}
+    else if(sameName==true){
+      alert('Name already used. Please select a new name.')
+    }
     else{
-      try{
-      this.setState({sortValue: Date.parse(this.state.date)-(((this.state.importance*8)/100)*(this.state.length*1000*60))})
-      var task = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date}
+      
+      
       //add new task to list of existing tasks
-
-      tasks.push(task)
+      if(this.edit==true){
+        
+        tasks.splice(editIndex,1)
+      }
+      tasks.splice(this.sortTask(selectedTask),0,selectedTask)
+      
       //save data
       try {
         const jsonValue = JSON.stringify(tasks)
@@ -83,11 +131,6 @@ export default class AddTaskScreen extends React.Component {
       }
       this.props.navigation.navigate('Home');
       }
-      catch (e) {
-        alert(e)
-      }
-    }
-    
   };
 
 
@@ -95,7 +138,6 @@ export default class AddTaskScreen extends React.Component {
     if(!this.state.ready){
       return null
     }
-    
     return (
       <View style={styles.container}>
         
@@ -123,8 +165,8 @@ export default class AddTaskScreen extends React.Component {
                 { label: '9', value: 9 },
                 { label: '10', value: 10 }
             ]}
-            onValueChange={importance=>this.setState({importance})}
-            // value = {this.state.importance}
+            onValueChange={importance=>this.setState({importance:importance})}
+            value = {this.state.importance}
         />
         <Text style={{ fontSize: 20, color: '#fff'}}>Length(min):</Text>
         <TextInput

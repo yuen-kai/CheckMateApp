@@ -10,7 +10,10 @@ var workTimes = []
 
 
 export default class AddWorkTimeScreen extends React.Component {
+  edit = false
+  workIndex
   state = {
+    
     start: new Date(),
     end: new Date(),
     ready: false,
@@ -33,7 +36,7 @@ export default class AddWorkTimeScreen extends React.Component {
   };
 
   onEndChange = (event, selectedDate) => {
-    const currentDate = selectedDate || date;
+    const currentDate = selectedDate || this.state.date;
     this.setState({endShow: Platform.OS === 'ios'});
     this.setState({end:currentDate});
   };
@@ -58,11 +61,13 @@ export default class AddWorkTimeScreen extends React.Component {
 
   getData = async () => {
     try {
+      
       const jsonValue = await AsyncStorage.getItem('workTimes')
-      if(jsonValue != null){
-        
-        workTimes = JSON.parse(jsonValue)
+      workTimes =  jsonValue != null ? JSON.parse(jsonValue) : null;
+      if(workTimes == null){
+        workTimes=[]
       }
+      this.editInfo()
       this.setState({ready:true})
     } catch(e) {
       alert(e)
@@ -70,27 +75,69 @@ export default class AddWorkTimeScreen extends React.Component {
     
   }
 
+  editInfo = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('workIndex')
+      this.workIndex =  jsonValue != null ? JSON.parse(jsonValue) : null;
+      if(this.workIndex != null){
+        var selectedWork = workTimes[this.workIndex]
+        this.edit = true
+        this.setState({start:new Date(selectedWork.start),end:new Date(selectedWork.end)})
+        await AsyncStorage.removeItem('workIndex')
+      }
+    } catch(e) {
+      alert(e)
+    }
+ }
+ 
+  sortWorkTime(workTime){
+    for (var i=workTimes.length-1; i>=0; i--)
+    {
+      if (new Date(workTimes[i].start).getTime()<=new Date(workTime.start).getTime())
+      {
+        return i+1
+      }
+    }
+    return 0
+  }
+  
   handleSave = async () => {
-    if(Date.parse(this.state.end)-Date.parse(this.state.start)<5*60*1000){
+    var overlap = false
+    var workTime = {start:this.state.start,end:this.state.end}
+    
+    if(this.edit==false){
+      workTimes.forEach(element => {
+        if(new Date(element.start).getTime()>=new Date(workTime.start).getTime()&&new Date(element.start).getTime()<=new Date(workTime.end).getTime()){
+          overlap = true
+        }
+        if(new Date(element.end).getTime()>=new Date(workTime.start).getTime()&&new Date(element.end).getTime()<=new Date(workTime.end).getTime()){
+          overlap = true
+        }
+      });
+    }
+
+
+    if(this.state.end.getTime()-this.state.start.getTime()<5*60*1000){
       alert('You need to have at least 5 minutes of workTime!')}
+    else if(overlap==true){
+      alert('This worktime overlaps with previous worktimes. To edit worktimes, you should instead go to the home screen and click on the worktime you want to edit.')
+    }
     else{
-      try{
-        var workTime = {start:this.state.start,end:this.state.end}
-        // add new workTime to list of existing workTimes
-        workTimes.push(workTime)
-        //save data
-        try {
-          const jsonValue = JSON.stringify(workTimes)
-          await AsyncStorage.setItem('workTimes', jsonValue)
-        } catch (e) {
-          alert(e)
-        } 
-        this.props.navigation.navigate('Home');
+      
+      // add new workTime to list of existing workTimes
+      if(this.edit==true){
+        workTimes.splice(this.workIndex,1)
       }
-      catch (e) {
+      workTimes.splice(this.sortWorkTime(workTime),0,workTime)
+      //save data
+      try {
+        const jsonValue = JSON.stringify(workTimes)
+        await AsyncStorage.setItem('workTimes', jsonValue)
+      } catch (e) {
         alert(e)
-      }
-    } 
+      } 
+      this.props.navigation.navigate('Home');
+    }
   };
 
   render(){
