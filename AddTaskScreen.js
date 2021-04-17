@@ -5,13 +5,14 @@ import { createStackNavigator } from '@react-navigation/stack';
 import RNPickerSelect from 'react-native-picker-select';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 var tasks = []
-var selectedTask
 
-var editIndex
 
 export default class AddTaskScreen extends React.Component {
+  editIndex
+  selectedTask
   edit = false
   state = {
     date: new Date(),
@@ -73,11 +74,11 @@ export default class AddTaskScreen extends React.Component {
     try {
       const jsonValue = await AsyncStorage.getItem('editIndex')
       
-      editIndex =  jsonValue != null ? JSON.parse(jsonValue) : null;
-      if(editIndex != null){
-        selectedTask = tasks[editIndex]
+      this.editIndex =  jsonValue != null ? JSON.parse(jsonValue) : null;
+      if(this.editIndex != null){
+        this.selectedTask = tasks[this.editIndex]
         this.edit = true
-        this.setState({date:new Date(new Date(selectedTask.date).getTime()),name:selectedTask.name,importance:selectedTask.importance,length:selectedTask.length,color:'#fff'})
+        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,color:'#fff'})
         await AsyncStorage.removeItem('editIndex')
       }
     } catch(e) {
@@ -85,7 +86,7 @@ export default class AddTaskScreen extends React.Component {
     }
  }
 
-  sortTask(task){
+  sortTask(){
     for(var i=tasks.length-1; i>=0; i--) {
       
       if(tasks[i].sortValue<=this.state.sortValue){
@@ -95,13 +96,38 @@ export default class AddTaskScreen extends React.Component {
     return 0
   }
 
+  displayTime(date){
+    var hours = new Date(date).getHours()
+    var minutes = new Date(date).getMinutes()
+    var amPm = 'am'
+    if(hours>=12){
+      amPm='pm'
+    }
+    if(hours==0){
+      hours=12
+    }
+    if(hours>12){
+      hours -= 12
+    }
+    if(minutes<10){
+      return hours+':'+'0'+minutes+amPm
+    }
+    return hours+':'+minutes+' '+amPm
+  }
+
+  displayDate(date) {
+    var month = new Date(date).getMonth()+1
+    var day = new Date(date).getDate()
+    return month+"/"+day
+  }
+
   handleSave = async () => {
     var sameName = false
     await this.setState({sortValue: new Date(this.state.date).getTime()-(((this.state.importance*8)/100)*(this.state.length*1000*60))})
-    selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance}
+    this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance}
     if(this.edit == false){
       tasks.forEach(element => {
-        if(element.name==selectedTask.name){
+        if(element.name==this.selectedTask.name){
           sameName = true
         }
       });
@@ -118,9 +144,9 @@ export default class AddTaskScreen extends React.Component {
       //add new task to list of existing tasks
       if(this.edit==true){
         
-        tasks.splice(editIndex,1)
+        tasks.splice(this.editIndex,1)
       }
-      tasks.splice(this.sortTask(selectedTask),0,selectedTask)
+      tasks.splice(this.sortTask(),0,this.selectedTask)
       
       //save data
       try {
@@ -139,14 +165,14 @@ export default class AddTaskScreen extends React.Component {
       return null
     }
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
         
         <Text style={{ fontSize: 20, color: '#fff'}}>Name:</Text>
         <TextInput
           style={styles.textInput}
           placeholder = {"Complete project proposal"}
           onChangeText={name => this.setState({name})}
-          // value = {this.state.name}
+          value = {this.state.name}
         />
         <Text style={{ fontSize: 20, color: '#fff'}}>Importance:</Text>
         <RNPickerSelect
@@ -168,34 +194,50 @@ export default class AddTaskScreen extends React.Component {
             onValueChange={importance=>this.setState({importance:importance})}
             value = {this.state.importance}
         />
-        <Text style={{ fontSize: 20, color: '#fff'}}>Length(min):</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder = {"30"}
-          keyboardType = "numeric"
-          onChangeText={length => this.setState({length})}
-          // value = {this.state.length}
-          
-        />
-        <Text style={{ fontSize: 20, color: '#fff'}}>Due Date:</Text>
-        <Button onPress={() => this.showDatepicker()} title="Select Day" />
-        <Button onPress={() => this.showTimepicker()} title="Select Time" />
-        {this.state.show && (
-        <DateTimePicker
-          testID="dateTimePicker"
-          value={this.state.date}
-          mode={this.state.mode}
-          // is24Hour={true}
-          display="default"
-          onChange={this.onChange}
-        />
-        )}
-        <TouchableOpacity
-          onPress={() => this.handleSave()}
-          style={styles.button}>
-         <Text style={{ fontSize: 20, color: '#fff' }}>Save Task</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={{flex: 1,alignItems: 'center'}}>
+          <Text style={{ fontSize: 20, color: '#fff'}}>Length(min):</Text>
+          <TextInput
+            style={styles.textInput}
+            placeholder = {"30"}
+            keyboardType = "numeric"
+            onChangeText={length => this.setState({length:length})}
+            value = {this.state.length}
+            
+          />
+        </View>
+        <View style={{flex: 1,alignItems: 'center'}}>
+          <Text style={{ fontSize: 20, color: '#fff'}}>{'Due Date: '+this.displayDate(this.state.date)+' '+this.displayTime(this.state.date)}</Text>
+          <View style={{flexDirection: 'row'}}>
+            <TouchableOpacity
+              onPress={() => this.showDatepicker()}
+              style={styles.button}>
+              <Text style={{ fontSize: 20, color: '#fff' }}>Select Day</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => this.showTimepicker()}
+              style={styles.button}>
+              <Text style={{ fontSize: 20, color: '#fff' }}>Select Time</Text>
+            </TouchableOpacity>
+          </View>
+          {this.state.show && (
+          <DateTimePicker
+            testID="dateTimePicker"
+            value={this.state.date}
+            mode={this.state.mode}
+            // is24Hour={true}
+            display="default"
+            onChange={this.onChange}
+          />
+          )}
+        </View>
+        <View style={{flex: 1}}>
+          <TouchableOpacity
+            onPress={() => this.handleSave()}
+            style={styles.button}>
+            <Text style={{ fontSize: 20, color: '#fff' }}>Save Task</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 }
@@ -211,8 +253,6 @@ const styles = StyleSheet.create({
     backgroundColor: "blue",
     padding: 20,
     borderRadius: 5,
-    position: 'absolute',
-    bottom:3,
   },
   text: {
     fontSize: 20,

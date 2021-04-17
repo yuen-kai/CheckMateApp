@@ -4,6 +4,7 @@ import { StyleSheet, Text, View, Button, TouchableOpacity} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 var workTimes = []
 
@@ -101,6 +102,25 @@ export default class AddWorkTimeScreen extends React.Component {
     return 0
   }
   
+  displayTime(date){
+    var hours = new Date(date).getHours()
+    var minutes = new Date(date).getMinutes()
+    var amPm = 'am'
+    if(hours>=12){
+      amPm='pm'
+    }
+    if(hours==0){
+      hours=12
+    }
+    if(hours>12){
+      hours -= 12
+    }
+    if(minutes<10){
+      return hours+':'+'0'+minutes+amPm
+    }
+    return hours+':'+minutes+' '+amPm
+  }
+  
   handleSave = async () => {
     var overlap = false
     var workTime = {start:this.state.start,end:this.state.end}
@@ -145,12 +165,17 @@ export default class AddWorkTimeScreen extends React.Component {
       return null
     }
     return(
-    <View style={styles.container}>
-      <Button onPress={() => this.showDatepicker('start')} title="Select Start Day" />
-      <Button onPress={() => this.showTimepicker('start')} title="Select Start Time" />
-      <Button onPress={() => this.showDatepicker('end')} title="Select End Day" />
-      <Button onPress={() => this.showTimepicker('end')} title="Select End Time" />
-
+    <SafeAreaView style={styles.container}>
+      <Text style={{ fontSize: 20, color: '#fff'}}>{this.displayTime(this.state.start)}</Text>
+      <View style={{flexDirection: 'row'}}>
+        <Button onPress={() => this.showDatepicker('start')} title="Select Start Day" />
+        <Button onPress={() => this.showTimepicker('start')} title="Select Start Time" />
+      </View>
+      <Text style={{ fontSize: 20, color: '#fff'}}>{this.displayTime(this.state.end)}</Text>
+      <View style={{flexDirection: 'row'}}>
+        <Button onPress={() => this.showDatepicker('end')} title="Select End Day" />
+        <Button onPress={() => this.showTimepicker('end')} title="Select End Time" />
+      </View>
       {/* start picker */}
       {this.state.startShow && (
       <DateTimePicker
@@ -178,7 +203,7 @@ export default class AddWorkTimeScreen extends React.Component {
           style={styles.button}>
          <Text style={{ fontSize: 20, color: '#fff' }}>Save WorkTime</Text>
         </TouchableOpacity>
-    </View>
+    </SafeAreaView>
     )
   }
 }
