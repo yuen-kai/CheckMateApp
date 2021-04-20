@@ -5,6 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {Icon} from 'react-native-elements'
 
 var workTimes = []
 
@@ -37,7 +38,7 @@ export default class AddWorkTimeScreen extends React.Component {
   };
 
   onEndChange = (event, selectedDate) => {
-    const currentDate = selectedDate || this.state.date;
+    const currentDate = selectedDate || date;
     this.setState({endShow: Platform.OS === 'ios'});
     this.setState({end:currentDate});
   };
@@ -165,6 +166,7 @@ export default class AddWorkTimeScreen extends React.Component {
       return null
     }
     return(
+      
     <SafeAreaView style={styles.container}>
       <Text style={{ fontSize: 20, color: '#fff'}}>{this.displayTime(this.state.start)}</Text>
       <View style={{flexDirection: 'row'}}>
@@ -179,7 +181,7 @@ export default class AddWorkTimeScreen extends React.Component {
       {/* start picker */}
       {this.state.startShow && (
       <DateTimePicker
-        // testID="dateTimePicker"
+        // testID="dateTimePsicker"
         value={this.state.start}
         mode={this.state.mode}
         // is24Hour={true}
@@ -203,6 +205,8 @@ export default class AddWorkTimeScreen extends React.Component {
           style={styles.button}>
          <Text style={{ fontSize: 20, color: '#fff' }}>Save WorkTime</Text>
         </TouchableOpacity>
+
+      {this.edit==true? <guhjlkjhj/>: <dshfkj/>}
     </SafeAreaView>
     )
   }
@@ -211,7 +215,7 @@ export default class AddWorkTimeScreen extends React.Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#151515',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },

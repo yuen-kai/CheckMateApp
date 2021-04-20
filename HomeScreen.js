@@ -4,13 +4,13 @@ import { StyleSheet, Text, View,TouchableOpacity, ScrollView, Alert} from 'react
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import {Icon,Divider} from 'react-native-elements'
 var tasks = [];
 var workTimes = [];
 
 
 export default class HomeScreen extends React.Component {
-
+  availableTime = 0
   loaded = false
   state = {
     ready: false,
@@ -47,6 +47,7 @@ export default class HomeScreen extends React.Component {
 
   setWorkTimes(savedTime){
     workTimes = savedTime[new Date().getDay()]
+    this.saveWorkTimes()
     this.setState({ready:true})
   }
 
@@ -56,7 +57,7 @@ export default class HomeScreen extends React.Component {
       if(workTimes.length==0&&this.loaded==false){
         const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
         var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
-        if(savedTime != null&&savedTime[new Date().getDay()]!=null&&savedTime[new Date().getDay()].length>0){
+        if(savedTime != null&&savedTime[new Date().getDay()]!=null&&savedTime[new Date().getDay()].length>0&&(savedTime[new Date().getDay()][savedTime[new Date().getDay()].length-1].end).getTime()<new Date()){
           this.loaded = true
           
           Alert.alert(
@@ -65,7 +66,7 @@ export default class HomeScreen extends React.Component {
             [
               {
                 text: 'Cancel',
-                onPress: () => console.log('Cancel Pressed'),
+                // onPress: () => console.log('Cancel Pressed'),
                 style: 'cancel'
               },
               { text: 'OK', onPress: () => this.setWorkTimes(savedTime)}
@@ -75,9 +76,7 @@ export default class HomeScreen extends React.Component {
           );
         } 
       }
-      else if(this.loaded==true){
-        this.loaded = false
-      }
+      this.loaded = false
       
     } catch(e) {
       alert(e)
@@ -128,12 +127,30 @@ export default class HomeScreen extends React.Component {
     }
   }
 
-  async clear(key) {
+  clear() {
+    Alert.alert(
+      'Clear All',
+      "Are you sure? This action can not be undone!",
+      [
+        {
+          text: 'Cancel',
+          // onPress: () => console.log('Cancel Pressed'),
+          style: 'cancel'
+        },
+        { text: 'Yes', onPress: () => this.clearAll()}
+      ],
+      { cancelable: false }
+      
+    )
+  }
+
+  async clearAll() {
     try {
       await AsyncStorage.removeItem('tasks')
       await AsyncStorage.removeItem('workTimes')
       tasks = []
       workTimes = []
+      this.setState({selectable:true})
       this.setState({ready:true})
     } catch (e) {
       alert(e)
@@ -142,15 +159,20 @@ export default class HomeScreen extends React.Component {
 
   makeSchedule(){
     var workIndex = 0;
+    var lastTask = new Date()
     this.sortWorkTimes()
     this.getWorkTimes()
-    if(tasks.length > 0){
-      var time = new Date(Date.now())
-      var newIndex = false
-      var schedule = []
-      for(var i = 0; i <= workTimes.length+1;i++){
+    var schedule = []
+      for(var i = 1; i <= workTimes.length+1;i++){
         schedule.push([])
       }
+    if(tasks.length > 0){
+      if(this.state.selectable==true&&!(new Date().getTime()>new Date(workTimes[0].start).getTime()&&new Date().getTime()<new Date(workTimes[0].end).getTime())){
+        this.pause()
+      }
+      var time = new Date(Date.now())
+      var newIndex = false
+      
       if(this.state.selectable==true&&workTimes.length>0){
         time = new Date(workTimes[workIndex].start);
       }
@@ -170,7 +192,7 @@ export default class HomeScreen extends React.Component {
               time=workTimes[workIndex].start;
               
             }
-            if (tasks[i].length<=(new Date(workTimes[workIndex].end).getTime()-new Date(time).getTime())/(1000*60))
+            if (tasks[i].length<=Math.round((new Date(workTimes[workIndex].end).getTime()-new Date(time).getTime())/(1000*60)))
             {
               tasks[i].start = time
               tasks[i].end = new Date (new Date(time).getTime()+tasks[i].length*1000*60)
@@ -182,10 +204,10 @@ export default class HomeScreen extends React.Component {
               
               tasks[i].start = time
               tasks[i].end = workTimes[workIndex].end
-              schedule[workIndex].push({...tasks[i]}) 
+              schedule[workIndex].push({...tasks[i]})
               if(tasks[i].length-Math.round((new Date(workTimes[workIndex].end).getTime()-new Date(time).getTime())/(1000*60))>0){
                 tasks.splice(i+1,0,{...tasks[i]})
-                tasks[i+1].length -= Math.round(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))
+                tasks[i+1].length -= Math.round((new Date(workTimes[workIndex].end).getTime()-new Date(time).getTime())/(1000*60))
               }
               time = tasks[i].end
             }
@@ -198,14 +220,21 @@ export default class HomeScreen extends React.Component {
             tasks[i].color='#FF0000'
             schedule[workIndex].push({...tasks[i]})
             time=tasks[i].end;
-            if(i>0&&tasks[i].name==tasks[i-1].name){
-              tasks.splice(i, 1)
-            }
-            
-            
-         }
+          }
+          lastTask = tasks[i].end
+          if(i>0&&tasks[i].name==tasks[i-1].name){
+            tasks.splice(i, 1)
+            i-=1
+          }
         }
+        
       
+    }
+    if(workTimes.length>0){
+      this.availableTime = new Date(workTimes[workTimes.length-1].end).getTime()-new Date(lastTask).getTime()
+    }
+    else{
+      this.availableTime = new Date().getTime()-new Date(lastTask).getTime()
     }
     return schedule
   }
@@ -215,13 +244,24 @@ export default class HomeScreen extends React.Component {
   }
 
   start(){
-    if(tasks.length>0){
+    if(tasks.length>0&&new Date().getTime()>new Date(workTimes[0].start).getTime()&&new Date().getTime()<new Date(workTimes[0].end).getTime()){
       this.setState({selectable:false})
       var selectedTask = tasks[this.state.taskIndex]
       tasks.splice(this.state.taskIndex, 1)
       this.sortTask()
       tasks.splice(0, 0, selectedTask)
       this.setState({taskIndex: 0}) 
+    }
+    else if(!(new Date().getTime()>new Date(workTimes[0].start).getTime()&&new Date().getTime()<new Date(workTimes[0].end).getTime())){
+      Alert.alert(
+        'Outside of Work Times',
+        "You are only able to do tasks during your work times. Please add/edit your work times instead.",
+        [
+          { text: 'Ok'}
+        ],
+        { cancelable: true }
+        
+      )
     }
     
   }
@@ -266,9 +306,9 @@ export default class HomeScreen extends React.Component {
   displayTime(date){
     var hours = new Date(date).getHours()
     var minutes = new Date(date).getMinutes()
-    var amPm = 'am'
+    var amPm = ' am'
     if(hours>=12){
-      amPm='pm'
+      amPm=' pm'
     }
     if(hours==0){
       hours=12
@@ -279,7 +319,7 @@ export default class HomeScreen extends React.Component {
     if(minutes<10){
       return hours+':'+'0'+minutes+amPm
     }
-    return hours+':'+minutes+' '+amPm
+    return hours+':'+minutes+amPm
   }
 
   displayDate(date) {
@@ -317,6 +357,39 @@ export default class HomeScreen extends React.Component {
     return 'Select a Task'
   }
 
+  showClear(){
+    if(workTimes.length>0||tasks.length>0){
+      return 'blue'
+    }
+    return '#fff'
+  }
+
+  disableClear(){
+    if(workTimes.length>0||tasks.length>0){
+      return false
+    }
+    return true
+  }
+
+  findavailableTime(){
+    var timeLeft = Math.round(this.availableTime/(60*1000))
+    if(timeLeft>=0){
+      return timeLeft+' minutes available'
+    }
+    else{
+      return -timeLeft+' minutes needed!'
+    }
+  }
+
+  numTasks(schedule,workTimeNum){
+    if(schedule[workTimeNum].length==0){
+      return '#fff'
+    }
+    else{
+      return '#a6a6a6'
+    }
+  }
+
   render(){
     const { navigate } = this.props.navigation;
 
@@ -329,24 +402,14 @@ export default class HomeScreen extends React.Component {
         <View style={styles.top}> 
           <TouchableOpacity
             onPress={() =>this.presetTimes()}
-            style={styles.button}>
+            style={styles.topButton}>
             <Text style={{ fontSize: 20, color: '#fff' }}>Set preset</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            disabled={!this.state.selectable}
-            onPress={() =>navigate('AddTask')}
-            style={styles.button}>
-            <Text style={{ fontSize: 20, color: '#fff' }}>T</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-          disabled={!this.state.selectable}
-            onPress={() =>navigate('AddWorkTime')}
-            style={styles.button}>
-            <Text style={{ fontSize: 20, color: '#fff' }}>W</Text>
-          </TouchableOpacity>
+          <Icon name="clipboard" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddTask')}/>
+          <Icon name="clock" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddWorkTime')}/>
 
         </View>
-        <View style={{flex:4}}>
+        <View style={{flex:8}}>
           <ScrollView>
               
               <View style={{flex:1}}>
@@ -355,90 +418,98 @@ export default class HomeScreen extends React.Component {
                     
                     return (
                     
-                      <View key={i}>
-                        <TouchableOpacity
-                        disabled={!this.state.selectable}
-                        onPress={() => this.editWorkTimes(i)}
-                        style={styles.workTimes}
-                        > 
-                          <View style={{flex:1}}/>
-                          <View style={{flex:3, flexDirection:'column',}}>
+                      <View key={i} style={{flexDirection: 'row',alignSelf:'stretch',padding:5}}>
+                        {/* <View style={{flex:1,alignSelf:'stretch'}}> */}
+                          <TouchableOpacity
+                          disabled={!this.state.selectable}
+                          onPress={() => this.editWorkTimes(i)}
+                          style={styles.workTimes}
+                          >
+                            <Text style={{ fontSize: 13, color: '#fff' }}>{this.displayTime(workTime.start)+' - '+this.displayTime(workTime.end)}</Text>
+                          </TouchableOpacity>
+                        {/* </View> */}
+                          <View style={{flex:4, flexDirection:'column',borderBottomWidth:2,borderBottomColor:this.numTasks(schedule,i)}}>
                             {
-                              schedule[i].map((task, i) => {
-                                
+                              schedule[i].map((task, j) => {
                                 return (
-                                <View  key={i}>
-                                <TouchableOpacity
-                                disabled={!this.state.selectable}
-                                onPress={() => this.selected(tasks.indexOf(task))}
-                                style={styles.button}
-                                > 
-                                
-                                <Text style={{ fontSize: 25, color: task.color }}>{task.name}</Text>
-                                <Text style={{ fontSize: 13, color: '#fff' }}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)}</Text>
-                                <Text style={{ fontSize: 13, color: '#fff' }}>{'Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)}</Text>
-                                </TouchableOpacity>
+                                <View  key={j}>
+                                  <TouchableOpacity
+                                  disabled={!this.state.selectable}
+                                  onPress={() => this.selected(tasks.findIndex((element)=>element.name==task.name))}
+                                  style={styles.tasks}
+                                  > 
+                                  
+                                  <Text style={{ fontSize: 17, color: task.color, alignSelf: 'center' }}>{task.name}</Text>
+                                  <View style={{flexDirection: 'row', justifyContent:'space-around', flexWrap:'wrap'}}>
+                                    <Text style={{ fontSize: 13, color: '#fff' }}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)}</Text>
+                                    <Text style={{ fontSize: 13, color: '#fff' }}>{'(Length: '+tasks[tasks.findIndex((element)=>element.name==task.name)].length+' min,  Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
+                                  </View>
+                                  </TouchableOpacity>
                                 </View>
                                 );
                               })
                             }
                           </View>
-                          {/* <Text style={{ fontSize: 15, color: '#fff' }}>{this.displayTime(workTime.start)+' - '+this.displayTime(workTime.end)}</Text> */}
-                        </TouchableOpacity>
+                          
+                        
                       </View>
                     );
                   })
                 }
-                <View style={{borderColor:'#fff',borderWidth: 3,}}>
+                <View style={{alignSelf:'stretch',padding:5}}>
+                  <View style={{ borderBottomWidth:2,borderBottomColor:this.numTasks(schedule,schedule.length-1)}}>
                   {
                     schedule[schedule.length-1].map((task, i) => {
-                      
                       return (
-                      <View  key={i}>
-                      <TouchableOpacity
-                      disabled={!this.state.selectable}
-                      onPress={() => this.selected(tasks.indexOf(i))}
-                      style={styles.button}
-                      > 
-                      
-                      <Text style={{ fontSize: 25, color: task.color }}>{task.name}</Text>
-                      <Text style={{ fontSize: 13, color: '#fff' }}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)}</Text>
-                      <Text style={{ fontSize: 13, color: '#fff' }}>{'Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)}</Text>
-                      </TouchableOpacity>
+                      <View  key={i} >
+                        <TouchableOpacity
+                        disabled={!this.state.selectable}
+                        onPress={() => this.selected(tasks.findIndex((element)=>element.name==task.name))}
+                        style={styles.overTasks}
+                        > 
+                        
+                        <Text style={{ fontSize: 17, color: '#555555', alignSelf: 'center' }}>{task.name}</Text>
+                        <View style={{flexDirection: 'row', justifyContent:'space-around', flexWrap:'wrap'}}>
+                          {/* <Text style={{ fontSize: 13, color: '#555555' }}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)}</Text> */}
+                          <Text style={{ fontSize: 13, color: '#555555' }}>{'(Length: '+tasks[tasks.findIndex((element)=>element.name==task.name)].length+' min,  Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
+                        </View>
+                        </TouchableOpacity>
                       </View>
                       );
                     })
                   }
+                  </View>
                 </View>
               </View>
               
-            <View>
+            <View style={{padding:8}}>
               <TouchableOpacity
                 onPress={() => this.clear()}
-                style={styles.button}>
+                style={{
+                  padding: 5,
+                  borderRadius: 6,
+                  alignItems: 'center',
+                  backgroundColor: this.showClear()
+                }} disabled={this.disableClear()}>
                 <Text style={{ fontSize: 20, color: '#fff' }}>Clear All</Text>
               </TouchableOpacity>
             </View>
             
           </ScrollView>
         </View>
+        <Divider style={{ backgroundColor: 'gray' }} />
         <View style={styles.selectView}>
           <View style={styles.inSelection}>
             <Text style={{ fontSize: 20}}>{this.taskName()}</Text>
-            <TouchableOpacity disabled={!this.state.selectable} onPress={() => this.editTask()} style={{padding: 20, borderRadius: 5}}>
-              <Text style={{ fontSize: 20}}>Edit</Text>
-            </TouchableOpacity>
+            <Icon disabled={!this.state.selectable} name="pencil-alt" type='font-awesome-5' onPress={() => this.editTask()}/>
           </View>
           <View style={styles.inSelection}>
-            <TouchableOpacity onPress={() => this.start()} style={{padding: 20, borderRadius: 5}}>
-              <Text style={{ fontSize: 20}}>S</Text>
-            </TouchableOpacity>
-            <TouchableOpacity disabled={this.state.selectable} onPress={() => this.pause()} style={{padding: 20, borderRadius: 5}}>
-              <Text style={{ fontSize: 20}}>P</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => this.stop()} style={{padding: 20, borderRadius: 5}}>
-              <Text style={{ fontSize: 20}}>F</Text>
-            </TouchableOpacity>
+            <Icon name="play" type='font-awesome-5' onPress={() => this.start()}/>
+            <Icon name="pause" type='font-awesome-5' disabled={this.state.selectable} onPress={() => this.pause()}/>
+            <Icon name="stop" type='font-awesome-5'onPress={() => this.stop()}/>
+          </View>
+          <View style={{flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-around',padding:3}}>
+            <Text style={{fontSize:14.5}}>{this.findavailableTime()}</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -459,33 +530,66 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    flexDirection: 'row'
+    flexDirection: 'row',
+    flex: 1,
+    padding: 8
   },
   button: {
     backgroundColor: "blue",
-    padding: 20,
-    borderRadius: 3,
-    borderColor:'#fff',
-    borderWidth: 3,
+    padding: 5,
+    borderRadius: 6,
+    alignItems: 'center',
+    // borderColor:'#fff',
+    // backfaceVisibility: 'hidden',
+    // borderWidth: 3,
+  },
+  topButton: {
+    backgroundColor: "blue",
+    padding: 8,
+    borderRadius: 6,
+    // borderColor:'#fff',
+    // borderWidth: 3,
+  },
+  tasks:{
+    backgroundColor: "deepskyblue",
+    padding: 5,
+    // borderRadius: 6,
+    borderColor:'#a6a6a6',
+    borderWidth: 2,
+    borderBottomWidth:0,
+    // borderTopRightRadius: 4,
+    // borderBottomRightRadius: 4,
+  },
+  overTasks:{
+    backgroundColor: "#AAAFB4",
+    padding: 5,
+    // borderRadius: 6,
+    borderColor:'#a6a6a6',
+    borderWidth: 2,
+    borderBottomWidth:0,
+    // borderTopRightRadius: 4,
+    // borderBottomRightRadius: 4,
   },
   workTimes: {
-    backgroundColor: "#66ff00",
-    padding: 20,
+    flex: 1,
+    backgroundColor: "blue",
+    padding: 8,
     flexDirection: 'row',
-    borderRadius: 3,
-    borderColor:'#fff',
-    borderWidth: 3,
+    borderTopLeftRadius: 5,
+    borderBottomLeftRadius: 5,
+    // borderColor:'#fff',
+    // borderWidth: 3,
   },
   selectView: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+    flex: 2.5,
+    padding: 3,
     alignItems: 'stretch',
     flexDirection: 'column',
     justifyContent: 'center',
   },
   inSelection: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
+    flex: 2,
+    // padding: 3,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-around',
