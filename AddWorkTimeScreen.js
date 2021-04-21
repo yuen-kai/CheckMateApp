@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, Text, View, Button, TouchableOpacity} from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity,Alert} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -72,7 +72,8 @@ export default class AddWorkTimeScreen extends React.Component {
       this.editInfo()
       this.setState({ready:true})
     } catch(e) {
-      alert(e)
+      Alert.alert('Failed to get data!','Failed to get data! Please try again.')
+      console.log(e)
     }
     
   }
@@ -88,7 +89,8 @@ export default class AddWorkTimeScreen extends React.Component {
         await AsyncStorage.removeItem('workIndex')
       }
     } catch(e) {
-      alert(e)
+      Alert.alert('Failed to get edit info!','Failed to get edit info! Please try again.')
+      console.log(e)
     }
  }
  
@@ -138,10 +140,10 @@ export default class AddWorkTimeScreen extends React.Component {
     }
 
 
-    if(this.state.end.getTime()-this.state.start.getTime()<5*60*1000){
-      alert('You need to have at least 5 minutes of workTime!')}
+    if(this.state.end.getTime()-this.state.start.getTime()<60*1000){
+      Alert.alert('Invalid Work Time','You need to have at least 1 minutes of work times!')}
     else if(overlap==true){
-      alert('This worktime overlaps with previous worktimes. To edit worktimes, you should instead go to the home screen and click on the worktime you want to edit.')
+      Alert.alert('Overlapping Work Times'+'This work time overlaps with previous work times. To edit worktimes, you should instead go to the home screen and click on the work time you want to edit.')
     }
     else{
       
@@ -155,11 +157,24 @@ export default class AddWorkTimeScreen extends React.Component {
         const jsonValue = JSON.stringify(workTimes)
         await AsyncStorage.setItem('workTimes', jsonValue)
       } catch (e) {
-        alert(e)
+        Alert.alert('Error saving','There has been an error saving your work time. Please try again.')
+        console.log(e)
       } 
       this.props.navigation.navigate('Home');
     }
   };
+
+  async handleDelete(){
+    workTimes.splice(this.workIndex,1)
+    try {
+      const jsonValue = JSON.stringify(workTimes)
+      await AsyncStorage.setItem('workTimes', jsonValue)
+    } catch (e) {
+      Alert.alert('Error deleting','There has been an error deleting your work time. Please try again.')
+      console.log(e)
+    } 
+    this.props.navigation.navigate('Home');
+  }
 
   render(){
     if(!this.state.ready){
@@ -167,47 +182,71 @@ export default class AddWorkTimeScreen extends React.Component {
     }
     return(
       
-    <SafeAreaView style={styles.container}>
-      <Text style={{ fontSize: 20, color: '#fff'}}>{this.displayTime(this.state.start)}</Text>
-      <View style={{flexDirection: 'row'}}>
-        <Button onPress={() => this.showDatepicker('start')} title="Select Start Day" />
-        <Button onPress={() => this.showTimepicker('start')} title="Select Start Time" />
-      </View>
-      <Text style={{ fontSize: 20, color: '#fff'}}>{this.displayTime(this.state.end)}</Text>
-      <View style={{flexDirection: 'row'}}>
-        <Button onPress={() => this.showDatepicker('end')} title="Select End Day" />
-        <Button onPress={() => this.showTimepicker('end')} title="Select End Time" />
-      </View>
-      {/* start picker */}
-      {this.state.startShow && (
-      <DateTimePicker
-        // testID="dateTimePsicker"
-        value={this.state.start}
-        mode={this.state.mode}
-        // is24Hour={true}
-        display="default"
-        onChange={this.onStartChange}
-      />)}
+    <View style={styles.container}>
+      <View style={{alignItems: 'center',}}>
+        <Text style={{ fontSize: 20, padding:4}}>{this.displayTime(this.state.start)}</Text>
+        <View style={{flexDirection: 'row',justifyContent: 'space-around'}}>
+          <View style={{padding:2}}>
+          <TouchableOpacity style={styles.button} onPress={() => this.showDatepicker('start')}>
+            <Text style={{ fontSize: 18, color: '#fff' }}>Select Start Day</Text>
+          </TouchableOpacity> 
+          </View>
+          <View style={{padding:2}}>
+          <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker('start')}>
+            <Text style={{ fontSize: 18, color: '#fff' }}>Select Start Time</Text>
+          </TouchableOpacity>
+          </View>
+        </View>
+        <Text style={{ fontSize: 20,padding:4}}>{this.displayTime(this.state.end)}</Text>
+        <View style={{flexDirection: 'row',alignItems: 'space-around'}}>
+          <View style={{padding:2}}>
+          <TouchableOpacity style={styles.button} onPress={() => this.showDatepicker('end')}>
+            <Text style={{ fontSize: 18, color: '#fff' }}>Select End Day</Text>
+          </TouchableOpacity> 
+          </View>
+          <View style={{padding:2}}>
+          <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker('end')}>
+            <Text style={{ fontSize: 18, color: '#fff' }}>Select End Time</Text>
+          </TouchableOpacity>
+          </View>
+        </View>
+        {/* start picker */}
+        {this.state.startShow && (
+        <DateTimePicker
+          minimumDate={new Date()}
+          maximumDate={new Date(Date.now()+24*60*60*1000)}
+          // testID="dateTimePsicker"
+          value={this.state.start}
+          mode={this.state.mode}
+          // is24Hour={true}
+          display="default"
+          onChange={this.onStartChange}
+        />)}
 
-      {/* end picker */}
-      {this.state.endShow && (
-      <DateTimePicker
-        // testID="dateTimePicker"
-        value={this.state.end}
-        mode={this.state.mode}
-        // is24Hour={true}
-        display="default"
-        onChange={this.onEndChange}
-      />)}
+        {/* end picker */}
+        {this.state.endShow && (
+        <DateTimePicker
+        minimumDate={new Date(this.state.start)}
+          maximumDate={new Date(Date.now()+24*60*60*1000)}
+          // testID="dateTimePicker"
+          value={this.state.end}
+          mode={this.state.mode}
+          // is24Hour={true}
+          display="default"
+          onChange={this.onEndChange}
+        />)}
+        <View style={{padding:8}}>
+          <TouchableOpacity
+            onPress={() => this.handleSave()}
+            style={styles.button}>
+          <Text style={{ fontSize: 20, color: '#fff' }}>Save WorkTime</Text>
+          </TouchableOpacity>  
+        </View>    
+      </View>          
+    {this.edit==true? <View style={{alignSelf: 'center', postition: 'absolute',bottom:0,right:0,padding:5}}><Icon size={40} name="trash-2" type='feather'onPress={() => this.handleDelete()}/></View>: null}
 
-        <TouchableOpacity
-          onPress={() => this.handleSave()}
-          style={styles.button}>
-         <Text style={{ fontSize: 20, color: '#fff' }}>Save WorkTime</Text>
-        </TouchableOpacity>
+    </View>      
 
-      {this.edit==true? <guhjlkjhj/>: <dshfkj/>}
-    </SafeAreaView>
     )
   }
 }
@@ -216,15 +255,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'center',
   },
   button: {
     backgroundColor: "blue",
-    padding: 20,
+    padding: 5,
     borderRadius: 5,
-    position: 'absolute',
-    top:0,
-    right:0,
+    // position: 'absolute',
+    // top:0,
+    // right:0,
   }
 });

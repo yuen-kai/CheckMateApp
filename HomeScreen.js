@@ -4,7 +4,8 @@ import { StyleSheet, Text, View,TouchableOpacity, ScrollView, Alert} from 'react
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Divider} from 'react-native-elements'
+import {Icon,Divider,ThemeProvider} from 'react-native-elements'
+
 var tasks = [];
 var workTimes = [];
 
@@ -41,7 +42,8 @@ export default class HomeScreen extends React.Component {
       this.setState({ready:true})
       
     } catch(e) {
-      alert(e)
+      Alert.alert('Failed to get data!','Failed to get data! Please try again.')
+      console.log(e)
     }
   } 
 
@@ -53,13 +55,11 @@ export default class HomeScreen extends React.Component {
 
   getWorkTimes = async () => {
     try {
-      
       if(workTimes.length==0&&this.loaded==false){
         const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
         var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
-        if(savedTime != null&&savedTime[new Date().getDay()]!=null&&savedTime[new Date().getDay()].length>0&&(savedTime[new Date().getDay()][savedTime[new Date().getDay()].length-1].end).getTime()<new Date()){
+        if(savedTime != null&&savedTime[new Date().getDay()]!=null&&savedTime[new Date().getDay()].length>0&&new Date(savedTime[new Date().getDay()][savedTime[new Date().getDay()].length-1].end).getTime()>Date.now()){
           this.loaded = true
-          
           Alert.alert(
             'Load WorkTimes',
             "Load today's preset work times?",
@@ -79,7 +79,8 @@ export default class HomeScreen extends React.Component {
       this.loaded = false
       
     } catch(e) {
-      alert(e)
+      Alert.alert('Error loading preset!','Failed to get preset work times! Please try again.')
+      console.log(e)
     }
   } 
 
@@ -94,19 +95,20 @@ export default class HomeScreen extends React.Component {
       const jsonValue = JSON.stringify(savedTime)
       await AsyncStorage.setItem('savedWorkTimes', jsonValue)
     } catch (e) {
-      alert(e)
+      Alert.alert('Error saving preset!','Failed to save preset work times! Please try again.')
+      console.log(e)
     }
   }
 
   sortWorkTimes() {
     
     for(var i=0; i<=workTimes.length-1;i++){
-      if(new Date(workTimes[i].end).getTime()<new Date()){
+      if(new Date(workTimes[i].end).getTime()<Date.now()){
         workTimes.splice(i, 1)
         this.saveWorkTimes()
         return
       }
-      else if(new Date(workTimes[i].start).getTime()<new Date()){
+      else if(new Date(workTimes[i].start).getTime()<Date.now()){
         workTimes[i].start=new Date()
         this.saveWorkTimes()
         return
@@ -123,7 +125,8 @@ export default class HomeScreen extends React.Component {
       const jsonValue = JSON.stringify(workTimes)
       await AsyncStorage.setItem('workTimes', jsonValue)
     } catch (e) {
-      alert(e)
+      Alert.alert('Error saving work times!','Failed to save work times! Please try again.')
+      console.log(e)
     }
   }
 
@@ -153,7 +156,8 @@ export default class HomeScreen extends React.Component {
       this.setState({selectable:true})
       this.setState({ready:true})
     } catch (e) {
-      alert(e)
+      Alert.alert('Error clearing all!','Failed to clear all! Please try again.')
+      console.log(e)
     }
   }
 
@@ -167,10 +171,10 @@ export default class HomeScreen extends React.Component {
         schedule.push([])
       }
     if(tasks.length > 0){
-      if(this.state.selectable==true&&!(new Date().getTime()>new Date(workTimes[0].start).getTime()&&new Date().getTime()<new Date(workTimes[0].end).getTime())){
+      if(this.state.selectable==false&&!(Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime())){
         this.pause()
       }
-      var time = new Date(Date.now())
+      var time = new Date()
       var newIndex = false
       
       if(this.state.selectable==true&&workTimes.length>0){
@@ -234,7 +238,7 @@ export default class HomeScreen extends React.Component {
       this.availableTime = new Date(workTimes[workTimes.length-1].end).getTime()-new Date(lastTask).getTime()
     }
     else{
-      this.availableTime = new Date().getTime()-new Date(lastTask).getTime()
+      this.availableTime = Date.now()-new Date(lastTask).getTime()
     }
     return schedule
   }
@@ -244,7 +248,7 @@ export default class HomeScreen extends React.Component {
   }
 
   start(){
-    if(tasks.length>0&&new Date().getTime()>new Date(workTimes[0].start).getTime()&&new Date().getTime()<new Date(workTimes[0].end).getTime()){
+    if(tasks.length>0&&Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime()){
       this.setState({selectable:false})
       var selectedTask = tasks[this.state.taskIndex]
       tasks.splice(this.state.taskIndex, 1)
@@ -252,7 +256,7 @@ export default class HomeScreen extends React.Component {
       tasks.splice(0, 0, selectedTask)
       this.setState({taskIndex: 0}) 
     }
-    else if(!(new Date().getTime()>new Date(workTimes[0].start).getTime()&&new Date().getTime()<new Date(workTimes[0].end).getTime())){
+    else if(!(Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime())){
       Alert.alert(
         'Outside of Work Times',
         "You are only able to do tasks during your work times. Please add/edit your work times instead.",
@@ -335,7 +339,8 @@ export default class HomeScreen extends React.Component {
         await AsyncStorage.setItem('editIndex', jsonValue)
         this.props.navigation.navigate('AddTask')
       } catch (e) {
-        alert(e)
+        Alert.alert('Error getting task edit info!','Failed to get task edit info! Please try again.')
+        console.log(e)
       }
     }
   }
@@ -346,7 +351,8 @@ export default class HomeScreen extends React.Component {
       await AsyncStorage.setItem('workIndex', jsonValue)
       this.props.navigation.navigate('AddWorkTime')
     } catch (e) {
-      alert(e)
+      Alert.alert('Error getting work times edit info!','Failed to get work times edit info! Please try again.')
+      console.log(e)
     }
   }
 
@@ -392,12 +398,12 @@ export default class HomeScreen extends React.Component {
 
   render(){
     const { navigate } = this.props.navigation;
-
     if(!this.state.ready){
       return null
     }
     var schedule=this.makeSchedule()
     return (
+      
       <SafeAreaView style={styles.container}>
         <View style={styles.top}> 
           <TouchableOpacity

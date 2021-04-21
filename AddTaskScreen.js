@@ -1,11 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
 import React, {Component} from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, Button, Platform} from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView, Platform,Alert} from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import RNPickerSelect from 'react-native-picker-select';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {Slider} from 'react-native-elements'
+
+
 
 var tasks = []
 
@@ -20,7 +23,8 @@ export default class AddTaskScreen extends React.Component {
     show: false,
     ready: false,
     name: "",
-    importance: 0,
+    importance: 5,
+    dueImportance: 1,
     length: 0,
     sortValue: 0,
     start: new Date(),
@@ -65,7 +69,8 @@ export default class AddTaskScreen extends React.Component {
         this.editInfo()
         this.setState({ready:true})
       } catch(e) {
-        alert(e)
+        Alert.alert('Failed to get data!','Failed to get data! Please try again.')
+        console.log(e)
       }
       
    }
@@ -78,11 +83,12 @@ export default class AddTaskScreen extends React.Component {
       if(this.editIndex != null){
         this.selectedTask = tasks[this.editIndex]
         this.edit = true
-        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,color:'#fff'})
+        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,color:'#fff',dueImportance:this.selectedTask.dueImportance})
         await AsyncStorage.removeItem('editIndex')
       }
     } catch(e) {
-      alert(e)
+      Alert.alert('Failed to get edit info!','Failed to get edit info! Please try again.')
+      console.log(e)
     }
  }
 
@@ -123,8 +129,8 @@ export default class AddTaskScreen extends React.Component {
 
   handleSave = async () => {
     var sameName = false
-    await this.setState({sortValue: new Date(this.state.date).getTime()-(((this.state.importance*8)/100)*(this.state.length*1000*60))})
-    this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance}
+    await this.setState({sortValue: new Date(this.state.date).getTime()-((((this.state.importance*8)/100)*(this.state.length))/((6-this.state.dueImportance)*30))*24*60*60*1000})
+    this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance}
     if(this.edit == false){
       tasks.forEach(element => {
         if(element.name==this.selectedTask.name){
@@ -134,9 +140,10 @@ export default class AddTaskScreen extends React.Component {
     }
     
     if(this.state.name==""||this.state.importance==0||this.state.length==0){
-      alert('Not all parameters have been filled out!')}
+      Alert.alert('Invalid Task','Not all parameters have been filled out!')
+    }
     else if(sameName==true){
-      alert('Name already used. Please select a new name.')
+      Alert.alert('Name Used','Name already used. Please select a new name.')
     }
     else{
       
@@ -153,7 +160,7 @@ export default class AddTaskScreen extends React.Component {
         const jsonValue = JSON.stringify(tasks)
         await AsyncStorage.setItem('tasks', jsonValue)
       } catch (e) {
-        alert(e)
+        console.log(e)
       }
       this.props.navigation.navigate('Home');
       }
@@ -165,79 +172,88 @@ export default class AddTaskScreen extends React.Component {
       return null
     }
     return (
-      <SafeAreaView style={styles.container}>
-        
-        <Text style={{ fontSize: 20, color: '#fff'}}>Name:</Text>
-        <TextInput
-          style={styles.textInput}
-          placeholder = {"Complete project proposal"}
-          onChangeText={name => this.setState({name})}
-          value = {this.state.name}
-        />
-        <Text style={{ fontSize: 20, color: '#fff'}}>Importance:</Text>
-        <RNPickerSelect
-            placeholder={{ label: "Select the importance...", value: null }}
-            
-            style={pickerSelectStyles}
-            items={[
-                { label: '1', value: 1 },
-                { label: '2', value: 2 },
-                { label: '3', value: 3 },
-                { label: '4', value: 4 },
-                { label: '5', value: 5 },
-                { label: '6', value: 6 },
-                { label: '7', value: 7 },
-                { label: '8', value: 8 },
-                { label: '9', value: 9 },
-                { label: '10', value: 10 }
-            ]}
-            onValueChange={importance=>this.setState({importance:importance})}
-            value = {this.state.importance}
-        />
-        <View style={{flex: 1,alignItems: 'center'}}>
-          <Text style={{ fontSize: 20, color: '#fff'}}>Length(min):</Text>
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={{alignItems: 'center'}}>
+          <View style={{padding:4,alignItems: 'center'}}>
+          <Text style={{ fontSize: 20, padding:3}}>Name:</Text>
           <TextInput
             style={styles.textInput}
-            placeholder = {"30"}
-            keyboardType = "numeric"
-            onChangeText={length => this.setState({length:length})}
-            value = {this.state.length}
-            
+            placeholder = {"Complete project proposal"}
+            onChangeText={name => this.setState({name})}
+            value = {this.state.name}
           />
-        </View>
-        <View style={{flex: 1,alignItems: 'center'}}>
-          <Text style={{ fontSize: 20, color: '#fff'}}>{'Due Date: '+this.displayDate(this.state.date)+' '+this.displayTime(this.state.date)}</Text>
-          <View style={{flexDirection: 'row'}}>
-            <TouchableOpacity
-              onPress={() => this.showDatepicker()}
-              style={styles.button}>
-              <Text style={{ fontSize: 20, color: '#fff' }}>Select Day</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => this.showTimepicker()}
-              style={styles.button}>
-              <Text style={{ fontSize: 20, color: '#fff' }}>Select Time</Text>
-            </TouchableOpacity>
           </View>
-          {this.state.show && (
-          <DateTimePicker
-            testID="dateTimePicker"
-            value={this.state.date}
-            mode={this.state.mode}
-            // is24Hour={true}
-            display="default"
-            onChange={this.onChange}
-          />
-          )}
-        </View>
-        <View style={{flex: 1}}>
+          <View style={{ padding:4, alignItems: 'stretch', justifyContent: 'center' }}>        
+            <Text style={{ fontSize: 20,padding:3}}>Importance: {this.state.importance}</Text>
+            <Slider
+            thumbStyle={{width:30,height:30}}
+              value={this.state.importance}
+              onValueChange={(importance) => this.setState({ importance })}
+              minimumValue={1}
+              maximumValue={10}
+              allowTouchTrack={true}
+              step={1}
+            />
+          </View>
+          <View style={{padding:4,alignItems: 'center'}}>
+            <Text style={{ fontSize: 20,padding:3}}>Length(min):</Text>
+            
+            <TextInput
+              style={styles.textInput}
+              placeholder = {"30"}
+              keyboardType = "numeric"
+              onChangeText={length => this.setState({length:length})}
+              value = {this.state.length}
+            />
+          </View>
+          <View style={{padding:4,alignItems:'center'}}>
+            <Text style={{ fontSize: 20,padding:3}}>{'Due Date: '+this.displayDate(this.state.date)+' '+this.displayTime(this.state.date)}</Text>
+            <View style={{flexDirection: 'row',pading:3,alignSelf:'stretch',justifyContent:'space-around'}}>
+              <View style={{padding:3}}>
+              <TouchableOpacity
+                onPress={() => this.showDatepicker()}
+                style={styles.button}>
+                <Text style={{ fontSize: 20, color: '#fff' }}>Select Day</Text>
+              </TouchableOpacity>
+              </View>
+              <View style={{padding:3}}>
+              <TouchableOpacity
+                onPress={() => this.showTimepicker()}
+                style={styles.button}>
+                <Text style={{ fontSize: 20, color: '#fff' }}>Select Time</Text>
+              </TouchableOpacity>
+              </View>
+            </View>
+            {this.state.show && (
+            <DateTimePicker
+              testID="dateTimePicker"
+              value={this.state.date}
+              mode={this.state.mode}
+              // is24Hour={true}
+              display="default"
+              onChange={this.onChange}
+            />
+            )}
+          </View>
+          <View style={{padding:4, alignItems: 'stretch', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 20,padding:3}}>Due Date Importance: {this.state.dueImportance}</Text>
+            <Slider
+            thumbStyle={{width:30,height:30}}
+              value={this.state.dueImportance}
+              onValueChange={(dueImportance) => this.setState({ dueImportance })}
+              minimumValue={1}
+              maximumValue={5}
+              allowTouchTrack={true}
+              step={1}
+            />
+          </View>
           <TouchableOpacity
             onPress={() => this.handleSave()}
             style={styles.button}>
             <Text style={{ fontSize: 20, color: '#fff' }}>Save Task</Text>
           </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+        </ScrollView>
+      </View>
     );
   }
 }
@@ -245,14 +261,15 @@ export default class AddTaskScreen extends React.Component {
 const styles = StyleSheet.create({
   container: {
     flex: 4,
-    backgroundColor: '#151515',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#fff',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
   },
   button: {
     backgroundColor: "blue",
-    padding: 20,
+    padding: 10,
     borderRadius: 5,
+    alignItems: 'center',
   },
   text: {
     fontSize: 20,
@@ -263,33 +280,9 @@ const styles = StyleSheet.create({
   textInput: {
     height: 40,
     width: 200, 
+    padding:5,
     borderColor: 'gray', 
     borderWidth: 1,
     backgroundColor: '#ffffff',
   }
-});
-
-const pickerSelectStyles = StyleSheet.create({
-  inputIOS: {
-    fontSize: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 0.5,
-    borderColor: 'black',
-    borderRadius: 8,
-    backgroundColor: 'white',
-    color: 'black',
-    paddingRight: 30, // to ensure the text is never behind the icon
-  },
-  inputAndroid: {
-    fontSize: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 0.5,
-    borderColor: 'black',
-    borderRadius: 8,
-    backgroundColor: 'white',
-    color: 'black',
-    paddingRight: 30, // to ensure the text is never behind the icon
-  },
 });
