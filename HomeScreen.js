@@ -12,20 +12,30 @@ var workTimes = [];
 
 export default class HomeScreen extends React.Component {
   availableTime = 0
-  loaded = false
+  intervalID
+
   state = {
     ready: false,
     taskIndex: 0, 
-    selectable: true
+    previousIndex:0,
+    selectable: true,
+    continue: true
   };
 
 
   componentDidMount(){
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
 			this.getData();  
+      this.setState({continue:true})
 		});
     this.getData();
+    
+    this.intervalID=setInterval(
+      () => this.setState({ready:true}),
+      10*1000
+    );
   }
+
 
   getData = async () => {
     try {
@@ -49,24 +59,23 @@ export default class HomeScreen extends React.Component {
 
   setWorkTimes(savedTime){
     workTimes = savedTime[new Date().getDay()]
-    this.saveWorkTimes()
+    this.sortWorkTimes()
     this.setState({ready:true})
   }
 
   getWorkTimes = async () => {
     try {
-      if(workTimes.length==0&&this.loaded==false){
+      if(workTimes.length==0){
         const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
         var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
-        if(savedTime != null&&savedTime[new Date().getDay()]!=null&&savedTime[new Date().getDay()].length>0&&new Date(savedTime[new Date().getDay()][savedTime[new Date().getDay()].length-1].end).getTime()>Date.now()){
-          this.loaded = true
+        if(savedTime != null&&this.state.continue==true&&savedTime[new Date().getDay()]!=null&&savedTime[new Date().getDay()].length>0&&new Date(savedTime[new Date().getDay()][savedTime[new Date().getDay()].length-1].end).getTime()>Date.now()){
+          this.setState({continue: false})
           Alert.alert(
             'Load WorkTimes',
             "Load today's preset work times?",
             [
               {
                 text: 'Cancel',
-                // onPress: () => console.log('Cancel Pressed'),
                 style: 'cancel'
               },
               { text: 'OK', onPress: () => this.setWorkTimes(savedTime)}
@@ -76,7 +85,6 @@ export default class HomeScreen extends React.Component {
           );
         } 
       }
-      this.loaded = false
       
     } catch(e) {
       Alert.alert('Error loading preset!','Failed to get preset work times! Please try again.')
@@ -103,20 +111,19 @@ export default class HomeScreen extends React.Component {
   sortWorkTimes() {
     
     for(var i=0; i<=workTimes.length-1;i++){
-      if(new Date(workTimes[i].end).getTime()<Date.now()){
+      if(new Date(workTimes[i].end).getTime()<=Date.now()){
         workTimes.splice(i, 1)
-        this.saveWorkTimes()
-        return
+        if(this.state.selectable==false){
+          this.pause()
+        }
       }
       else if(new Date(workTimes[i].start).getTime()<Date.now()){
         workTimes[i].start=new Date()
-        this.saveWorkTimes()
-        return
+        
       }
       
     }
-   
-    
+   this.saveWorkTimes()
   }
 
   saveWorkTimes = async () =>{
@@ -137,12 +144,11 @@ export default class HomeScreen extends React.Component {
       [
         {
           text: 'Cancel',
-          // onPress: () => console.log('Cancel Pressed'),
           style: 'cancel'
         },
         { text: 'Yes', onPress: () => this.clearAll()}
       ],
-      { cancelable: false }
+      { cancelable: true }
       
     )
   }
@@ -165,23 +171,23 @@ export default class HomeScreen extends React.Component {
     var workIndex = 0;
     var lastTask = new Date()
     this.sortWorkTimes()
-    this.getWorkTimes()
-    var schedule = []
+      this.getWorkTimes()
+      var schedule = []
       for(var i = 1; i <= workTimes.length+1;i++){
         schedule.push([])
       }
     if(tasks.length > 0){
-      if(this.state.selectable==false&&!(Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime())){
-        this.pause()
-      }
-      var time = new Date()
+      
+      
+      var time = new Date(Math.floor(Date.now()/(60*1000))*60*1000)
+      
       var newIndex = false
       
       if(this.state.selectable==true&&workTimes.length>0){
         time = new Date(workTimes[workIndex].start);
       }
       else if(this.state.selectable==false){
-        tasks[0].length -= Math.round(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))
+        tasks[0].length -= Math.round((Date.now()-new Date(tasks[0].start).getTime())/(1000*60))
       }
         for (var i = 0; i <=tasks.length-1; i++){
           if (workIndex<=workTimes.length-1&&new Date(time).getTime()==new Date(workTimes[workIndex].end).getTime())
@@ -220,7 +226,6 @@ export default class HomeScreen extends React.Component {
           else{
             tasks[i].start = time
             tasks[i].end = new Date (new Date(time).getTime()+tasks[i].length*1000*60)
-            // tasks[i].length = (new Date(tasks[i].end).getTime()-new Date(tasks[i].start).getTime())/(1000*60)
             tasks[i].color='#FF0000'
             schedule[workIndex].push({...tasks[i]})
             time=tasks[i].end;
@@ -248,15 +253,22 @@ export default class HomeScreen extends React.Component {
   }
 
   start(){
-    if(tasks.length>0&&Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime()){
+    if(tasks.length>0&&workTimes.length>0&&Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime()){
       this.setState({selectable:false})
       var selectedTask = tasks[this.state.taskIndex]
       tasks.splice(this.state.taskIndex, 1)
+      this.setState({taskIndex: 0}) 
+      
+      
       this.sortTask()
       tasks.splice(0, 0, selectedTask)
-      this.setState({taskIndex: 0}) 
+      tasks[0].start=Date.now()
+      console.log('-----')
+      tasks.forEach(element => {
+        console.log(element.sortValue)
+      });
     }
-    else if(!(Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime())){
+    else if(workTimes.length==0||!(Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime())){
       Alert.alert(
         'Outside of Work Times',
         "You are only able to do tasks during your work times. Please add/edit your work times instead.",
@@ -270,16 +282,22 @@ export default class HomeScreen extends React.Component {
     
   }
 
-  pause(){
+  async pause(){
     if(tasks.length > 0){
-      if(tasks[0].length-Math.round(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))>0){
-        tasks[0].length -= Math.round(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))
+      if(tasks[0].length-Math.floor(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))>0){
+        tasks[0].length -= Math.floor(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))
       }
       else{
         tasks[0].length = 10
       }
       this.setState({selectable:true})
     } 
+    try {
+      const jsonValue = JSON.stringify(tasks)
+      await AsyncStorage.setItem('tasks', jsonValue)
+    } catch (e) {
+      console.log(e)
+    }
   }
 
   stop = async () =>{
@@ -302,7 +320,7 @@ export default class HomeScreen extends React.Component {
       if(tasks[i].sortValue<=tasks[0].sortValue){
         var sortTask = tasks[0]
         tasks.splice(0,1)
-        tasks.splice(i+1, 0, sortTask)
+        tasks.splice(i, 0, sortTask)
       }
     }
   }
@@ -363,28 +381,15 @@ export default class HomeScreen extends React.Component {
     return 'Select a Task'
   }
 
-  showClear(){
-    if(workTimes.length>0||tasks.length>0){
-      return 'blue'
-    }
-    return '#fff'
-  }
-
-  disableClear(){
-    if(workTimes.length>0||tasks.length>0){
-      return false
-    }
-    return true
-  }
-
   findavailableTime(){
     var timeLeft = Math.round(this.availableTime/(60*1000))
     if(timeLeft>=0){
       return timeLeft+' minutes available'
     }
-    else{
+    else{ 
       return -timeLeft+' minutes needed!'
     }
+   
   }
 
   numTasks(schedule,workTimeNum){
@@ -405,6 +410,7 @@ export default class HomeScreen extends React.Component {
     return (
       
       <SafeAreaView style={styles.container}>
+        <View style={{flex:9}}>
         <View style={styles.top}> 
           <TouchableOpacity
             onPress={() =>this.presetTimes()}
@@ -416,7 +422,7 @@ export default class HomeScreen extends React.Component {
 
         </View>
         <View style={{flex:8}}>
-          <ScrollView>
+          <ScrollView style={{height: '100%'}}>
               
               <View style={{flex:1}}>
                 {
@@ -489,33 +495,31 @@ export default class HomeScreen extends React.Component {
               </View>
               
             <View style={{padding:8}}>
-              <TouchableOpacity
-                onPress={() => this.clear()}
-                style={{
-                  padding: 5,
-                  borderRadius: 6,
-                  alignItems: 'center',
-                  backgroundColor: this.showClear()
-                }} disabled={this.disableClear()}>
-                <Text style={{ fontSize: 20, color: '#fff' }}>Clear All</Text>
-              </TouchableOpacity>
+              {workTimes.length>0||tasks.length>0? 
+                <TouchableOpacity onPress={() => this.clear()} style={styles.button}>
+                  <Text style={{ fontSize: 20, color: '#fff' }}>Clear All</Text>
+                </TouchableOpacity>
+              : null}
             </View>
             
           </ScrollView>
+          
+        </View>
+        {this.state.selectable==false? <View style={styles.grayOverlay}/>:null}
         </View>
         <Divider style={{ backgroundColor: 'gray' }} />
         <View style={styles.selectView}>
           <View style={styles.inSelection}>
             <Text style={{ fontSize: 20}}>{this.taskName()}</Text>
-            <Icon disabled={!this.state.selectable} name="pencil-alt" type='font-awesome-5' onPress={() => this.editTask()}/>
+            <Icon disabled={!this.state.selectable} disabledStyle={{backgroundColor:'#fff'}} color={this.state.selectable==false?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={() => this.editTask()}/>
           </View>
           <View style={styles.inSelection}>
-            <Icon name="play" type='font-awesome-5' onPress={() => this.start()}/>
-            <Icon name="pause" type='font-awesome-5' disabled={this.state.selectable} onPress={() => this.pause()}/>
-            <Icon name="stop" type='font-awesome-5'onPress={() => this.stop()}/>
+          {this.state.selectable==true?<Icon name="play" type='font-awesome-5' size={30} color='limegreen' onPress={() => this.start()}></Icon>:<Icon name="pause" size={30} type='font-awesome-5' color={'#FFCC00'} onPress={() => this.pause()}/>}
+            
+            <Icon name="stop" type='font-awesome-5'color={tasks.length>0?'red':'gray'} size={30} onPress={tasks.length>0?() => this.stop():null}/>
           </View>
           <View style={{flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-around',padding:3}}>
-            <Text style={{fontSize:14.5}}>{this.findavailableTime()}</Text>
+            <Text style={{fontSize:15}}>{this.findavailableTime()}</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -545,36 +549,34 @@ const styles = StyleSheet.create({
     padding: 5,
     borderRadius: 6,
     alignItems: 'center',
-    // borderColor:'#fff',
-    // backfaceVisibility: 'hidden',
-    // borderWidth: 3,
+  },
+  grayOverlay: {
+    position: 'absolute',
+    zIndex: 1,
+    backgroundColor:'gray',
+    opacity:.5,
+    top:0,
+    height:'100%',
+    width:'100%',
   },
   topButton: {
     backgroundColor: "blue",
     padding: 8,
     borderRadius: 6,
-    // borderColor:'#fff',
-    // borderWidth: 3,
   },
   tasks:{
     backgroundColor: "deepskyblue",
     padding: 5,
-    // borderRadius: 6,
     borderColor:'#a6a6a6',
     borderWidth: 2,
     borderBottomWidth:0,
-    // borderTopRightRadius: 4,
-    // borderBottomRightRadius: 4,
   },
   overTasks:{
     backgroundColor: "#AAAFB4",
     padding: 5,
-    // borderRadius: 6,
     borderColor:'#a6a6a6',
     borderWidth: 2,
     borderBottomWidth:0,
-    // borderTopRightRadius: 4,
-    // borderBottomRightRadius: 4,
   },
   workTimes: {
     flex: 1,
@@ -583,8 +585,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopLeftRadius: 5,
     borderBottomLeftRadius: 5,
-    // borderColor:'#fff',
-    // borderWidth: 3,
   },
   selectView: {
     flex: 2.5,
@@ -595,7 +595,6 @@ const styles = StyleSheet.create({
   },
   inSelection: {
     flex: 2,
-    // padding: 3,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-around',

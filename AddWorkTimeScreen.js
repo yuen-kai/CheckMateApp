@@ -140,10 +140,10 @@ export default class AddWorkTimeScreen extends React.Component {
     }
 
 
-    if(this.state.end.getTime()-this.state.start.getTime()<60*1000){
+    if(this.state.end.getTime()-this.state.start.getTime()==0){
       Alert.alert('Invalid Work Time','You need to have at least 1 minutes of work times!')}
     else if(overlap==true){
-      Alert.alert('Overlapping Work Times'+'This work time overlaps with previous work times. To edit worktimes, you should instead go to the home screen and click on the work time you want to edit.')
+      Alert.alert('Overlapping Work Times','This work time overlaps with previous work times. To edit worktimes, you should instead go to the home screen and click on the work time you want to edit.')
     }
     else{
       
@@ -215,10 +215,8 @@ export default class AddWorkTimeScreen extends React.Component {
         <DateTimePicker
           minimumDate={new Date()}
           maximumDate={new Date(Date.now()+24*60*60*1000)}
-          // testID="dateTimePsicker"
           value={this.state.start}
           mode={this.state.mode}
-          // is24Hour={true}
           display="default"
           onChange={this.onStartChange}
         />)}
@@ -228,10 +226,8 @@ export default class AddWorkTimeScreen extends React.Component {
         <DateTimePicker
         minimumDate={new Date(this.state.start)}
           maximumDate={new Date(Date.now()+24*60*60*1000)}
-          // testID="dateTimePicker"
           value={this.state.end}
           mode={this.state.mode}
-          // is24Hour={true}
           display="default"
           onChange={this.onEndChange}
         />)}
@@ -262,8 +258,5 @@ const styles = StyleSheet.create({
     backgroundColor: "blue",
     padding: 5,
     borderRadius: 5,
-    // position: 'absolute',
-    // top:0,
-    // right:0,
   }
 });

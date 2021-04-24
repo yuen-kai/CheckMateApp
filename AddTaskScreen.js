@@ -174,7 +174,7 @@ export default class AddTaskScreen extends React.Component {
     return (
       <View style={styles.container}>
         <ScrollView contentContainerStyle={{alignItems: 'center'}}>
-          <View style={{padding:4,alignItems: 'center'}}>
+          <View style={{padding:6,alignItems: 'center'}}>
           <Text style={{ fontSize: 20, padding:3}}>Name:</Text>
           <TextInput
             style={styles.textInput}
@@ -183,10 +183,10 @@ export default class AddTaskScreen extends React.Component {
             value = {this.state.name}
           />
           </View>
-          <View style={{ padding:4, alignItems: 'stretch', justifyContent: 'center' }}>        
+          <View style={{ alignItems: 'stretch', justifyContent: 'center' }}>        
             <Text style={{ fontSize: 20,padding:3}}>Importance: {this.state.importance}</Text>
             <Slider
-            thumbStyle={{width:30,height:30}}
+            thumbStyle={{width:25,height:25}}
               value={this.state.importance}
               onValueChange={(importance) => this.setState({ importance })}
               minimumValue={1}
@@ -213,14 +213,14 @@ export default class AddTaskScreen extends React.Component {
               <TouchableOpacity
                 onPress={() => this.showDatepicker()}
                 style={styles.button}>
-                <Text style={{ fontSize: 20, color: '#fff' }}>Select Day</Text>
+                <Text style={{ fontSize: 18, color: '#fff' }}>Select Day</Text>
               </TouchableOpacity>
               </View>
               <View style={{padding:3}}>
               <TouchableOpacity
                 onPress={() => this.showTimepicker()}
                 style={styles.button}>
-                <Text style={{ fontSize: 20, color: '#fff' }}>Select Time</Text>
+                <Text style={{ fontSize: 18, color: '#fff' }}>Select Time</Text>
               </TouchableOpacity>
               </View>
             </View>
@@ -229,16 +229,15 @@ export default class AddTaskScreen extends React.Component {
               testID="dateTimePicker"
               value={this.state.date}
               mode={this.state.mode}
-              // is24Hour={true}
               display="default"
               onChange={this.onChange}
             />
             )}
           </View>
-          <View style={{padding:4, alignItems: 'stretch', justifyContent: 'center' }}>
+          <View style={{padding:4, justifyContent: 'center' }}>
             <Text style={{ fontSize: 20,padding:3}}>Due Date Importance: {this.state.dueImportance}</Text>
             <Slider
-            thumbStyle={{width:30,height:30}}
+              thumbStyle={{width:25,height:25}}
               value={this.state.dueImportance}
               onValueChange={(dueImportance) => this.setState({ dueImportance })}
               minimumValue={1}
@@ -250,7 +249,7 @@ export default class AddTaskScreen extends React.Component {
           <TouchableOpacity
             onPress={() => this.handleSave()}
             style={styles.button}>
-            <Text style={{ fontSize: 20, color: '#fff' }}>Save Task</Text>
+            <Text style={{ fontSize: 20, color: '#fff', padding:3 }}>Save Task</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -263,7 +262,7 @@ const styles = StyleSheet.create({
     flex: 4,
     backgroundColor: '#fff',
     alignItems: 'stretch',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
   },
   button: {
     backgroundColor: "blue",
