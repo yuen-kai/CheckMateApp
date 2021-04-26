@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@ant-design/icons": "^4.6.2",
+    "@material-ui/core": "^4.11.3",
+    "@material-ui/lab": "^4.0.0-alpha.57",
     "@react-native-async-storage/async-storage": "^1.14.1",
     "@react-native-community/datetimepicker": "3.0.4",
     "@react-native-picker/picker": "1.9.2",
@@ -19,7 +21,7 @@
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-native": "https://github.com/expo/react-native/archive/sdk-40.0.1.tar.gz",
-    "react-native-elements": "^3.3.2",
+    "react-native-elements": "^3.4.0",
     "react-native-picker-select": "^8.0.4",
     "react-native-safe-area-context": "3.1.9",
     "react-native-web": "~0.13.12",

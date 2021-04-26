@@ -140,19 +140,19 @@ export default class AddWorkTimeScreen extends React.Component {
     }
 
 
-    if(this.state.end.getTime()-this.state.start.getTime()==0){
+    if(this.state.end.getTime()-this.state.start.getTime()<=0){
       Alert.alert('Invalid Work Time','You need to have at least 1 minutes of work times!')}
     else if(overlap==true){
       Alert.alert('Overlapping Work Times','This work time overlaps with previous work times. To edit worktimes, you should instead go to the home screen and click on the work time you want to edit.')
     }
     else{
-      
       // add new workTime to list of existing workTimes
       if(this.edit==true){
         workTimes.splice(this.workIndex,1)
       }
       workTimes.splice(this.sortWorkTime(workTime),0,workTime)
       //save data
+      // console.log('\n'+workTimes.length)
       try {
         const jsonValue = JSON.stringify(workTimes)
         await AsyncStorage.setItem('workTimes', jsonValue)
@@ -160,6 +160,7 @@ export default class AddWorkTimeScreen extends React.Component {
         Alert.alert('Error saving','There has been an error saving your work time. Please try again.')
         console.log(e)
       } 
+      
       this.props.navigation.navigate('Home');
     }
   };

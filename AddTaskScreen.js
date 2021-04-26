@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React, {Component} from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView, Platform,Alert} from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView, Platform,Alert,KeyboardAvoidingView} from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import RNPickerSelect from 'react-native-picker-select';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -173,54 +173,61 @@ export default class AddTaskScreen extends React.Component {
     }
     return (
       <View style={styles.container}>
-        <ScrollView contentContainerStyle={{alignItems: 'center'}}>
-          <View style={{padding:6,alignItems: 'center'}}>
+        <ScrollView style={{padding:20}} contentContainerStyle={{height:'100%'}}>
+          <KeyboardAvoidingView style={{justifyContent:'space-around',flex:1}} behavior={Platform.OS == 'ios' ? 'padding' : 'height'}>
+          <View style={styles.section}>
           <Text style={{ fontSize: 20, padding:3}}>Name:</Text>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput,{width:200}]}
             placeholder = {"Complete project proposal"}
             onChangeText={name => this.setState({name})}
             value = {this.state.name}
           />
           </View>
-          <View style={{ alignItems: 'stretch', justifyContent: 'center' }}>        
-            <Text style={{ fontSize: 20,padding:3}}>Importance: {this.state.importance}</Text>
+          <View style={styles.section}>        
+            <Text style={{ fontSize: 20,padding:3}}>Importance:</Text>
             <Slider
             thumbStyle={{width:25,height:25}}
               value={this.state.importance}
               onValueChange={(importance) => this.setState({ importance })}
               minimumValue={1}
               maximumValue={10}
+              thumbProps={{
+                children: (
+                  <Text style={{ fontSize: 15,padding:3,alignSelf:'center'}}>{this.state.importance}</Text>
+                ),
+              }}
+              trackStyle={{width:150}}
               allowTouchTrack={true}
               step={1}
             />
           </View>
-          <View style={{padding:4,alignItems: 'center'}}>
+          <View style={styles.section}>
             <Text style={{ fontSize: 20,padding:3}}>Length(min):</Text>
             
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput,{width:150}]}
               placeholder = {"30"}
               keyboardType = "numeric"
-              onChangeText={length => this.setState({length:length})}
+              onChangeText={length => this.setState({length})}
               value = {this.state.length}
             />
           </View>
-          <View style={{padding:4,alignItems:'center'}}>
-            <Text style={{ fontSize: 20,padding:3}}>{'Due Date: '+this.displayDate(this.state.date)+' '+this.displayTime(this.state.date)}</Text>
-            <View style={{flexDirection: 'row',pading:3,alignSelf:'stretch',justifyContent:'space-around'}}>
+          <View style={styles.section}>
+            <Text style={{ fontSize: 20,padding:3}}>Due Date:</Text>
+            <View style={{flexDirection: 'row',pading:3}}>
               <View style={{padding:3}}>
               <TouchableOpacity
                 onPress={() => this.showDatepicker()}
                 style={styles.button}>
-                <Text style={{ fontSize: 18, color: '#fff' }}>Select Day</Text>
+                <Text style={{ fontSize: 18, color: '#fff' }}>{this.displayDate(this.state.date)}</Text>
               </TouchableOpacity>
               </View>
               <View style={{padding:3}}>
               <TouchableOpacity
                 onPress={() => this.showTimepicker()}
                 style={styles.button}>
-                <Text style={{ fontSize: 18, color: '#fff' }}>Select Time</Text>
+                <Text style={{ fontSize: 18, color: '#fff' }}>{this.displayTime(this.state.date)}</Text>
               </TouchableOpacity>
               </View>
             </View>
@@ -234,14 +241,20 @@ export default class AddTaskScreen extends React.Component {
             />
             )}
           </View>
-          <View style={{padding:4, justifyContent: 'center' }}>
-            <Text style={{ fontSize: 20,padding:3}}>Due Date Importance: {this.state.dueImportance}</Text>
+          <View style={styles.section}>
+            <Text style={{ fontSize: 20,padding:3}}>Due Importance:</Text>
             <Slider
               thumbStyle={{width:25,height:25}}
               value={this.state.dueImportance}
               onValueChange={(dueImportance) => this.setState({ dueImportance })}
               minimumValue={1}
               maximumValue={5}
+              thumbProps={{
+                children: (
+                  <Text style={{ fontSize: 15,padding:3,alignSelf:'center'}}>{this.state.dueImportance}</Text>
+                ),
+              }}
+              trackStyle={{width:120}}
               allowTouchTrack={true}
               step={1}
             />
@@ -251,6 +264,7 @@ export default class AddTaskScreen extends React.Component {
             style={styles.button}>
             <Text style={{ fontSize: 20, color: '#fff', padding:3 }}>Save Task</Text>
           </TouchableOpacity>
+          </KeyboardAvoidingView>
         </ScrollView>
       </View>
     );
@@ -276,9 +290,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 3,
   },
+  section:{
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
   textInput: {
-    height: 40,
-    width: 200, 
+    // height: 40,
+    // width: 150, 
     padding:5,
     borderColor: 'gray', 
     borderWidth: 1,

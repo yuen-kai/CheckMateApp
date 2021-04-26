@@ -4,7 +4,7 @@ import { StyleSheet, Text, View,TouchableOpacity, ScrollView, Alert} from 'react
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Divider,ThemeProvider} from 'react-native-elements'
+import {Icon,Divider, SpeedDial, ThemeProvider} from 'react-native-elements';
 
 var tasks = [];
 var workTimes = [];
@@ -13,6 +13,7 @@ var workTimes = [];
 export default class HomeScreen extends React.Component {
   availableTime = 0
   intervalID
+  open = true
 
   state = {
     ready: false,
@@ -26,10 +27,8 @@ export default class HomeScreen extends React.Component {
   componentDidMount(){
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
 			this.getData();  
-      this.setState({continue:true})
 		});
     this.getData();
-    
     this.intervalID=setInterval(
       () => this.setState({ready:true}),
       10*1000
@@ -55,6 +54,7 @@ export default class HomeScreen extends React.Component {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
+    this.setState({continue:true})
   } 
 
   setWorkTimes(savedTime){
@@ -253,7 +253,7 @@ export default class HomeScreen extends React.Component {
   }
 
   start(){
-    if(tasks.length>0&&workTimes.length>0&&Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime()){
+    if(workTimes.length>0&&Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime()){
       this.setState({selectable:false})
       var selectedTask = tasks[this.state.taskIndex]
       tasks.splice(this.state.taskIndex, 1)
@@ -263,10 +263,6 @@ export default class HomeScreen extends React.Component {
       this.sortTask()
       tasks.splice(0, 0, selectedTask)
       tasks[0].start=Date.now()
-      console.log('-----')
-      tasks.forEach(element => {
-        console.log(element.sortValue)
-      });
     }
     else if(workTimes.length==0||!(Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime())){
       Alert.alert(
@@ -283,7 +279,6 @@ export default class HomeScreen extends React.Component {
   }
 
   async pause(){
-    if(tasks.length > 0){
       if(tasks[0].length-Math.floor(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))>0){
         tasks[0].length -= Math.floor(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))
       }
@@ -291,7 +286,6 @@ export default class HomeScreen extends React.Component {
         tasks[0].length = 10
       }
       this.setState({selectable:true})
-    } 
     try {
       const jsonValue = JSON.stringify(tasks)
       await AsyncStorage.setItem('tasks', jsonValue)
@@ -301,7 +295,6 @@ export default class HomeScreen extends React.Component {
   }
 
   stop = async () =>{
-    if(tasks.length> 0){
       tasks.splice(0,1)
       try {
         const jsonValue = JSON.stringify(tasks)
@@ -311,7 +304,6 @@ export default class HomeScreen extends React.Component {
       }
       this.setState({taskIndex:0})
       this.setState({selectable:true})
-    }
     
   }
 
@@ -410,13 +402,33 @@ export default class HomeScreen extends React.Component {
     return (
       
       <SafeAreaView style={styles.container}>
+        {/* <SpeedDial
+            isOpen={this.open}
+            icon={{ name: 'edit', color: '#fff' }}
+            openIcon={{ name: 'close', color: '#fff' }}
+            direction='down'
+            onChange={() => setOpen(!this.open)}
+          >
+            <SpeedDial.Action
+              icon={{ name: 'add', color: '#fff' }}
+              title="Add"
+              onPress={() => console.log('Add Something')}
+            />
+            <SpeedDial.Action
+              icon={<Icon name="clipboard" size={50} type="feather" onPress={() =>navigate('AddTask')}/>}
+              title="Delete"
+              onPress={() => console.log('Delete Something')}
+            />
+          </SpeedDial> */}
         <View style={{flex:9}}>
+          
         <View style={styles.top}> 
           <TouchableOpacity
             onPress={() =>this.presetTimes()}
             style={styles.topButton}>
             <Text style={{ fontSize: 20, color: '#fff' }}>Set preset</Text>
           </TouchableOpacity>
+          
           <Icon name="clipboard" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddTask')}/>
           <Icon name="clock" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddWorkTime')}/>
 
@@ -511,10 +523,10 @@ export default class HomeScreen extends React.Component {
         <View style={styles.selectView}>
           <View style={styles.inSelection}>
             <Text style={{ fontSize: 20}}>{this.taskName()}</Text>
-            <Icon disabled={!this.state.selectable} disabledStyle={{backgroundColor:'#fff'}} color={this.state.selectable==false?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={() => this.editTask()}/>
+            <Icon color={this.state.selectable==false||tasks.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={this.state.selectable==false||tasks.length==0?null:() => this.editTask()}/>
           </View>
           <View style={styles.inSelection}>
-          {this.state.selectable==true?<Icon name="play" type='font-awesome-5' size={30} color='limegreen' onPress={() => this.start()}></Icon>:<Icon name="pause" size={30} type='font-awesome-5' color={'#FFCC00'} onPress={() => this.pause()}/>}
+          {this.state.selectable==true?<Icon name="play" type='font-awesome-5' size={30} color={tasks.length>0?'limegreen':'gray'} onPress={tasks.length>0?() => this.start(): null}></Icon>:<Icon name="pause" size={30} type='font-awesome-5' color={'#FFCC00'} onPress={() => this.pause()}/>}
             
             <Icon name="stop" type='font-awesome-5'color={tasks.length>0?'red':'gray'} size={30} onPress={tasks.length>0?() => this.stop():null}/>
           </View>
