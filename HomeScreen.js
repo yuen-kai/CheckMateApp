@@ -20,7 +20,6 @@ export default class HomeScreen extends React.Component {
     taskIndex: 0, 
     previousIndex:0,
     selectable: true,
-    continue: true
   };
 
 
@@ -54,59 +53,7 @@ export default class HomeScreen extends React.Component {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
-    this.setState({continue:true})
   } 
-
-  setWorkTimes(savedTime){
-    workTimes = savedTime[new Date().getDay()]
-    this.sortWorkTimes()
-    this.setState({ready:true})
-  }
-
-  getWorkTimes = async () => {
-    try {
-      if(workTimes.length==0){
-        const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
-        var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
-        if(savedTime != null&&this.state.continue==true&&savedTime[new Date().getDay()]!=null&&savedTime[new Date().getDay()].length>0&&new Date(savedTime[new Date().getDay()][savedTime[new Date().getDay()].length-1].end).getTime()>Date.now()){
-          this.setState({continue: false})
-          Alert.alert(
-            'Load WorkTimes',
-            "Load today's preset work times?",
-            [
-              {
-                text: 'Cancel',
-                style: 'cancel'
-              },
-              { text: 'OK', onPress: () => this.setWorkTimes(savedTime)}
-            ],
-            { cancelable: false }
-            
-          );
-        } 
-      }
-      
-    } catch(e) {
-      Alert.alert('Error loading preset!','Failed to get preset work times! Please try again.')
-      console.log(e)
-    }
-  } 
-
-  presetTimes = async () => {
-    try {
-      const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
-      var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
-      if(savedTime == null){
-        savedTime = new Array(7)
-      }
-      savedTime[new Date().getDay()]=[...workTimes]
-      const jsonValue = JSON.stringify(savedTime)
-      await AsyncStorage.setItem('savedWorkTimes', jsonValue)
-    } catch (e) {
-      Alert.alert('Error saving preset!','Failed to save preset work times! Please try again.')
-      console.log(e)
-    }
-  }
 
   sortWorkTimes() {
     
@@ -171,7 +118,6 @@ export default class HomeScreen extends React.Component {
     var workIndex = 0;
     var lastTask = new Date()
     this.sortWorkTimes()
-      this.getWorkTimes()
       var schedule = []
       for(var i = 1; i <= workTimes.length+1;i++){
         schedule.push([])
@@ -423,12 +369,6 @@ export default class HomeScreen extends React.Component {
         <View style={{flex:9}}>
           
         <View style={styles.top}> 
-          <TouchableOpacity
-            onPress={() =>this.presetTimes()}
-            style={styles.topButton}>
-            <Text style={{ fontSize: 20, color: '#fff' }}>Set preset</Text>
-          </TouchableOpacity>
-          
           <Icon name="clipboard" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddTask')}/>
           <Icon name="clock" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddWorkTime')}/>
 
@@ -456,7 +396,7 @@ export default class HomeScreen extends React.Component {
                             {
                               schedule[i].map((task, j) => {
                                 return (
-                                <View  key={j}>
+                                <View  key={task.name}>
                                   <TouchableOpacity
                                   disabled={!this.state.selectable}
                                   onPress={() => this.selected(tasks.findIndex((element)=>element.name==task.name))}
@@ -465,8 +405,7 @@ export default class HomeScreen extends React.Component {
                                   
                                   <Text style={{ fontSize: 17, color: task.color, alignSelf: 'center' }}>{task.name}</Text>
                                   <View style={{flexDirection: 'row', justifyContent:'space-around', flexWrap:'wrap'}}>
-                                    <Text style={{ fontSize: 13, color: '#fff' }}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)}</Text>
-                                    <Text style={{ fontSize: 13, color: '#fff' }}>{'(Length: '+tasks[tasks.findIndex((element)=>element.name==task.name)].length+' min,  Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
+                                    <Text style={{ fontSize: 13, color: '#fff' }}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
                                   </View>
                                   </TouchableOpacity>
                                 </View>
@@ -485,7 +424,7 @@ export default class HomeScreen extends React.Component {
                   {
                     schedule[schedule.length-1].map((task, i) => {
                       return (
-                      <View  key={i} >
+                      <View  key={task.name} >
                         <TouchableOpacity
                         disabled={!this.state.selectable}
                         onPress={() => this.selected(tasks.findIndex((element)=>element.name==task.name))}
@@ -493,10 +432,7 @@ export default class HomeScreen extends React.Component {
                         > 
                         
                         <Text style={{ fontSize: 17, color: '#555555', alignSelf: 'center' }}>{task.name}</Text>
-                        <View style={{flexDirection: 'row', justifyContent:'space-around', flexWrap:'wrap'}}>
-                          {/* <Text style={{ fontSize: 13, color: '#555555' }}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)}</Text> */}
-                          <Text style={{ fontSize: 13, color: '#555555' }}>{'(Length: '+tasks[tasks.findIndex((element)=>element.name==task.name)].length+' min,  Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
-                        </View>
+                        <Text style={{ fontSize: 13, color: '#555555' }}>{task.length+' min (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
                         </TouchableOpacity>
                       </View>
                       );

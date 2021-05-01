@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity,Alert} from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity,Alert, ScrollView} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,17 +12,20 @@ var workTimes = []
 
 
 export default class AddWorkTimeScreen extends React.Component {
-  edit = false
-  workIndex
+  overlap = []
+  invalid = []
+  id = 0
+  editIndex = -1
+  visible
+  
   state = {
-    
-    start: new Date(),
-    end: new Date(),
+    newShow:false,
+    type:'start',
+    start: null,
+    end: null,
     ready: false,
-    startShow: false,
-    endShow: false,
-    mode: 'date',
-    type: 'start'
+    show: false,
+    
   }
 
   componentDidMount(){
@@ -31,35 +34,89 @@ export default class AddWorkTimeScreen extends React.Component {
 		});
   }
 
-  onStartChange = (event, selectedDate) => {
-    const currentDate = selectedDate || date;
-    this.setState({startShow: Platform.OS === 'ios'});
-    this.setState({start:currentDate});
-  };
+  checkErrors(){
+    this.overlap.forEach(workTime => {
+      var lapover = false
+      this.overlap.forEach(element => {
+        if(JSON.stringify(workTime) === JSON.stringify(element)&&element.start!=null&&element.end!=null&&((workTime.start!=null&&new Date(workTime.start).getTime()>=new Date(element.start).getTime()&&new Date(workTime.start).getTime()<=new Date(element.end).getTime())
+          ||(workTime.end!=null&&new Date(workTime.end).getTime()>=new Date(element.start).getTime()&&new Date(workTime.end).getTime()<=new Date(element.end).getTime())
+          ||(workTime.start!=null&&workTime.end!=null&&new Date(workTime.start).getTime()<=new Date(element.start).getTime()&&new Date(workTime.end).getTime()>=new Date(element.end).getTime()))){
+            lapover = true
+        }
+        if(lapover==false){
+          this.overlap.splice(this.overlap.indexOf(workTime),1)
+          this.overlap.splice(this.overlap.indexOf(element),1)
+        }
+      });
+    });
+    this.invalid.forEach(workTime => {
+      if(!(workTimes.start!=null&&workTimes.end!=null&&new Date(workTime.end).getTime() - (Math.floor((new Date(workTime.start).getTime())/(60*1000)) * (60*1000))<1000*60)){
+        this.invalid.splice(this.invalid.indexOf(workTime),1)
+      }
+    });
+  }
 
-  onEndChange = (event, selectedDate) => {
+  onTimeChange = (event, selectedDate) => {
     const currentDate = selectedDate || date;
-    this.setState({endShow: Platform.OS === 'ios'});
-    this.setState({end:currentDate});
-  };
-
-  showMode(currentMode,type) {
-    if(type=='start'){
-      this.setState({startShow:true});
+    this.setState({newShow:Platform.OS === 'ios',visible: -1});
+    var workTime
+    if(this.state.editIndex==-1){
+      if(this.state.type == 'start'){
+      this.setState({start:currentDate})
+      }
+      else{
+        this.setState({end:currentDate})
+      }
+      workTime = {start:this.state.start,end:this.state.end,id:this.id}
     }
     else{
-      this.setState({endShow:true});
+      workTime = workTimes[this.state.editIndex]
+      if(this.state.type == 'start'){
+        workTime.start=currentDate
+        
+        }
+        else{
+          workTime.end=currentDate
+        }
     }
-    this.setState({mode:currentMode});
+    
+   
+    this.checkErrors()
+    workTimes.forEach(element => {
+      if(JSON.stringify(workTime) !== JSON.stringify(element)&&((workTime.start!=null&&new Date(workTime.start).getTime()>=new Date(element.start).getTime()&&new Date(workTime.start).getTime()<=new Date(element.end).getTime())
+        ||(workTime.end!=null&&new Date(workTime.end).getTime()>=new Date(element.start).getTime()&&new Date(workTime.end).getTime()<=new Date(element.end).getTime())
+        ||(workTime.start!=null&&workTime.end!=null&&new Date(workTime.start).getTime()<=new Date(element.start).getTime()&&new Date(workTime.end).getTime()>=new Date(element.end).getTime())))
+      {
+        this.overlap.push(element,workTime)
+      }
+    });
+    
+    if(workTime.start!=null&&workTime.end!=null&&new Date(workTime.end).getTime() - (Math.floor((new Date(workTime.start).getTime())/(60*1000)) * (60*1000))<1000*60){
+      this.invalid.push(workTime)
+    }
+
+    if(workTime.start!=null&&workTime.end!=null&&this.overlap.includes(workTime) == false&&this.invalid.includes(workTime) == false){
+      if(this.state.editIndex!=-1){
+        workTimes.splice(workTimes.indexOf(workTime),1)
+      }
+      else{
+        this.setState({start:null,end:null})
+        this.id++
+      }
+      workTimes.splice(this.sortWorkTime(workTime),0,workTime)
+    }
+    this.setState({ready:true})
   };
 
-  showDatepicker(type) {
-    this.showMode('date',type);
-  };
-
-  showTimepicker(type) {
-    this.showMode('time',type);
-  };
+  showTimepicker(index,endStart) {
+    if(index==-1){
+      this.setState({newShow:true})
+    }
+    else{
+      this.setState({visible:index})
+    }
+    this.setState({type:endStart,editIndex:index})
+  }
 
   getData = async () => {
     try {
@@ -69,7 +126,13 @@ export default class AddWorkTimeScreen extends React.Component {
       if(workTimes == null){
         workTimes=[]
       }
-      this.editInfo()
+      var max=workTimes.length-1
+      workTimes.forEach(element => {
+        if(element.id>max){
+          max=element.id
+        }
+      });
+      this.id = max+1
       this.setState({ready:true})
     } catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
@@ -77,22 +140,6 @@ export default class AddWorkTimeScreen extends React.Component {
     }
     
   }
-
-  editInfo = async () => {
-    try {
-      const jsonValue = await AsyncStorage.getItem('workIndex')
-      this.workIndex =  jsonValue != null ? JSON.parse(jsonValue) : null;
-      if(this.workIndex != null){
-        var selectedWork = workTimes[this.workIndex]
-        this.edit = true
-        this.setState({start:new Date(selectedWork.start),end:new Date(selectedWork.end)})
-        await AsyncStorage.removeItem('workIndex')
-      }
-    } catch(e) {
-      Alert.alert('Failed to get edit info!','Failed to get edit info! Please try again.')
-      console.log(e)
-    }
- }
  
   sortWorkTime(workTime){
     for (var i=workTimes.length-1; i>=0; i--)
@@ -125,56 +172,60 @@ export default class AddWorkTimeScreen extends React.Component {
   }
   
   handleSave = async () => {
-    var overlap = false
-    var workTime = {start:this.state.start,end:this.state.end}
     
-    if(this.edit==false){
-      workTimes.forEach(element => {
-        if(new Date(element.start).getTime()>=new Date(workTime.start).getTime()&&new Date(element.start).getTime()<=new Date(workTime.end).getTime()){
-          overlap = true
-        }
-        if(new Date(element.end).getTime()>=new Date(workTime.start).getTime()&&new Date(element.end).getTime()<=new Date(workTime.end).getTime()){
-          overlap = true
-        }
-      });
-    }
-
-
-    if(this.state.end.getTime()-this.state.start.getTime()<=0){
-      Alert.alert('Invalid Work Time','You need to have at least 1 minutes of work times!')}
-    else if(overlap==true){
-      Alert.alert('Overlapping Work Times','This work time overlaps with previous work times. To edit worktimes, you should instead go to the home screen and click on the work time you want to edit.')
-    }
-    else{
-      // add new workTime to list of existing workTimes
-      if(this.edit==true){
-        workTimes.splice(this.workIndex,1)
-      }
-      workTimes.splice(this.sortWorkTime(workTime),0,workTime)
-      //save data
-      // console.log('\n'+workTimes.length)
+    if(this.overlap.length==0&&this.invalid.length==0){
       try {
-        const jsonValue = JSON.stringify(workTimes)
-        await AsyncStorage.setItem('workTimes', jsonValue)
+      const jsonValue = JSON.stringify(workTimes)
+      await AsyncStorage.setItem('workTimes', jsonValue)
       } catch (e) {
         Alert.alert('Error saving','There has been an error saving your work time. Please try again.')
         console.log(e)
       } 
-      
       this.props.navigation.navigate('Home');
     }
-  };
+    else{
+      Alert.alert('Invalid Work Times','Some of your work times are invalid. Please adress these issues and try again.')
+    }
+    
+  }
 
-  async handleDelete(){
-    workTimes.splice(this.workIndex,1)
+  handleDelete(workIndex){
+    workTimes.splice(workIndex,1)
+    this.setState({ready:true})
+  }
+
+  async usePreset(){
+    const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
+    var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
+    if(savedTime != null&&savedTime[new Date().getDay()]!=null){
+      workTimes = savedTime[new Date().getDay()]
+      this.setState({ready:true})
+    }
+  }
+
+  async presetTimes(){
     try {
-      const jsonValue = JSON.stringify(workTimes)
-      await AsyncStorage.setItem('workTimes', jsonValue)
+      const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
+      var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
+      if(savedTime == null){
+        savedTime = new Array(7)
+      }
+      savedTime[new Date().getDay()]=[...workTimes]
+      const jsonValue = JSON.stringify(savedTime)
+      await AsyncStorage.setItem('savedWorkTimes', jsonValue)
     } catch (e) {
-      Alert.alert('Error deleting','There has been an error deleting your work time. Please try again.')
+      Alert.alert('Error saving preset!','Failed to save preset work times! Please try again.')
       console.log(e)
-    } 
-    this.props.navigation.navigate('Home');
+    }
+  }
+  
+  show(i){
+    if(this.state.visible==i){
+      return true
+    }
+    else{
+      return Platform.OS === 'ios'
+    }
   }
 
   render(){
@@ -184,64 +235,75 @@ export default class AddWorkTimeScreen extends React.Component {
     return(
       
     <View style={styles.container}>
-      <View style={{alignItems: 'center',}}>
-        <Text style={{ fontSize: 20, padding:4}}>{this.displayTime(this.state.start)}</Text>
-        <View style={{flexDirection: 'row',justifyContent: 'space-around'}}>
-          <View style={{padding:2}}>
-          <TouchableOpacity style={styles.button} onPress={() => this.showDatepicker('start')}>
-            <Text style={{ fontSize: 18, color: '#fff' }}>Select Start Day</Text>
-          </TouchableOpacity> 
+      <ScrollView style={{padding:10}}>
+      <TouchableOpacity style={styles.button} onPress={() => this.usePreset()}>
+        <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>Use Preset</Text>
+      </TouchableOpacity>
+      {
+        workTimes.map((workTime, i) => {
+          return(
+          <View key={workTime.id} style={{flexDirection: 'column'}}>
+            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'start')}>
+                <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.start)}</Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 18}}> - </Text>
+              <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'end')}>
+                <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.end)}</Text>
+              </TouchableOpacity>
+              {/* start picker */}
+              {this.show(i) && (
+              <DateTimePicker
+                value={this.state.type=='start'?new Date(workTime.start):new Date(workTime.end)}
+                mode={'time'}
+                display="default"
+                onChange={this.onTimeChange}
+              />)}
+              <Icon size={40} name="x-circle" type='feather' onPress={() => this.handleDelete(i)}/>
+            </View>
+            {this.overlap.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>This overlaps with other work times!</Text>
+              :this.invalid.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
+              :null
+            }
           </View>
-          <View style={{padding:2}}>
-          <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker('start')}>
-            <Text style={{ fontSize: 18, color: '#fff' }}>Select Start Time</Text>
+          )
+        })
+      }  
+      <View style={{flexDirection: 'column'}}>
+        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+          <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'start')}>
+            <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.start!=null?this.displayTime(this.state.start):null}</Text>
           </TouchableOpacity>
-          </View>
-        </View>
-        <Text style={{ fontSize: 20,padding:4}}>{this.displayTime(this.state.end)}</Text>
-        <View style={{flexDirection: 'row',alignItems: 'space-around'}}>
-          <View style={{padding:2}}>
-          <TouchableOpacity style={styles.button} onPress={() => this.showDatepicker('end')}>
-            <Text style={{ fontSize: 18, color: '#fff' }}>Select End Day</Text>
-          </TouchableOpacity> 
-          </View>
-          <View style={{padding:2}}>
-          <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker('end')}>
-            <Text style={{ fontSize: 18, color: '#fff' }}>Select End Time</Text>
+          <Text style={{ fontSize: 18}}> - </Text>
+          <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'end')}>
+            <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.end!=null?this.displayTime(this.state.end):null}</Text>
           </TouchableOpacity>
-          </View>
+          {/* start picker */}
+          {this.state.newShow && (
+          <DateTimePicker
+            value={this.state.type=='start'&&this.state.start==null?new Date():this.state.type=='start'?new Date(this.state.start):this.state.type=='end'&&this.state.end==null?new Date():this.state.end}
+            mode={'time'}
+            display="default"
+            onChange={this.onTimeChange}
+          />)}
         </View>
-        {/* start picker */}
-        {this.state.startShow && (
-        <DateTimePicker
-          minimumDate={new Date()}
-          maximumDate={new Date(Date.now()+24*60*60*1000)}
-          value={this.state.start}
-          mode={this.state.mode}
-          display="default"
-          onChange={this.onStartChange}
-        />)}
-
-        {/* end picker */}
-        {this.state.endShow && (
-        <DateTimePicker
-        minimumDate={new Date(this.state.start)}
-          maximumDate={new Date(Date.now()+24*60*60*1000)}
-          value={this.state.end}
-          mode={this.state.mode}
-          display="default"
-          onChange={this.onEndChange}
-        />)}
-        <View style={{padding:8}}>
+        {this.overlap.findIndex((element)=>JSON.stringify({start:this.state.start,end:this.state.end,id:this.id}) == JSON.stringify(element))!=-1?<Text style={{ fontSize: 15, color: 'red' }}>This overlaps with other work times!</Text>
+          :this.invalid.findIndex((element)=>JSON.stringify({start:this.state.start,end:this.state.end,id:this.id}) == JSON.stringify(element))!=-1?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
+          :null
+        }
+      </View>
+      
+        <View style={{padding:8,flexDirection:'row',justifyContent: 'center'}}>
+        <TouchableOpacity style={styles.button} onPress={() => this.presetTimes()}>
+        <Text style={{ fontSize: 18, color: '#fff' }}>Set Preset</Text>
+      </TouchableOpacity>
           <TouchableOpacity
             onPress={() => this.handleSave()}
             style={styles.button}>
           <Text style={{ fontSize: 20, color: '#fff' }}>Save WorkTime</Text>
           </TouchableOpacity>  
-        </View>    
-      </View>          
-    {this.edit==true? <View style={{alignSelf: 'center', postition: 'absolute',bottom:0,right:0,padding:5}}><Icon size={40} name="trash-2" type='feather'onPress={() => this.handleDelete()}/></View>: null}
-
+        </View>
+        </ScrollView>
     </View>      
 
     )
@@ -257,7 +319,8 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: "blue",
-    padding: 5,
+    padding: 10,
+    margin: 10,
     borderRadius: 5,
   }
 });
