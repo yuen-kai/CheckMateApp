@@ -4,7 +4,10 @@ import { StyleSheet, Text, View,TouchableOpacity, ScrollView, Alert} from 'react
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Divider, SpeedDial, ThemeProvider} from 'react-native-elements';
+import {Icon,Divider, ThemeProvider} from 'react-native-elements';
+import SpeedDial from '@material-ui/lab/SpeedDial';
+import SpeedDialIcon from '@material-ui/lab/SpeedDialIcon';
+import SpeedDialAction from '@material-ui/lab/SpeedDialAction';
 
 var tasks = [];
 var workTimes = [];
@@ -13,9 +16,10 @@ var workTimes = [];
 export default class HomeScreen extends React.Component {
   availableTime = 0
   intervalID
-  open = true
+  
 
   state = {
+    open:false,
     ready: false,
     taskIndex: 0, 
     previousIndex:0,
@@ -84,36 +88,6 @@ export default class HomeScreen extends React.Component {
     }
   }
 
-  clear() {
-    Alert.alert(
-      'Clear All',
-      "Are you sure? This action can not be undone!",
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        { text: 'Yes', onPress: () => this.clearAll()}
-      ],
-      { cancelable: true }
-      
-    )
-  }
-
-  async clearAll() {
-    try {
-      await AsyncStorage.removeItem('tasks')
-      await AsyncStorage.removeItem('workTimes')
-      tasks = []
-      workTimes = []
-      this.setState({selectable:true})
-      this.setState({ready:true})
-    } catch (e) {
-      Alert.alert('Error clearing all!','Failed to clear all! Please try again.')
-      console.log(e)
-    }
-  }
-
   makeSchedule(){
     var workIndex = 0;
     var lastTask = new Date()
@@ -167,12 +141,10 @@ export default class HomeScreen extends React.Component {
               }
               time = tasks[i].end
             }
-            schedule[workIndex][schedule[workIndex].length-1].color='#fff'
           }
           else{
             tasks[i].start = time
             tasks[i].end = new Date (new Date(time).getTime()+tasks[i].length*1000*60)
-            tasks[i].color='#FF0000'
             schedule[workIndex].push({...tasks[i]})
             time=tasks[i].end;
           }
@@ -224,7 +196,7 @@ export default class HomeScreen extends React.Component {
     
   }
 
-  async pause(){
+  pause(){
       if(tasks[0].length-Math.floor(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))>0){
         tasks[0].length -= Math.floor(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))
       }
@@ -232,25 +204,24 @@ export default class HomeScreen extends React.Component {
         tasks[0].length = 10
       }
       this.setState({selectable:true})
+    this.saveTasks()
+  }
+
+  stop(){
+      tasks.splice(0,1)
+      this.saveTasks()
+      this.setState({taskIndex:0})
+      this.setState({selectable:true})
+    
+  }
+
+  async saveTasks(){
     try {
       const jsonValue = JSON.stringify(tasks)
       await AsyncStorage.setItem('tasks', jsonValue)
     } catch (e) {
       console.log(e)
     }
-  }
-
-  stop = async () =>{
-      tasks.splice(0,1)
-      try {
-        const jsonValue = JSON.stringify(tasks)
-        await AsyncStorage.setItem('tasks', jsonValue)
-      } catch (e) {
-        console.log(e)
-      }
-      this.setState({taskIndex:0})
-      this.setState({selectable:true})
-    
   }
 
   sortTask(){
@@ -261,6 +232,8 @@ export default class HomeScreen extends React.Component {
         tasks.splice(i, 0, sortTask)
       }
     }
+    this.saveTasks()
+    this.setState({ready:true})
   }
 
   displayTime(date){
@@ -348,27 +321,29 @@ export default class HomeScreen extends React.Component {
     return (
       
       <SafeAreaView style={styles.container}>
-        {/* <SpeedDial
-            isOpen={this.open}
-            icon={{ name: 'edit', color: '#fff' }}
-            openIcon={{ name: 'close', color: '#fff' }}
-            direction='down'
-            onChange={() => setOpen(!this.open)}
-          >
-            <SpeedDial.Action
-              icon={{ name: 'add', color: '#fff' }}
-              title="Add"
-              onPress={() => console.log('Add Something')}
-            />
-            <SpeedDial.Action
-              icon={<Icon name="clipboard" size={50} type="feather" onPress={() =>navigate('AddTask')}/>}
-              title="Delete"
-              onPress={() => console.log('Delete Something')}
-            />
-          </SpeedDial> */}
+        
         <View style={{flex:9}}>
           
         <View style={styles.top}> 
+        {/* <SpeedDial
+          ariaLabel="SpeedDial"
+          icon={<SpeedDialIcon />}
+          onClose={()=>this.setState({open:false})}
+          onOpen={()=>this.setState({open:true})}
+          open={this.state.open}
+          direction='down'
+        >
+          <SpeedDialAction
+            icon={<Icon name="clipboard" size={50} type="feather"/>}
+            tooltipTitle={'New Task'}
+            onClick={() =>navigate('AddTask')}
+          />
+          <SpeedDialAction
+            icon={<Icon name="clock" size={50} type="feather"/>}
+            tooltipTitle={'New Work Time'}
+            onClick={() =>navigate('AddWorkTime')}
+          />
+        </SpeedDial> */}
           <Icon name="clipboard" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddTask')}/>
           <Icon name="clock" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddWorkTime')}/>
 
@@ -403,9 +378,9 @@ export default class HomeScreen extends React.Component {
                                   style={styles.tasks}
                                   > 
                                   
-                                  <Text style={{ fontSize: 17, color: task.color, alignSelf: 'center' }}>{task.name}</Text>
+                                  <Text style={{ fontSize: 17, alignSelf: 'center' }}>{task.name}</Text>
                                   <View style={{flexDirection: 'row', justifyContent:'space-around', flexWrap:'wrap'}}>
-                                    <Text style={{ fontSize: 13, color: '#fff' }}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
+                                    <Text style={{ fontSize: 13}}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
                                   </View>
                                   </TouchableOpacity>
                                 </View>
@@ -432,7 +407,7 @@ export default class HomeScreen extends React.Component {
                         > 
                         
                         <Text style={{ fontSize: 17, color: '#555555', alignSelf: 'center' }}>{task.name}</Text>
-                        <Text style={{ fontSize: 13, color: '#555555' }}>{task.length+' min (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
+                        <Text style={{ fontSize: 13, color: '#555555', alignSelf: 'center' }}>{task.length+' min  (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
                         </TouchableOpacity>
                       </View>
                       );
@@ -443,11 +418,11 @@ export default class HomeScreen extends React.Component {
               </View>
               
             <View style={{padding:8}}>
-              {workTimes.length>0||tasks.length>0? 
-                <TouchableOpacity onPress={() => this.clear()} style={styles.button}>
-                  <Text style={{ fontSize: 20, color: '#fff' }}>Clear All</Text>
-                </TouchableOpacity>
-              : null}
+              {tasks.length>=2&&tasks[1].sortValue<tasks[0].sortValue?
+              <TouchableOpacity onPress={() => this.sortTask()} style={[styles.button,{flex:1}]}>
+              <Text style={{ fontSize: 20, color: '#fff' }}>Reset Order</Text>
+            </TouchableOpacity>
+            :null}
             </View>
             
           </ScrollView>

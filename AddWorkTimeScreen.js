@@ -5,7 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon} from 'react-native-elements'
+import {Icon,Tooltip} from 'react-native-elements'
 
 var workTimes = []
 
@@ -14,6 +14,7 @@ var workTimes = []
 export default class AddWorkTimeScreen extends React.Component {
   overlap = []
   invalid = []
+  days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
   id = 0
   editIndex = -1
   visible
@@ -56,16 +57,20 @@ export default class AddWorkTimeScreen extends React.Component {
     });
   }
 
+  roundTime(time){
+    return Math.floor((new Date(time).getTime())/(60*1000)) * (60*1000)
+  }
+
   onTimeChange = (event, selectedDate) => {
     const currentDate = selectedDate || date;
     this.setState({newShow:Platform.OS === 'ios',visible: -1});
     var workTime
     if(this.state.editIndex==-1){
       if(this.state.type == 'start'){
-      this.setState({start:currentDate})
+      this.setState({start:this.roundTime(currentDate)})
       }
       else{
-        this.setState({end:currentDate})
+        this.setState({end:this.roundTime(currentDate)})
       }
       workTime = {start:this.state.start,end:this.state.end,id:this.id}
     }
@@ -91,7 +96,7 @@ export default class AddWorkTimeScreen extends React.Component {
       }
     });
     
-    if(workTime.start!=null&&workTime.end!=null&&new Date(workTime.end).getTime() - (Math.floor((new Date(workTime.start).getTime())/(60*1000)) * (60*1000))<1000*60){
+    if(workTime.start!=null&&workTime.end!=null&&new Date(workTime.end).getTime() - new Date(workTime.start).getTime()<1000*60){
       this.invalid.push(workTime)
     }
 
@@ -191,6 +196,7 @@ export default class AddWorkTimeScreen extends React.Component {
 
   handleDelete(workIndex){
     workTimes.splice(workIndex,1)
+    this.checkErrors()
     this.setState({ready:true})
   }
 
@@ -236,73 +242,81 @@ export default class AddWorkTimeScreen extends React.Component {
       
     <View style={styles.container}>
       <ScrollView style={{padding:10}}>
-      <TouchableOpacity style={styles.button} onPress={() => this.usePreset()}>
-        <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>Use Preset</Text>
-      </TouchableOpacity>
-      {
-        workTimes.map((workTime, i) => {
-          return(
-          <View key={workTime.id} style={{flexDirection: 'column'}}>
-            <View style={{flexDirection: 'row', alignItems: 'center'}}>
-              <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'start')}>
-                <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.start)}</Text>
-              </TouchableOpacity>
-              <Text style={{ fontSize: 18}}> - </Text>
-              <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'end')}>
-                <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.end)}</Text>
-              </TouchableOpacity>
-              {/* start picker */}
-              {this.show(i) && (
-              <DateTimePicker
-                value={this.state.type=='start'?new Date(workTime.start):new Date(workTime.end)}
-                mode={'time'}
-                display="default"
-                onChange={this.onTimeChange}
-              />)}
-              <Icon size={40} name="x-circle" type='feather' onPress={() => this.handleDelete(i)}/>
+        <View style={{flexDirection:'row',justifyContent:'flex-end',alignItems: 'center'}}>
+          <TouchableOpacity style={styles.button} onPress={() => this.usePreset()}>
+            <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>Use Preset</Text>
+          </TouchableOpacity>
+          <Tooltip height={115} width={250} popover={<Text>Use your preset work times for today. Warning: This will overide your current work times! To set a preset for every {this.days[new Date().getDay()]}, click the "set preset" button at the bottom of the page.</Text>}>
+            <Icon size={32} name="info" type='feather'></Icon>
+          </Tooltip>
+        </View>
+        {
+          workTimes.map((workTime, i) => {
+            return(
+            <View key={workTime.id} style={{flexDirection: 'column'}}>
+              <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'start')}>
+                  <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.start)}</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 25}}>-</Text>
+                <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'end')}>
+                  <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.end)}</Text>
+                </TouchableOpacity>
+                {/* start picker */}
+                {this.show(i) && (
+                <DateTimePicker
+                  value={this.state.type=='start'?new Date(workTime.start):new Date(workTime.end)}
+                  mode={'time'}
+                  display="default"
+                  onChange={this.onTimeChange}
+                />)}
+                <Icon size={35} name="x-circle" type='feather' onPress={() => this.handleDelete(i)}/>
+              </View>
+              {this.overlap.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>This overlaps with other work times!</Text>
+                :this.invalid.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
+                :null
+              }
             </View>
-            {this.overlap.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>This overlaps with other work times!</Text>
-              :this.invalid.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
-              :null
-            }
+            )
+          })
+        }  
+        <View style={{flexDirection: 'column'}}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
+            <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'start')}>
+              <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.start!=null?this.displayTime(this.state.start):null}</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 25}}>-</Text>
+            <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'end')}>
+              <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.end!=null?this.displayTime(this.state.end):null}</Text>
+            </TouchableOpacity>
+            {/* start picker */}
+            {this.state.newShow && (
+            <DateTimePicker
+              value={this.state.type=='start'&&this.state.start==null?new Date():this.state.type=='start'?new Date(this.state.start):this.state.type=='end'&&this.state.end==null?new Date():this.state.end}
+              mode={'time'}
+              display="default"
+              onChange={this.onTimeChange}
+            />)}
           </View>
-          )
-        })
-      }  
-      <View style={{flexDirection: 'column'}}>
-        <View style={{flexDirection: 'row', alignItems: 'center'}}>
-          <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'start')}>
-            <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.start!=null?this.displayTime(this.state.start):null}</Text>
-          </TouchableOpacity>
-          <Text style={{ fontSize: 18}}> - </Text>
-          <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'end')}>
-            <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.end!=null?this.displayTime(this.state.end):null}</Text>
-          </TouchableOpacity>
-          {/* start picker */}
-          {this.state.newShow && (
-          <DateTimePicker
-            value={this.state.type=='start'&&this.state.start==null?new Date():this.state.type=='start'?new Date(this.state.start):this.state.type=='end'&&this.state.end==null?new Date():this.state.end}
-            mode={'time'}
-            display="default"
-            onChange={this.onTimeChange}
-          />)}
+          {this.overlap.findIndex((element)=>JSON.stringify({start:this.state.start,end:this.state.end,id:this.id}) == JSON.stringify(element))!=-1?<Text style={{ fontSize: 15, color: 'red' }}>This overlaps with other work times!</Text>
+            :this.invalid.findIndex((element)=>JSON.stringify({start:this.state.start,end:this.state.end,id:this.id}) == JSON.stringify(element))!=-1?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
+            :null
+          }
         </View>
-        {this.overlap.findIndex((element)=>JSON.stringify({start:this.state.start,end:this.state.end,id:this.id}) == JSON.stringify(element))!=-1?<Text style={{ fontSize: 15, color: 'red' }}>This overlaps with other work times!</Text>
-          :this.invalid.findIndex((element)=>JSON.stringify({start:this.state.start,end:this.state.end,id:this.id}) == JSON.stringify(element))!=-1?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
-          :null
-        }
-      </View>
-      
-        <View style={{padding:8,flexDirection:'row',justifyContent: 'center'}}>
-        <TouchableOpacity style={styles.button} onPress={() => this.presetTimes()}>
-        <Text style={{ fontSize: 18, color: '#fff' }}>Set Preset</Text>
-      </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => this.handleSave()}
-            style={styles.button}>
-          <Text style={{ fontSize: 20, color: '#fff' }}>Save WorkTime</Text>
-          </TouchableOpacity>  
-        </View>
+        
+          <View style={{padding:8,flexDirection:'row',justifyContent: 'center',alignItems: 'center'}}>
+            <TouchableOpacity style={[styles.button,{margin:3}]} onPress={() => this.presetTimes()}>
+              <Text style={{ fontSize: 20, color: '#fff' }}>Set Preset</Text>
+            </TouchableOpacity>
+            <Tooltip height={70} width={160} popover={<Text>Set current work times as preset work times for every {this.days[new Date().getDay()]}.</Text>}>
+              <Icon size={25} name="info" type='feather'></Icon>
+            </Tooltip>
+            <TouchableOpacity
+              onPress={() => this.handleSave()}
+              style={styles.button}>
+            <Text style={{ fontSize: 20, color: '#fff' }}>Save WorkTime</Text>
+            </TouchableOpacity>  
+          </View>
         </ScrollView>
     </View>      
 
@@ -319,7 +333,7 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: "blue",
-    padding: 10,
+    padding: 6,
     margin: 10,
     borderRadius: 5,
   }

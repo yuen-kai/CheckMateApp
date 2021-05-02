@@ -83,7 +83,7 @@ export default class AddTaskScreen extends React.Component {
       if(this.editIndex != null){
         this.selectedTask = tasks[this.editIndex]
         this.edit = true
-        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,color:'#fff',dueImportance:this.selectedTask.dueImportance})
+        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,dueImportance:this.selectedTask.dueImportance})
         await AsyncStorage.removeItem('editIndex')
       }
     } catch(e) {
@@ -174,7 +174,8 @@ export default class AddTaskScreen extends React.Component {
     return (
       <View style={styles.container}>
         <ScrollView style={{padding:20}} contentContainerStyle={{height:'100%'}}>
-          <KeyboardAvoidingView style={{justifyContent:'space-around',flex:1}} behavior={Platform.OS == 'ios' ? 'padding' : 'height'}>
+          {/* behavior={Platform.OS == 'ios' ? 'padding' : 'height'} */}
+          <View style={{justifyContent:'space-around',flex:1}} >
           <View style={styles.section}>
           <Text style={{ fontSize: 20, padding:3}}>Name:</Text>
           <TextInput
@@ -264,7 +265,7 @@ export default class AddTaskScreen extends React.Component {
             style={styles.button}>
             <Text style={{ fontSize: 20, color: '#fff', padding:3 }}>Save Task</Text>
           </TouchableOpacity>
-          </KeyboardAvoidingView>
+          </View>
         </ScrollView>
       </View>
     );
