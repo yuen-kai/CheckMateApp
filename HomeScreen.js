@@ -294,11 +294,14 @@ export default class HomeScreen extends React.Component {
 
   findavailableTime(){
     var timeLeft = Math.round(this.availableTime/(60*1000))
-    if(timeLeft>=0){
-      return timeLeft+' minutes available'
+    if(timeLeft>10){
+      return <Text style={{fontSize:15, color:'black' }}>{timeLeft} minutes available</Text>
+    }
+    else if(timeLeft>=0){
+      return <Text style={{fontSize:15,color: 'orange' }}>{timeLeft} minutes available</Text>
     }
     else{ 
-      return -timeLeft+' minutes needed!'
+      return <Text style={{fontSize:15,color: 'red' }}>{-timeLeft} minutes needed!</Text>
     }
    
   }
@@ -442,7 +445,7 @@ export default class HomeScreen extends React.Component {
             <Icon name="stop" type='font-awesome-5'color={tasks.length>0?'red':'gray'} size={30} onPress={tasks.length>0?() => this.stop():null}/>
           </View>
           <View style={{flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-around',padding:3}}>
-            <Text style={{fontSize:15}}>{this.findavailableTime()}</Text>
+            {this.findavailableTime()}
           </View>
         </View>
       </SafeAreaView>
