@@ -6,7 +6,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Slider} from 'react-native-elements'
+import {Slider,Input} from 'react-native-elements'
 
 
 
@@ -175,47 +175,54 @@ export default class AddTaskScreen extends React.Component {
       <View style={styles.container}>
         <ScrollView style={{padding:20}} contentContainerStyle={{height:'100%'}}>
           {/* behavior={Platform.OS == 'ios' ? 'padding' : 'height'} */}
-          <View style={{justifyContent:'space-around',flex:1}} >
+          <View style={{flex:1}} >
           <View style={styles.section}>
-          <Text style={{ fontSize: 20, padding:3}}>Name:</Text>
-          <TextInput
-            style={[styles.textInput,{width:200}]}
-            placeholder = {"Complete project proposal"}
-            onChangeText={name => this.setState({name})}
-            value = {this.state.name}
-          />
+          <Text style={{ fontSize: 17, padding:3}}>Name:</Text>
+          <Input
+              placeholder='Science Project'
+              renderErrorMessage={false}
+              onChangeText={name => this.setState({name})}
+              value = {this.state.name}
+            />
           </View>
           <View style={styles.section}>        
-            <Text style={{ fontSize: 20,padding:3}}>Importance:</Text>
+            <Text style={{ fontSize: 17,padding:3,backgroundColor:'red'}}>Importance:</Text>
+            <View style={{backgroundColor:'gray',flexGrow:1,}}>
+              <View style={{flexDirection:'row',justifyContent:'space-between'}}>
+              <Text style={{ fontSize: 13}}>Least</Text>
+              <Text style={{ fontSize: 13}}>Most</Text>
+              </View>
             <Slider
             thumbStyle={{width:25,height:25}}
+            trackStyle={{height:150}}
               value={this.state.importance}
               onValueChange={(importance) => this.setState({ importance })}
               minimumValue={1}
               maximumValue={10}
+              thumbTintColor='#3C00BB'
               thumbProps={{
                 children: (
-                  <Text style={{ fontSize: 15,padding:3,alignSelf:'center'}}>{this.state.importance}</Text>
+                  <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff'}}>{this.state.importance}</Text>
                 ),
               }}
               trackStyle={{width:150}}
               allowTouchTrack={true}
               step={1}
             />
+            </View>
           </View>
           <View style={styles.section}>
-            <Text style={{ fontSize: 20,padding:3}}>Length(min):</Text>
-            
-            <TextInput
-              style={[styles.textInput,{width:150}]}
-              placeholder = {"30"}
+            <Text style={{ fontSize: 17,padding:3}}>Length(min):</Text>
+            <Input
+              placeholder='30'
+              renderErrorMessage={false}
               keyboardType = "numeric"
               onChangeText={length => this.setState({length})}
-              value = {this.state.length}
+              value = {this.state.length!=0?(this.state.length).toString():null}
             />
           </View>
           <View style={styles.section}>
-            <Text style={{ fontSize: 20,padding:3}}>Due Date:</Text>
+            <Text style={{ fontSize: 17,padding:3}}>Due Date:</Text>
             <View style={{flexDirection: 'row',pading:3}}>
               <View style={{padding:3}}>
               <TouchableOpacity
@@ -243,16 +250,17 @@ export default class AddTaskScreen extends React.Component {
             )}
           </View>
           <View style={styles.section}>
-            <Text style={{ fontSize: 20,padding:3}}>Due Importance:</Text>
+            <Text style={{ fontSize: 17,padding:3}}>Due Importance:</Text>
             <Slider
               thumbStyle={{width:25,height:25}}
               value={this.state.dueImportance}
               onValueChange={(dueImportance) => this.setState({ dueImportance })}
               minimumValue={1}
               maximumValue={5}
+              thumbTintColor='#3C00BB'
               thumbProps={{
                 children: (
-                  <Text style={{ fontSize: 15,padding:3,alignSelf:'center'}}>{this.state.dueImportance}</Text>
+                  <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff' }}>{this.state.dueImportance}</Text>
                 ),
               }}
               trackStyle={{width:120}}
@@ -262,8 +270,8 @@ export default class AddTaskScreen extends React.Component {
           </View>
           <TouchableOpacity
             onPress={() => this.handleSave()}
-            style={styles.button}>
-            <Text style={{ fontSize: 20, color: '#fff', padding:3 }}>Save Task</Text>
+            style={[styles.button,{bottom:0,right:0,alignSelf:'flex-end',position:'absolute',paddingVertical:0}]}>
+            <Text style={{ fontSize: 18, color: '#fff', padding:3 }}>Save</Text>
           </TouchableOpacity>
           </View>
         </ScrollView>
@@ -280,28 +288,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   button: {
-    backgroundColor: "blue",
+    backgroundColor: "#3C00BB",
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
-  },
-  text: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    position: 'absolute',
-    top: 3,
+    paddingVertical:5
   },
   section:{
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: 'center',
+    marginVertical: '3%'
   },
-  textInput: {
-    // height: 40,
-    // width: 150, 
-    padding:5,
-    borderColor: 'gray', 
-    borderWidth: 1,
-    backgroundColor: '#ffffff',
-  }
 });

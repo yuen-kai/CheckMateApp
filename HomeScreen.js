@@ -4,10 +4,7 @@ import { StyleSheet, Text, View,TouchableOpacity, ScrollView, Alert} from 'react
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Divider, ThemeProvider} from 'react-native-elements';
-import SpeedDial from '@material-ui/lab/SpeedDial';
-import SpeedDialIcon from '@material-ui/lab/SpeedDialIcon';
-import SpeedDialAction from '@material-ui/lab/SpeedDialAction';
+import {Icon,Divider, SpeedDial} from 'react-native-elements';
 
 var tasks = [];
 var workTimes = [];
@@ -16,7 +13,10 @@ var workTimes = [];
 export default class HomeScreen extends React.Component {
   availableTime = 0
   intervalID
-  
+  // actions = [
+  //   { icon: <Icon name="clipboard" size={50} type="feather"/>, name: 'New Task'},
+  //   { icon: <Icon name="clock" size={50} type="feather"/>, name: 'New Work Time'}
+  // ]
 
   state = {
     open:false,
@@ -164,10 +164,6 @@ export default class HomeScreen extends React.Component {
       this.availableTime = Date.now()-new Date(lastTask).getTime()
     }
     return schedule
-  }
-
-  selected(index){
-    this.setState({taskIndex: index})
   }
 
   start(){
@@ -324,31 +320,29 @@ export default class HomeScreen extends React.Component {
     return (
       
       <SafeAreaView style={styles.container}>
-        
+        {/* <SpeedDial
+          isOpen={this.open}
+          icon={{ name: 'edit', color: '#fff' }}
+          openIcon={{ name: 'close', color: '#fff' }}
+          onChange={() => setOpen(!this.open)}
+        >
+          <SpeedDial.Action
+            icon={{ name:"clipboard", type:"feather", color: '#fff' }}
+            title="Add"
+            onPress={() => console.log('Add Something')}
+          />
+          <SpeedDial.Action
+            icon={{name:"clock", type:"feather", color: '#fff' }}
+            title="Delete"
+            onPress={() => console.log('Delete Something')}
+          />
+        </SpeedDial> */}
         <View style={{flex:9}}>
           
         <View style={styles.top}> 
-        {/* <SpeedDial
-          ariaLabel="SpeedDial"
-          icon={<SpeedDialIcon />}
-          onClose={()=>this.setState({open:false})}
-          onOpen={()=>this.setState({open:true})}
-          open={this.state.open}
-          direction='down'
-        >
-          <SpeedDialAction
-            icon={<Icon name="clipboard" size={50} type="feather"/>}
-            tooltipTitle={'New Task'}
-            onClick={() =>navigate('AddTask')}
-          />
-          <SpeedDialAction
-            icon={<Icon name="clock" size={50} type="feather"/>}
-            tooltipTitle={'New Work Time'}
-            onClick={() =>navigate('AddWorkTime')}
-          />
-        </SpeedDial> */}
+        
           <Icon name="clipboard" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddTask')}/>
-          <Icon name="clock" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddWorkTime')}/>
+          <Icon name="plus-circle" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddWorkTime')}/>
 
         </View>
         <View style={{flex:8}}>
@@ -377,10 +371,9 @@ export default class HomeScreen extends React.Component {
                                 <View  key={task.name}>
                                   <TouchableOpacity
                                   disabled={!this.state.selectable}
-                                  onPress={() => this.selected(tasks.findIndex((element)=>element.name==task.name))}
-                                  style={styles.tasks}
+                                  onPress={() => this.setState({taskIndex: tasks.findIndex((element)=>element.name==task.name)})}
+                                  style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?[styles.tasks,{backgroundColor:'cyan'}]:styles.tasks}
                                   > 
-                                  
                                   <Text style={{ fontSize: 17, alignSelf: 'center' }}>{task.name}</Text>
                                   <View style={{flexDirection: 'row', justifyContent:'space-around', flexWrap:'wrap'}}>
                                     <Text style={{ fontSize: 13}}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
@@ -471,7 +464,7 @@ const styles = StyleSheet.create({
     padding: 8
   },
   button: {
-    backgroundColor: "blue",
+    backgroundColor: "#3C00BB",
     padding: 5,
     borderRadius: 6,
     alignItems: 'center',
@@ -486,7 +479,7 @@ const styles = StyleSheet.create({
     width:'100%',
   },
   topButton: {
-    backgroundColor: "blue",
+    backgroundColor: "#3C00BB",
     padding: 8,
     borderRadius: 6,
   },
@@ -506,7 +499,7 @@ const styles = StyleSheet.create({
   },
   workTimes: {
     flex: 1,
-    backgroundColor: "blue",
+    backgroundColor: "#3C00BB",
     padding: 8,
     flexDirection: 'row',
     borderTopLeftRadius: 5,

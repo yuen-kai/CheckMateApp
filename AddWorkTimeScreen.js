@@ -283,11 +283,11 @@ export default class AddWorkTimeScreen extends React.Component {
         <View style={{flexDirection: 'column'}}>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'start')}>
-              <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.start!=null?this.displayTime(this.state.start):null}</Text>
+              <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.start!=null?this.displayTime(this.state.start):"Start"}</Text>
             </TouchableOpacity>
             <Text style={{ fontSize: 25}}>-</Text>
             <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'end')}>
-              <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.end!=null?this.displayTime(this.state.end):null}</Text>
+              <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.end!=null?this.displayTime(this.state.end):'End'}</Text>
             </TouchableOpacity>
             {/* start picker */}
             {this.state.newShow && (
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   button: {
-    backgroundColor: "blue",
+    backgroundColor: "#3C00BB",
     padding: 6,
     margin: 10,
     borderRadius: 5,
