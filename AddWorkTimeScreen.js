@@ -5,7 +5,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Tooltip} from 'react-native-elements'
+import {Icon,Tooltip,Avatar,CheckBox} from 'react-native-elements'
+import ThemedListItem from 'react-native-elements/dist/list/ListItem';
 
 var workTimes = []
 
@@ -21,12 +22,13 @@ export default class AddWorkTimeScreen extends React.Component {
   
   state = {
     newShow:false,
+    daysUsed:[false,false,false,false,false,false,false],
     type:'start',
     start: null,
     end: null,
     ready: false,
     show: false,
-    
+    weekly:false
   }
 
   componentDidMount(){
@@ -124,8 +126,10 @@ export default class AddWorkTimeScreen extends React.Component {
   }
 
   getData = async () => {
+    let change = [...this.state.daysUsed]
+    change.splice(new Date().getDay(), 1,true)
+    this.setState({daysUsed:change})
     try {
-      
       const jsonValue = await AsyncStorage.getItem('workTimes')
       workTimes =  jsonValue != null ? JSON.parse(jsonValue) : null;
       if(workTimes == null){
@@ -175,24 +179,6 @@ export default class AddWorkTimeScreen extends React.Component {
     }
     return hours+':'+minutes+' '+amPm
   }
-  
-  handleSave = async () => {
-    
-    if(this.overlap.length==0&&this.invalid.length==0){
-      try {
-      const jsonValue = JSON.stringify(workTimes)
-      await AsyncStorage.setItem('workTimes', jsonValue)
-      } catch (e) {
-        Alert.alert('Error saving','There has been an error saving your work time. Please try again.')
-        console.log(e)
-      } 
-      this.props.navigation.navigate('Home');
-    }
-    else{
-      Alert.alert('Invalid Work Times','Some of your work times are invalid. Please adress these issues and try again.')
-    }
-    
-  }
 
   handleDelete(workIndex){
     workTimes.splice(workIndex,1)
@@ -200,28 +186,30 @@ export default class AddWorkTimeScreen extends React.Component {
     this.setState({ready:true})
   }
 
-  async usePreset(){
-    const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
-    var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
-    if(savedTime != null&&savedTime[new Date().getDay()]!=null){
-      workTimes = savedTime[new Date().getDay()]
-      this.setState({ready:true})
+  async handleSave(){
+    if(this.overlap.length==0&&this.invalid.length==0){
+      try {
+        const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
+        var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
+        
+        for(var i=0;i<=this.state.daysUsed.length-1;i++){
+          if(this.state.daysUsed==true){
+            savedTime[0][i]=[...workTimes]
+            if(this.state.weekly==true){
+              savedTime[1][i]=[...workTimes]
+            }
+          }
+        };
+        const jsonValue = JSON.stringify(savedTime)
+        await AsyncStorage.setItem('savedWorkTimes', jsonValue)
+      }catch (e) {
+        Alert.alert('Error saving','There has been an error saving your work time. Please try again.')
+        console.log(e)
+      } 
+      this.props.navigation.navigate('Home');
     }
-  }
-
-  async presetTimes(){
-    try {
-      const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
-      var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
-      if(savedTime == null){
-        savedTime = new Array(7)
-      }
-      savedTime[new Date().getDay()]=[...workTimes]
-      const jsonValue = JSON.stringify(savedTime)
-      await AsyncStorage.setItem('savedWorkTimes', jsonValue)
-    } catch (e) {
-      Alert.alert('Error saving preset!','Failed to save preset work times! Please try again.')
-      console.log(e)
+    else{
+      Alert.alert('Invalid Work Times','Some of your work times are invalid. Please adress these issues and try again.')
     }
   }
   
@@ -234,6 +222,12 @@ export default class AddWorkTimeScreen extends React.Component {
     }
   }
 
+  changeDay(i){
+    let change = [...this.state.daysUsed]
+    change.splice(i, 1,!this.state.daysUsed[i])
+    this.setState({daysUsed:change})
+  }
+
   render(){
     if(!this.state.ready){
       return null
@@ -242,14 +236,7 @@ export default class AddWorkTimeScreen extends React.Component {
       
     <View style={styles.container}>
       <ScrollView style={{padding:10}}>
-        <View style={{flexDirection:'row',justifyContent:'flex-end',alignItems: 'center'}}>
-          <TouchableOpacity style={styles.button} onPress={() => this.usePreset()}>
-            <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>Use Preset</Text>
-          </TouchableOpacity>
-          <Tooltip height={115} width={250} popover={<Text>Use your preset work times for today. Warning: This will overide your current work times! To set a preset for every {this.days[new Date().getDay()]}, click the "set preset" button at the bottom of the page.</Text>}>
-            <Icon size={32} name="info" type='feather'></Icon>
-          </Tooltip>
-        </View>
+      <Text style={{ fontSize: 30, padding:4}}>{this.days[new Date().getDay()]}</Text>
         {
           workTimes.map((workTime, i) => {
             return(
@@ -258,7 +245,7 @@ export default class AddWorkTimeScreen extends React.Component {
                 <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'start')}>
                   <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.start)}</Text>
                 </TouchableOpacity>
-                <Text style={{ fontSize: 25}}>-</Text>
+                <Text style={{ fontSize: 25}}>to</Text>
                 <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'end')}>
                   <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.end)}</Text>
                 </TouchableOpacity>
@@ -303,21 +290,37 @@ export default class AddWorkTimeScreen extends React.Component {
             :null
           }
         </View>
-        
+        <Text style={{ fontSize: 18, padding:3 }}>Use for:</Text>
+        <CheckBox
+            title='Weekly'
+            checked={this.state.checked}
+            onPress={() => this.setState({checked: !this.state.checked})}
+          />
           <View style={{padding:8,flexDirection:'row',justifyContent: 'center',alignItems: 'center'}}>
-            <TouchableOpacity style={[styles.button,{margin:3}]} onPress={() => this.presetTimes()}>
-              <Text style={{ fontSize: 20, color: '#fff' }}>Set Preset</Text>
-            </TouchableOpacity>
-            <Tooltip height={70} width={160} popover={<Text>Set current work times as preset work times for every {this.days[new Date().getDay()]}.</Text>}>
-              <Icon size={25} name="info" type='feather'></Icon>
-            </Tooltip>
-            <TouchableOpacity
-              onPress={() => this.handleSave()}
-              style={styles.button}>
-            <Text style={{ fontSize: 20, color: '#fff' }}>Save WorkTime</Text>
-            </TouchableOpacity>  
+          
+          {
+            this.state.daysUsed.map((day, i) => {
+              return (
+                <Avatar
+                containerStyle={day==true?{backgroundColor:'#3C00BB',margin:1}:{backgroundColor:'gray',margin:1}}
+                  size="small"
+                  rounded
+                  title={this.days[i].slice(0, 1)}
+                  onPress={() => this.changeDay(i)}
+                />
+              )
+            })
+          }
           </View>
+          {this.state.daysUsed.includes(true)==false?<Text style={{ fontSize: 15, color: 'red', alignSelf:'center'}}>Nothing is selected!</Text>:null}
+             
+          
         </ScrollView>
+        <TouchableOpacity
+            onPress={() => this.handleSave()}
+            style={[styles.button,{bottom:0,right:0,alignSelf:'flex-end',position:'absolute',paddingVertical:0}]}>
+            <Text style={{ fontSize: 18, color: '#fff', padding:3 }}>Save</Text>
+            </TouchableOpacity> 
     </View>      
 
     )
@@ -329,7 +332,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
     alignItems: 'stretch',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   button: {
     backgroundColor: "#3C00BB",

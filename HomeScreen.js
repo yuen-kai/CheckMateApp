@@ -26,6 +26,33 @@ export default class HomeScreen extends React.Component {
     selectable: true,
   };
 
+  async savedTime(){
+    try {
+      const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
+      var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
+      if(savedTime == null){
+        
+      }
+      savedTime = [new Array(7),new Array(7)]
+      
+        savedTime.forEach(element => {
+          for (let i = 0; i < element.length; i++) {
+            element[i] = []
+          }
+        });
+      if(new Date().getDay()==0){
+        savedTime[0]=[...savedTime[1]]
+      }
+        // workTimes = savedTime[0][new Date().getDay()]
+        this.setState({ready:true})
+        const jsonValue = JSON.stringify(savedTime)
+        await AsyncStorage.setItem('savedWorkTimes', jsonValue)
+    }catch(e) {
+      Alert.alert('Failed to get data!','Failed to get data! Please try again.')
+      console.log(e)
+    }
+  }
+
 
   componentDidMount(){
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
@@ -34,7 +61,7 @@ export default class HomeScreen extends React.Component {
     this.getData();
     this.intervalID=setInterval(
       () => this.setState({ready:true}),
-      10*1000
+      5*1000
     );
   }
 
@@ -46,13 +73,8 @@ export default class HomeScreen extends React.Component {
       if(tasks == null){
         tasks=[]
       }
-      const workTimeJsonValue = await AsyncStorage.getItem('workTimes')
-      workTimes =  workTimeJsonValue != null ? JSON.parse(workTimeJsonValue) : null;
-      if(workTimes == null){
-        workTimes=[]
-      }
+      this.savedTime()
       this.setState({ready:true})
-      
     } catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
@@ -93,9 +115,10 @@ export default class HomeScreen extends React.Component {
     var lastTask = new Date()
     this.sortWorkTimes()
       var schedule = []
-      for(var i = 1; i <= workTimes.length+1;i++){
+      for(var i = 0; i <= workTimes.length;i++){
         schedule.push([])
       }
+      console.log(workTimes.length)
     if(tasks.length > 0){
       
       
@@ -107,7 +130,7 @@ export default class HomeScreen extends React.Component {
         time = new Date(workTimes[workIndex].start);
       }
       else if(this.state.selectable==false){
-        tasks[0].length -= Math.round((Date.now()-new Date(tasks[0].start).getTime())/(1000*60))
+        tasks[0].length -= Math.floor((Date.now()-new Date(tasks[0].start).getTime())/(1000*60))
       }
         for (var i = 0; i <=tasks.length-1; i++){
           if (workIndex<=workTimes.length-1&&new Date(time).getTime()==new Date(workTimes[workIndex].end).getTime())
@@ -340,9 +363,9 @@ export default class HomeScreen extends React.Component {
         <View style={{flex:9}}>
           
         <View style={styles.top}> 
-        
-          <Icon name="clipboard" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddTask')}/>
-          <Icon name="plus-circle" size={50} type="feather" disabled={!this.state.selectable} onPress={() =>navigate('AddWorkTime')}/>
+                 
+          <Icon name="plus-circle" size={50} type="feather" onPress={() =>navigate('AddTask')}/>
+ <Icon name="clock" size={50} type="feather" onPress={() =>navigate('AddWorkTime')}/>
 
         </View>
         <View style={{flex:8}}>
@@ -398,8 +421,8 @@ export default class HomeScreen extends React.Component {
                       <View  key={task.name} >
                         <TouchableOpacity
                         disabled={!this.state.selectable}
-                        onPress={() => this.selected(tasks.findIndex((element)=>element.name==task.name))}
-                        style={styles.overTasks}
+                        onPress={() => this.setState({taskIndex: tasks.findIndex((element)=>element.name==task.name)})}
+                        style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?[styles.tasks,{backgroundColor:'cyan'}]:styles.overTasks}
                         > 
                         
                         <Text style={{ fontSize: 17, color: '#555555', alignSelf: 'center' }}>{task.name}</Text>

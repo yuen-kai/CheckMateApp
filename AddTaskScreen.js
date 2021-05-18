@@ -186,15 +186,14 @@ export default class AddTaskScreen extends React.Component {
             />
           </View>
           <View style={styles.section}>        
-            <Text style={{ fontSize: 17,padding:3,backgroundColor:'red'}}>Importance:</Text>
-            <View style={{backgroundColor:'gray',flexGrow:1,}}>
+            <Text style={{ fontSize: 17,padding:3}}>Importance:</Text>
+            <View style={{flexGrow:1,marginLeft:20}}>
               <View style={{flexDirection:'row',justifyContent:'space-between'}}>
               <Text style={{ fontSize: 13}}>Least</Text>
               <Text style={{ fontSize: 13}}>Most</Text>
               </View>
             <Slider
             thumbStyle={{width:25,height:25}}
-            trackStyle={{height:150}}
               value={this.state.importance}
               onValueChange={(importance) => this.setState({ importance })}
               minimumValue={1}
@@ -205,7 +204,7 @@ export default class AddTaskScreen extends React.Component {
                   <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff'}}>{this.state.importance}</Text>
                 ),
               }}
-              trackStyle={{width:150}}
+              trackStyle={{width:'100%'}}
               allowTouchTrack={true}
               step={1}
             />
@@ -250,8 +249,14 @@ export default class AddTaskScreen extends React.Component {
             )}
           </View>
           <View style={styles.section}>
-            <Text style={{ fontSize: 17,padding:3}}>Due Importance:</Text>
+            <Text style={{ fontSize: 17,padding:3}}>Due Date{'\n'}Importance:</Text>
+            <View style={{flexGrow:1,marginLeft:20}}>
+              <View style={{flexDirection:'row',justifyContent:'space-between'}}>
+              <Text style={{ fontSize: 13}}>Least</Text>
+              <Text style={{ fontSize: 13}}>Most</Text>
+              </View>
             <Slider
+              style={{flexGrow:1}}
               thumbStyle={{width:25,height:25}}
               value={this.state.dueImportance}
               onValueChange={(dueImportance) => this.setState({ dueImportance })}
@@ -263,10 +268,11 @@ export default class AddTaskScreen extends React.Component {
                   <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff' }}>{this.state.dueImportance}</Text>
                 ),
               }}
-              trackStyle={{width:120}}
+              trackStyle={{width:'100%'}}
               allowTouchTrack={true}
               step={1}
             />
+            </View>
           </View>
           <TouchableOpacity
             onPress={() => this.handleSave()}
@@ -295,6 +301,7 @@ const styles = StyleSheet.create({
     paddingVertical:5
   },
   section:{
+    // backgroundColor:'blue',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
