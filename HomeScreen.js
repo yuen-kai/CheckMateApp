@@ -31,19 +31,20 @@ export default class HomeScreen extends React.Component {
       const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
       var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
       if(savedTime == null){
-        
-      }
-      savedTime = [new Array(7),new Array(7)]
+        savedTime = [new Array(7),new Array(7)]
       
         savedTime.forEach(element => {
           for (let i = 0; i < element.length; i++) {
             element[i] = []
           }
         });
+      }
+      
+      console.log(savedTime)
       if(new Date().getDay()==0){
         savedTime[0]=[...savedTime[1]]
       }
-        // workTimes = savedTime[0][new Date().getDay()]
+        workTimes = savedTime[0][new Date().getDay()]
         this.setState({ready:true})
         const jsonValue = JSON.stringify(savedTime)
         await AsyncStorage.setItem('savedWorkTimes', jsonValue)
@@ -110,6 +111,10 @@ export default class HomeScreen extends React.Component {
     }
   }
 
+  time(t){
+    return new Date(Math.floor(new Date(t)/(60*1000))*60*1000)
+  }
+
   makeSchedule(){
     var workIndex = 0;
     var lastTask = new Date()
@@ -118,11 +123,10 @@ export default class HomeScreen extends React.Component {
       for(var i = 0; i <= workTimes.length;i++){
         schedule.push([])
       }
-      console.log(workTimes.length)
     if(tasks.length > 0){
       
       
-      var time = new Date(Math.floor(Date.now()/(60*1000))*60*1000)
+      var time = this.time(Date.now())
       
       var newIndex = false
       
@@ -148,7 +152,7 @@ export default class HomeScreen extends React.Component {
             if (tasks[i].length<=Math.round((new Date(workTimes[workIndex].end).getTime()-new Date(time).getTime())/(1000*60)))
             {
               tasks[i].start = time
-              tasks[i].end = new Date (new Date(time).getTime()+tasks[i].length*1000*60)
+              tasks[i].end = this.time(new Date(time).getTime()+tasks[i].length*1000*60)
               time=tasks[i].end;
               schedule[workIndex].push({...tasks[i]})
             }
@@ -156,18 +160,18 @@ export default class HomeScreen extends React.Component {
             {
               
               tasks[i].start = time
-              tasks[i].end = workTimes[workIndex].end
+              tasks[i].end = this.time(workTimes[workIndex].end)
               schedule[workIndex].push({...tasks[i]})
-              if(tasks[i].length-Math.round((new Date(workTimes[workIndex].end).getTime()-new Date(time).getTime())/(1000*60))>0){
+              if(tasks[i].length-(this.time(workTimes[workIndex].end)-this.time(time))/(1000*60)>0){
                 tasks.splice(i+1,0,{...tasks[i]})
-                tasks[i+1].length -= Math.round((new Date(workTimes[workIndex].end).getTime()-new Date(time).getTime())/(1000*60))
+                tasks[i+1].length -= (this.time(workTimes[workIndex].end)-this.time(time))/(1000*60)
               }
               time = tasks[i].end
             }
           }
           else{
             tasks[i].start = time
-            tasks[i].end = new Date (new Date(time).getTime()+tasks[i].length*1000*60)
+            tasks[i].end = this.time(new Date(time).getTime()+tasks[i].length*1000*60)
             schedule[workIndex].push({...tasks[i]})
             time=tasks[i].end;
           }
@@ -181,10 +185,10 @@ export default class HomeScreen extends React.Component {
       
     }
     if(workTimes.length>0){
-      this.availableTime = new Date(workTimes[workTimes.length-1].end).getTime()-new Date(lastTask).getTime()
+      this.availableTime = this.time(workTimes[workTimes.length-1].end)-this.time(lastTask)
     }
     else{
-      this.availableTime = Date.now()-new Date(lastTask).getTime()
+      this.availableTime = this.time(Date.now())-this.time(lastTask)
     }
     return schedule
   }
@@ -216,13 +220,13 @@ export default class HomeScreen extends React.Component {
   }
 
   pause(){
-      if(tasks[0].length-Math.floor(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))>0){
-        tasks[0].length -= Math.floor(((new Date ()).getTime()-new Date(tasks[0].start).getTime())/(1000*60))
+      if(tasks[0].length-((this.time(new Date ())-this.time(tasks[0].start))/(1000*60))>0){
+        tasks[0].length -= ((this.time(new Date ())-this.time(new Date(tasks[0].start)))/(1000*60))
       }
       else{
         tasks[0].length = 10
       }
-      this.setState({selectable:true})
+      this.setState({ready:true,selectable:true})
     this.saveTasks()
   }
 
@@ -312,7 +316,7 @@ export default class HomeScreen extends React.Component {
   }
 
   findavailableTime(){
-    var timeLeft = Math.round(this.availableTime/(60*1000))
+    var timeLeft = this.availableTime/(60*1000)
     if(timeLeft>10){
       return <Text style={{fontSize:15, color:'black' }}>{timeLeft} minutes available</Text>
     }

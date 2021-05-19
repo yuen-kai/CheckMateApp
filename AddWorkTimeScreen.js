@@ -60,7 +60,7 @@ export default class AddWorkTimeScreen extends React.Component {
   }
 
   roundTime(time){
-    return Math.floor((new Date(time).getTime())/(60*1000)) * (60*1000)
+    return (Math.floor((new Date(time).getTime())/(60*1000)) * (60*1000))
   }
 
   onTimeChange = (event, selectedDate) => {
@@ -97,8 +97,7 @@ export default class AddWorkTimeScreen extends React.Component {
         this.overlap.push(element,workTime)
       }
     });
-    
-    if(workTime.start!=null&&workTime.end!=null&&new Date(workTime.end).getTime() - new Date(workTime.start).getTime()<1000*60){
+    if(workTime.start!=null&&workTime.end!=null&&this.roundTime(workTime.end) - this.roundTime(workTime.start)<=0){
       this.invalid.push(workTime)
     }
 
@@ -193,13 +192,14 @@ export default class AddWorkTimeScreen extends React.Component {
         var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
         
         for(var i=0;i<=this.state.daysUsed.length-1;i++){
-          if(this.state.daysUsed==true){
+          if(this.state.daysUsed[i]==true){
             savedTime[0][i]=[...workTimes]
             if(this.state.weekly==true){
               savedTime[1][i]=[...workTimes]
             }
           }
         };
+        console.log(savedTime)
         const jsonValue = JSON.stringify(savedTime)
         await AsyncStorage.setItem('savedWorkTimes', jsonValue)
       }catch (e) {
