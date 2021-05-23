@@ -39,8 +39,6 @@ export default class HomeScreen extends React.Component {
           }
         });
       }
-      
-      console.log(savedTime)
       if(new Date().getDay()==0){
         savedTime[0]=[...savedTime[1]]
       }

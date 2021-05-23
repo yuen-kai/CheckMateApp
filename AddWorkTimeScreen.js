@@ -16,6 +16,9 @@ export default class AddWorkTimeScreen extends React.Component {
   overlap = []
   invalid = []
   days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+  monthNames = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
   id = 0
   editIndex = -1
   visible
@@ -41,9 +44,9 @@ export default class AddWorkTimeScreen extends React.Component {
     this.overlap.forEach(workTime => {
       var lapover = false
       this.overlap.forEach(element => {
-        if(JSON.stringify(workTime) === JSON.stringify(element)&&element.start!=null&&element.end!=null&&((workTime.start!=null&&new Date(workTime.start).getTime()>=new Date(element.start).getTime()&&new Date(workTime.start).getTime()<=new Date(element.end).getTime())
-          ||(workTime.end!=null&&new Date(workTime.end).getTime()>=new Date(element.start).getTime()&&new Date(workTime.end).getTime()<=new Date(element.end).getTime())
-          ||(workTime.start!=null&&workTime.end!=null&&new Date(workTime.start).getTime()<=new Date(element.start).getTime()&&new Date(workTime.end).getTime()>=new Date(element.end).getTime()))){
+        if(JSON.stringify(workTime) !== JSON.stringify(element)&&element.start!=null&&element.end!=null&&((workTime.start!=null&&this.roundTime(workTime.start)>=this.roundTime(element.start)&&this.roundTime(workTime.start)<=this.roundTime(element.end))
+          ||(workTime.end!=null&&this.roundTime(workTime.end)>=this.roundTime(element.start)&&this.roundTime(workTime.end)<=this.roundTime(element.end))
+          ||(workTime.start!=null&&workTime.end!=null&&this.roundTime(workTime.start)<=this.roundTime(element.start)&&this.roundTime(workTime.end)>=this.roundTime(element.end)))){
             lapover = true
         }
         if(lapover==false){
@@ -90,10 +93,9 @@ export default class AddWorkTimeScreen extends React.Component {
    
     this.checkErrors()
     workTimes.forEach(element => {
-      if(JSON.stringify(workTime) !== JSON.stringify(element)&&((workTime.start!=null&&new Date(workTime.start).getTime()>=new Date(element.start).getTime()&&new Date(workTime.start).getTime()<=new Date(element.end).getTime())
-        ||(workTime.end!=null&&new Date(workTime.end).getTime()>=new Date(element.start).getTime()&&new Date(workTime.end).getTime()<=new Date(element.end).getTime())
-        ||(workTime.start!=null&&workTime.end!=null&&new Date(workTime.start).getTime()<=new Date(element.start).getTime()&&new Date(workTime.end).getTime()>=new Date(element.end).getTime())))
-      {
+      if(((workTime.start!=null&&this.roundTime(workTime.start)>=this.roundTime(element.start)&&this.roundTime(workTime.start)<=this.roundTime(element.end))
+      ||(workTime.end!=null&&this.roundTime(workTime.end)>=this.roundTime(element.start)&&this.roundTime(workTime.end)<=this.roundTime(element.end))
+      ||(workTime.start!=null&&workTime.end!=null&&this.roundTime(workTime.start)<=this.roundTime(element.start)&&this.roundTime(workTime.end)>=this.roundTime(element.end)))){
         this.overlap.push(element,workTime)
       }
     });
@@ -199,7 +201,6 @@ export default class AddWorkTimeScreen extends React.Component {
             }
           }
         };
-        console.log(savedTime)
         const jsonValue = JSON.stringify(savedTime)
         await AsyncStorage.setItem('savedWorkTimes', jsonValue)
       }catch (e) {
@@ -236,18 +237,18 @@ export default class AddWorkTimeScreen extends React.Component {
       
     <View style={styles.container}>
       <ScrollView style={{padding:10}}>
-      <Text style={{ fontSize: 30, padding:4}}>{this.days[new Date().getDay()]}</Text>
+      <Text style={{ fontSize: 20, padding:4}}>{this.days[new Date().getDay()]}, {this.monthNames[new Date().getMonth()]} {new Date().getDate()}</Text>
         {
           workTimes.map((workTime, i) => {
             return(
-            <View key={workTime.id} style={{flexDirection: 'column'}}>
+            <View key={workTime.id} style={{flexDirection: 'column',alignItems: 'stretch'}}>
               <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'start')}>
-                  <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.start)}</Text>
+                <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker(i,'start')}>
+                  <Text style={{ fontSize: 17,color: '#fff' }}>{this.displayTime(workTime.start)}</Text>
                 </TouchableOpacity>
-                <Text style={{ fontSize: 25}}>to</Text>
-                <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(i,'end')}>
-                  <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.displayTime(workTime.end)}</Text>
+                <Text style={{flex: 1, fontSize:18, alignSelf: 'center'  }}>to</Text>
+                <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker(i,'end')}>
+                  <Text style={{ fontSize: 17,color: '#fff' }}>{this.displayTime(workTime.end)}</Text>
                 </TouchableOpacity>
                 {/* start picker */}
                 {this.show(i) && (
@@ -257,7 +258,7 @@ export default class AddWorkTimeScreen extends React.Component {
                   display="default"
                   onChange={this.onTimeChange}
                 />)}
-                <Icon size={35} name="x-circle" type='feather' onPress={() => this.handleDelete(i)}/>
+                <Icon size={35} style={{flex: 1}} name="x-circle" type='feather' onPress={() => this.handleDelete(i)}/>
               </View>
               {this.overlap.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>This overlaps with other work times!</Text>
                 :this.invalid.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
@@ -269,13 +270,14 @@ export default class AddWorkTimeScreen extends React.Component {
         }  
         <View style={{flexDirection: 'column'}}>
           <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'start')}>
-              <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.start!=null?this.displayTime(this.state.start):"Start"}</Text>
+            <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker(-1,'start')}>
+              <Text style={{ fontSize: 17,  color: '#fff' }}>{this.state.start!=null?this.displayTime(this.state.start):"Start"}</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 25}}>-</Text>
-            <TouchableOpacity style={styles.button} onPress={() => this.showTimepicker(-1,'end')}>
-              <Text style={{ fontSize: 18, padding:4, color: '#fff' }}>{this.state.end!=null?this.displayTime(this.state.end):'End'}</Text>
+            <Text style={{flex: 1,fontSize: 18,}}>to</Text>
+            <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker(-1,'end')}>
+              <Text style={{ fontSize: 17, color: '#fff'}}>{this.state.end!=null?this.displayTime(this.state.end):'End'}</Text>
             </TouchableOpacity>
+            <View style={{flex: 1}}/>
             {/* start picker */}
             {this.state.newShow && (
             <DateTimePicker
@@ -290,7 +292,7 @@ export default class AddWorkTimeScreen extends React.Component {
             :null
           }
         </View>
-        <Text style={{ fontSize: 18, padding:3 }}>Use for:</Text>
+        <Text style={{ fontSize: 17, padding:3 }}>Use for:</Text>
         <CheckBox
             title='Weekly'
             checked={this.state.checked}
@@ -301,7 +303,7 @@ export default class AddWorkTimeScreen extends React.Component {
           {
             this.state.daysUsed.map((day, i) => {
               return (
-                <Avatar
+                <Avatar key={i}
                 containerStyle={day==true?{backgroundColor:'#3C00BB',margin:1}:{backgroundColor:'gray',margin:1}}
                   size="small"
                   rounded
@@ -318,8 +320,8 @@ export default class AddWorkTimeScreen extends React.Component {
         </ScrollView>
         <TouchableOpacity
             onPress={() => this.handleSave()}
-            style={[styles.button,{bottom:0,right:0,alignSelf:'flex-end',position:'absolute',paddingVertical:0}]}>
-            <Text style={{ fontSize: 18, color: '#fff', padding:3 }}>Save</Text>
+            style={[styles.button,{bottom:0,right:0,alignSelf:'flex-end',paddingVertical:0}]}>
+            <Text style={{ fontSize: 17, color: '#fff', padding:3 }}>Save</Text>
             </TouchableOpacity> 
     </View>      
 
@@ -339,5 +341,13 @@ const styles = StyleSheet.create({
     padding: 6,
     margin: 10,
     borderRadius: 5,
-  }
+  },
+workButton:{
+  backgroundColor: "#3C00BB",
+  padding: 6,
+  alignItems: 'center',
+  margin: 10,
+  borderRadius: 5,
+  flex:4
+}
 });
