@@ -67,7 +67,7 @@ export default class AddTaskScreen extends React.Component {
         }
         
         this.editInfo()
-        this.setState({ready:true})
+        
       } catch(e) {
         Alert.alert('Failed to get data!','Failed to get data! Please try again.')
         console.log(e)
@@ -90,6 +90,7 @@ export default class AddTaskScreen extends React.Component {
       Alert.alert('Failed to get edit info!','Failed to get edit info! Please try again.')
       console.log(e)
     }
+    this.setState({ready:true})
  }
 
   sortTask(){
@@ -194,6 +195,7 @@ export default class AddTaskScreen extends React.Component {
               </View>
             <Slider
             thumbStyle={{width:25,height:25}}
+            trackStyle={{width:'100%'}}
               value={this.state.importance}
               onValueChange={(importance) => this.setState({ importance })}
               minimumValue={1}
@@ -204,7 +206,7 @@ export default class AddTaskScreen extends React.Component {
                   <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff'}}>{this.state.importance}</Text>
                 ),
               }}
-              trackStyle={{width:'100%'}}
+              
               allowTouchTrack={true}
               step={1}
             />

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "schedule",
+    "name": "CheckMate",
     "slug": "schedule",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,7 +8,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#00FFFF"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -20,10 +20,11 @@
       "supportsTablet": true
     },
     "android": {
-      "adaptiveIcon": {
+      "adaptiveIcon":{
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor":"#00FFFF"
       },
+      "icon":"./assets/icon.png",
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
