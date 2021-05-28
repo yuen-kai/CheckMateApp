@@ -141,7 +141,7 @@ export default class AddTaskScreen extends React.Component {
     }
     
     if(this.state.name==""||this.state.importance==0||this.state.length==0){
-      Alert.alert('Invalid Task','Not all parameters have been filled out!')
+      Alert.alert('Invalid Task','Not all fields have been filled out!')
     }
     else if(sameName==true){
       Alert.alert('Name Used','Name already used. Please select a new name.')
@@ -180,7 +180,7 @@ export default class AddTaskScreen extends React.Component {
           <View style={styles.section}>
           <Text style={{ fontSize: 17, padding:3}}>Name:</Text>
           <Input
-              placeholder='Science Project'
+              placeholder='Practice Piano'
               renderErrorMessage={false}
               onChangeText={name => this.setState({name})}
               value = {this.state.name}
@@ -213,7 +213,7 @@ export default class AddTaskScreen extends React.Component {
             </View>
           </View>
           <View style={styles.section}>
-            <Text style={{ fontSize: 17,padding:3}}>Length(min):</Text>
+            <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text>
             <Input
               placeholder='30'
               renderErrorMessage={false}

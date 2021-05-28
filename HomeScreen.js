@@ -196,9 +196,7 @@ export default class HomeScreen extends React.Component {
       this.setState({selectable:false})
       var selectedTask = tasks[this.state.taskIndex]
       tasks.splice(this.state.taskIndex, 1)
-      this.setState({taskIndex: 0}) 
-      
-      
+      this.setState({taskIndex: 0})
       this.sortTask()
       tasks.splice(0, 0, selectedTask)
       tasks[0].start=Date.now()
@@ -208,7 +206,8 @@ export default class HomeScreen extends React.Component {
         'Outside of Work Times',
         "You are only able to do tasks during your work times. Please add/edit your work times instead.",
         [
-          { text: 'Ok'}
+          { text: 'Dismiss',style:"cancel"},
+          {text:'Add/Edit',onPress: ()=>this.props.navigation.navigate('AddWorkTime')}
         ],
         { cancelable: true }
         
@@ -228,12 +227,24 @@ export default class HomeScreen extends React.Component {
     this.saveTasks()
   }
 
-  stop(){
-      tasks.splice(0,1)
+  remove(){
+    tasks.splice(0,1)
       this.saveTasks()
       this.setState({taskIndex:0})
       this.setState({selectable:true})
-    
+  }
+
+  stop(){
+    Alert.alert(
+      'Are you sure?',
+      "This action is irreversable!",
+      [
+        { text: 'Cancel',style:"cancel"},
+        {text:'Continue',onPress: ()=>this.remove()}
+      ],
+      { cancelable: true }
+      
+    )
   }
 
   async saveTasks(){
@@ -366,9 +377,16 @@ export default class HomeScreen extends React.Component {
           
         <View style={styles.top}> 
                  
-          <Icon name="plus-circle" size={50} type="feather" onPress={() =>navigate('AddTask')}/>
- <Icon name="clock" size={50} type="feather" onPress={() =>navigate('AddWorkTime')}/>
-
+          <Icon name="plus-circle" size={40} type="feather" onPress={() =>navigate('AddTask')}/>
+          <View style={{alignItems: 'center',marginHorizontal:3, marginRight:7}}>
+            <Text style={{ fontSize: 13}}>Add</Text>
+            <Text style={{ fontSize: 13}}>Task</Text>
+          </View>
+          <Icon name="clock" size={40} type="feather" onPress={() =>navigate('AddWorkTime')}/> 
+          <View style={{alignItems: 'center',marginHorizontal:3}}>
+            <Text style={{ fontSize: 13}}>Add</Text>
+            <Text style={{ fontSize: 13}}>WorkTime</Text>
+          </View>
         </View>
         <View style={{flex:8}}>
           <ScrollView style={{height: '100%'}}>
@@ -382,7 +400,6 @@ export default class HomeScreen extends React.Component {
                       <View key={i} style={{flexDirection: 'row',alignSelf:'stretch',padding:5}}>
                         {/* <View style={{flex:1,alignSelf:'stretch'}}> */}
                           <TouchableOpacity
-                          disabled={!this.state.selectable}
                           onPress={() => this.editWorkTimes(i)}
                           style={styles.workTimes}
                           >
@@ -395,14 +412,11 @@ export default class HomeScreen extends React.Component {
                                 return (
                                 <View  key={task.name}>
                                   <TouchableOpacity
-                                  disabled={!this.state.selectable}
                                   onPress={() => this.setState({taskIndex: tasks.findIndex((element)=>element.name==task.name)})}
-                                  style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?[styles.tasks,{backgroundColor:'cyan'}]:styles.tasks}
+                                  style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?[styles.tasks,{backgroundColor:'#39F0F0'}]:styles.tasks}
                                   > 
-                                  <Text style={{ fontSize: 17, alignSelf: 'center' }}>{task.name}</Text>
-                                  <View style={{flexDirection: 'row', justifyContent:'space-around', flexWrap:'wrap'}}>
-                                    <Text style={{ fontSize: 13}}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
-                                  </View>
+                                  <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 17, alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 17, alignSelf: 'center'}}>{task.name}</Text>
+                                  <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 12, alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 12, alignSelf: 'center'}}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
                                   </TouchableOpacity>
                                 </View>
                                 );
@@ -422,13 +436,12 @@ export default class HomeScreen extends React.Component {
                       return (
                       <View  key={task.name} >
                         <TouchableOpacity
-                        disabled={!this.state.selectable}
                         onPress={() => this.setState({taskIndex: tasks.findIndex((element)=>element.name==task.name)})}
-                        style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?[styles.tasks,{backgroundColor:'cyan'}]:styles.overTasks}
+                        style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?[styles.overTasks,{backgroundColor:'#39F0F0'}]:styles.overTasks}
                         > 
                         
-                        <Text style={{ fontSize: 17, color: '#555555', alignSelf: 'center' }}>{task.name}</Text>
-                        <Text style={{ fontSize: 13, color: '#555555', alignSelf: 'center' }}>{task.length+' min  (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
+                        <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 17, color:'#555555',alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 17, alignSelf: 'center', color:'#555555'}}>{task.name}</Text>
+                        <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 12, color:'#555555', alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 12, alignSelf: 'center', color:'#555555'}}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
                         </TouchableOpacity>
                       </View>
                       );

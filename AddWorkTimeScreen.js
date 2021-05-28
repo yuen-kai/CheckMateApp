@@ -92,13 +92,15 @@ export default class AddWorkTimeScreen extends React.Component {
     
    
     this.checkErrors()
+    console.log(this.overlap)
     workTimes.forEach(element => {
-      if(((workTime.start!=null&&this.roundTime(workTime.start)>=this.roundTime(element.start)&&this.roundTime(workTime.start)<=this.roundTime(element.end))
+      if(JSON.stringify(workTime)!== JSON.stringify(element)&&((workTime.start!=null&&this.roundTime(workTime.start)>=this.roundTime(element.start)&&this.roundTime(workTime.start)<=this.roundTime(element.end))
       ||(workTime.end!=null&&this.roundTime(workTime.end)>=this.roundTime(element.start)&&this.roundTime(workTime.end)<=this.roundTime(element.end))
       ||(workTime.start!=null&&workTime.end!=null&&this.roundTime(workTime.start)<=this.roundTime(element.start)&&this.roundTime(workTime.end)>=this.roundTime(element.end)))){
         this.overlap.push(element,workTime)
       }
     });
+    console.log(this.overlap)
     if(workTime.start!=null&&workTime.end!=null&&this.roundTime(workTime.end) - this.roundTime(workTime.start)<=0){
       this.invalid.push(workTime)
     }
@@ -181,8 +183,11 @@ export default class AddWorkTimeScreen extends React.Component {
     return hours+':'+minutes+' '+amPm
   }
 
-  handleDelete(workIndex){
+  handleDelete(workIndex){    
+    this.overlap.splice(this.overlap.indexOf(workTimes[workIndex]),1)
+    this.invalid.splice(this.invalid.indexOf(workTimes[workIndex]),1)
     workTimes.splice(workIndex,1)
+    
     this.checkErrors()
     this.setState({ready:true})
   }
