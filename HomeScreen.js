@@ -30,9 +30,9 @@ export default class HomeScreen extends React.Component {
     try {
       const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
       var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
+      
       if(savedTime == null){
         savedTime = [new Array(7),new Array(7)]
-      
         savedTime.forEach(element => {
           for (let i = 0; i < element.length; i++) {
             element[i] = []
@@ -43,9 +43,12 @@ export default class HomeScreen extends React.Component {
         savedTime[0]=[...savedTime[1]]
       }
         workTimes = savedTime[0][new Date().getDay()]
-        this.setState({ready:true})
+        
+        console.log(workTimes)
         const jsonValue = JSON.stringify(savedTime)
         await AsyncStorage.setItem('savedWorkTimes', jsonValue)
+        this.sortWorkTimes()
+        this.setState({ready:true})
     }catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
@@ -73,7 +76,6 @@ export default class HomeScreen extends React.Component {
         tasks=[]
       }
       this.savedTime()
-      this.setState({ready:true})
     } catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
@@ -91,21 +93,7 @@ export default class HomeScreen extends React.Component {
       }
       else if(new Date(workTimes[i].start).getTime()<Date.now()){
         workTimes[i].start=new Date()
-        
       }
-      
-    }
-   this.saveWorkTimes()
-  }
-
-  saveWorkTimes = async () =>{
-    try { 
-      
-      const jsonValue = JSON.stringify(workTimes)
-      await AsyncStorage.setItem('workTimes', jsonValue)
-    } catch (e) {
-      Alert.alert('Error saving work times!','Failed to save work times! Please try again.')
-      console.log(e)
     }
   }
 
@@ -228,7 +216,7 @@ export default class HomeScreen extends React.Component {
   }
 
   remove(){
-    tasks.splice(0,1)
+    tasks.splice(this.state.taskIndex,1)
       this.saveTasks()
       this.setState({taskIndex:0})
       this.setState({selectable:true})
@@ -237,7 +225,7 @@ export default class HomeScreen extends React.Component {
   stop(){
     Alert.alert(
       'Are you sure?',
-      "This action is irreversable!",
+      "This action is irreversable and your task will be deleted.",
       [
         { text: 'Cancel',style:"cancel"},
         {text:'Continue',onPress: ()=>this.remove()}
@@ -306,15 +294,8 @@ export default class HomeScreen extends React.Component {
     }
   }
 
-  editWorkTimes = async (index) =>{
-    try {
-      const jsonValue = JSON.stringify(index)
-      await AsyncStorage.setItem('workIndex', jsonValue)
+  editWorkTimes(){
       this.props.navigation.navigate('AddWorkTime')
-    } catch (e) {
-      Alert.alert('Error getting work times edit info!','Failed to get work times edit info! Please try again.')
-      console.log(e)
-    }
   }
 
   taskName(){
@@ -327,13 +308,13 @@ export default class HomeScreen extends React.Component {
   findavailableTime(){
     var timeLeft = this.availableTime/(60*1000)
     if(timeLeft>10){
-      return <Text style={{fontSize:15, color:'black' }}>{timeLeft} minutes available</Text>
+      return <Text style={{fontSize:15, color:'black' }}>{timeLeft} minutes available to use</Text>
     }
     else if(timeLeft>=0){
-      return <Text style={{fontSize:15,color: 'orange' }}>{timeLeft} minutes available</Text>
+      return <Text style={{fontSize:15,color: 'orange' }}>{timeLeft} minutes available to use</Text>
     }
     else{ 
-      return <Text style={{fontSize:15,color: 'red' }}>{-timeLeft} minutes needed!</Text>
+      return <Text style={{fontSize:15,color: 'red' }}>{-timeLeft} more minutes needed to finish tasks!</Text>
     }
    
   }
@@ -376,22 +357,25 @@ export default class HomeScreen extends React.Component {
         <View style={{flex:9}}>
           
         <View style={styles.top}> 
-                 
-          <Icon name="plus-circle" size={40} type="feather" onPress={() =>navigate('AddTask')}/>
+         <TouchableOpacity style={{flexDirection:'row',}} onPress={() =>navigate('AddTask')}>   
+          <Icon name="plus-circle" size={40} type="feather"/>
           <View style={{alignItems: 'center',marginHorizontal:3, marginRight:7}}>
             <Text style={{ fontSize: 13}}>Add</Text>
             <Text style={{ fontSize: 13}}>Task</Text>
           </View>
-          <Icon name="clock" size={40} type="feather" onPress={() =>navigate('AddWorkTime')}/> 
+          </TouchableOpacity>     
+          <TouchableOpacity style={{flexDirection:'row',}} onPress={() =>navigate('AddWorkTime')}>
+          <Icon name="clock" size={40} type="feather"/> 
           <View style={{alignItems: 'center',marginHorizontal:3}}>
             <Text style={{ fontSize: 13}}>Add</Text>
             <Text style={{ fontSize: 13}}>WorkTime</Text>
           </View>
+          </TouchableOpacity>
         </View>
         <View style={{flex:8}}>
           <ScrollView style={{height: '100%'}}>
-              
-              <View style={{flex:1}}>
+          <Text style={{marginLeft:10, fontSize: 20 }}>Schedule:</Text>
+              {/* <View> */}
                 {
                   workTimes.map((workTime, i) => {
                     
@@ -400,13 +384,13 @@ export default class HomeScreen extends React.Component {
                       <View key={i} style={{flexDirection: 'row',alignSelf:'stretch',padding:5}}>
                         {/* <View style={{flex:1,alignSelf:'stretch'}}> */}
                           <TouchableOpacity
-                          onPress={() => this.editWorkTimes(i)}
+                          onPress={() => this.editWorkTimes()}
                           style={styles.workTimes}
                           >
                             <Text style={{ fontSize: 13, color: '#fff' }}>{this.displayTime(workTime.start)+' - '+this.displayTime(workTime.end)}</Text>
                           </TouchableOpacity>
                         {/* </View> */}
-                          <View style={{flex:4, flexDirection:'column',borderBottomWidth:2,borderBottomColor:this.numTasks(schedule,i)}}>
+                          <View style={{flex:4,flexDirection:'column',borderBottomWidth:2,borderBottomColor:this.numTasks(schedule,i)}}>
                             {
                               schedule[i].map((task, j) => {
                                 return (
@@ -429,8 +413,13 @@ export default class HomeScreen extends React.Component {
                     );
                   })
                 }
-                <View style={{alignSelf:'stretch',padding:5}}>
-                  <View style={{ borderBottomWidth:2,borderBottomColor:this.numTasks(schedule,schedule.length-1)}}>
+                <View style={{flexDirection: 'row',alignSelf:'stretch',padding:5}}>
+                  {schedule[schedule.length-1].length>0?
+                    <View style={[styles.workTimes,{backgroundColor:'#AAAFB4'}]}>
+                      <Text style={{ fontSize: 13}}>Unable to Fit</Text>
+                      </View>
+                  :null}
+                  <View style={{flex: 4,borderBottomWidth:2,borderBottomColor:this.numTasks(schedule,schedule.length-1)}}>
                   {
                     schedule[schedule.length-1].map((task, i) => {
                       return (
@@ -441,7 +430,7 @@ export default class HomeScreen extends React.Component {
                         > 
                         
                         <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 17, color:'#555555',alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 17, alignSelf: 'center', color:'#555555'}}>{task.name}</Text>
-                        <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 12, color:'#555555', alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 12, alignSelf: 'center', color:'#555555'}}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
+                        <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 12, color:'#555555', alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 12, alignSelf: 'center', color:'#555555'}}>{'Length: '+task.length}</Text>
                         </TouchableOpacity>
                       </View>
                       );
@@ -449,7 +438,7 @@ export default class HomeScreen extends React.Component {
                   }
                   </View>
                 </View>
-              </View>
+              {/* </View> */}
               
             <View style={{padding:8}}>
               {tasks.length>=2&&tasks[1].sortValue<tasks[0].sortValue?

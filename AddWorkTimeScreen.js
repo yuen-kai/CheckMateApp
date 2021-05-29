@@ -92,7 +92,6 @@ export default class AddWorkTimeScreen extends React.Component {
     
    
     this.checkErrors()
-    console.log(this.overlap)
     workTimes.forEach(element => {
       if(JSON.stringify(workTime)!== JSON.stringify(element)&&((workTime.start!=null&&this.roundTime(workTime.start)>=this.roundTime(element.start)&&this.roundTime(workTime.start)<=this.roundTime(element.end))
       ||(workTime.end!=null&&this.roundTime(workTime.end)>=this.roundTime(element.start)&&this.roundTime(workTime.end)<=this.roundTime(element.end))
@@ -100,7 +99,6 @@ export default class AddWorkTimeScreen extends React.Component {
         this.overlap.push(element,workTime)
       }
     });
-    console.log(this.overlap)
     if(workTime.start!=null&&workTime.end!=null&&this.roundTime(workTime.end) - this.roundTime(workTime.start)<=0){
       this.invalid.push(workTime)
     }
@@ -133,11 +131,10 @@ export default class AddWorkTimeScreen extends React.Component {
     change.splice(new Date().getDay(), 1,true)
     this.setState({daysUsed:change})
     try {
-      const jsonValue = await AsyncStorage.getItem('workTimes')
-      workTimes =  jsonValue != null ? JSON.parse(jsonValue) : null;
-      if(workTimes == null){
-        workTimes=[]
-      }
+      const jsonValue = await AsyncStorage.getItem('savedWorkTimes')
+      var timesWork =  JSON.parse(jsonValue);
+      workTimes = timesWork[0][new Date().getDay()]
+      console.log(workTimes)
       var max=workTimes.length-1
       workTimes.forEach(element => {
         if(element.id>max){
@@ -207,6 +204,7 @@ export default class AddWorkTimeScreen extends React.Component {
           }
         };
         const jsonValue = JSON.stringify(savedTime)
+        
         await AsyncStorage.setItem('savedWorkTimes', jsonValue)
       }catch (e) {
         Alert.alert('Error saving','There has been an error saving your work time. Please try again.')
@@ -241,8 +239,10 @@ export default class AddWorkTimeScreen extends React.Component {
     return(
       
     <View style={styles.container}>
-      <ScrollView style={{padding:10}}>
+      <ScrollView style={{padding:10}}>      
       <Text style={{ fontSize: 20, padding:4}}>{this.days[new Date().getDay()]}, {this.monthNames[new Date().getMonth()]} {new Date().getDate()}</Text>
+
+      <Text style={{ fontSize: 14, padding:4}}>Enter the times when you're available to work:</Text>
         {
           workTimes.map((workTime, i) => {
             return(
