@@ -309,7 +309,7 @@ export default class AddWorkTimeScreen extends React.Component {
             this.state.daysUsed.map((day, i) => {
               return (
                 <Avatar key={i}
-                containerStyle={day==true?{backgroundColor:'#3C00BB',margin:1}:{backgroundColor:'gray',margin:1}}
+                containerStyle={day==true?{backgroundColor:'#152075',margin:1}:{backgroundColor:'gray',margin:1}}
                   size="small"
                   rounded
                   title={this.days[i].slice(0, 1)}
@@ -342,13 +342,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   button: {
-    backgroundColor: "#3C00BB",
+    backgroundColor: "#152075",
     padding: 6,
     margin: 10,
     borderRadius: 5,
   },
 workButton:{
-  backgroundColor: "#3C00BB",
+  backgroundColor: "#152075",
   padding: 6,
   alignItems: 'center',
   margin: 10,

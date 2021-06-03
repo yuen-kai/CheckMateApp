@@ -8,7 +8,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#00bfff"
+      "backgroundColor": "#6163c7"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -17,15 +17,17 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yuenkai.CheckMate"
     },
     "android": {
-      "adaptiveIcon":{
+      "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor":"#00bfff"
+        "backgroundColor": "#00bfff"
       },
-      "icon":"./assets/icon.png",
-      "softwareKeyboardLayoutMode": "pan"
+      "icon": "./assets/icon.png",
+      "softwareKeyboardLayoutMode": "pan",
+      "package": "com.yuenkai.CheckMate"
     },
     "web": {
       "favicon": "./assets/favicon.png"

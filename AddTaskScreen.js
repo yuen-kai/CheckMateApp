@@ -200,7 +200,7 @@ export default class AddTaskScreen extends React.Component {
               onValueChange={(importance) => this.setState({ importance })}
               minimumValue={1}
               maximumValue={10}
-              thumbTintColor='#3C00BB'
+              thumbTintColor='#152075'
               thumbProps={{
                 children: (
                   <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff'}}>{this.state.importance}</Text>
@@ -264,7 +264,7 @@ export default class AddTaskScreen extends React.Component {
               onValueChange={(dueImportance) => this.setState({ dueImportance })}
               minimumValue={1}
               maximumValue={5}
-              thumbTintColor='#3C00BB'
+              thumbTintColor='#152075'
               thumbProps={{
                 children: (
                   <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff' }}>{this.state.dueImportance}</Text>
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   button: {
-    backgroundColor: "#3C00BB",
+    backgroundColor: "#152075",
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
