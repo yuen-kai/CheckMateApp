@@ -18,7 +18,8 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.yuenkai.CheckMate"
+      "bundleIdentifier": "com.yuenkai.CheckMate",
+      "buildNumber": "1.1.0"
     },
     "android": {
       "adaptiveIcon": {

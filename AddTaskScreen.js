@@ -46,16 +46,26 @@ export default class AddTaskScreen extends React.Component {
 
   showMode(currentMode) {
     this.setState({show:true});
-    
     this.setState({mode:currentMode});
   };
 
   showDatepicker() {
-    this.showMode('date');
+    if(this.state.show==true){
+      this.setState({show: false});
+    }
+    else{
+      this.showMode('date');
+    }
+    
   };
 
   showTimepicker() {
+    if(this.state.show==true){
+      this.setState({show: false});
+    }
+    else{
     this.showMode('time');
+    }
   };
 
   getData = async () => {
@@ -240,16 +250,18 @@ export default class AddTaskScreen extends React.Component {
               </TouchableOpacity>
               </View>
             </View>
-            {this.state.show && (
+            
+          </View>
+          {this.state.show && (
             <DateTimePicker
               testID="dateTimePicker"
               value={this.state.date}
               mode={this.state.mode}
               display="default"
               onChange={this.onChange}
+              style={{width:'100%'}}
             />
             )}
-          </View>
           <View style={styles.section}>
             <Text style={{ fontSize: 17,padding:3}}>Due Date{'\n'}Importance:</Text>
             <View style={{flexGrow:1,marginLeft:20}}>

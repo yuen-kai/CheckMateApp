@@ -20,17 +20,15 @@ export default class AddWorkTimeScreen extends React.Component {
   "July", "August", "September", "October", "November", "December"
 ];
   id = 0
-  editIndex = -1
-  visible
+  
   
   state = {
-    newShow:false,
+    visible:-2,
     daysUsed:[false,false,false,false,false,false,false],
     type:'start',
     start: null,
     end: null,
     ready: false,
-    show: false,
     weekly:false
   }
 
@@ -68,9 +66,12 @@ export default class AddWorkTimeScreen extends React.Component {
 
   onTimeChange = (event, selectedDate) => {
     const currentDate = selectedDate || date;
-    this.setState({newShow:Platform.OS === 'ios',visible: -1});
+    var v = this.state.visible
+    if(Platform.OS !== 'ios'){
+      this.setState({visible:-2})
+    }
     var workTime
-    if(this.state.editIndex==-1){
+    if(v==-1){
       if(this.state.type == 'start'){
       this.setState({start:this.roundTime(currentDate)})
       }
@@ -80,17 +81,15 @@ export default class AddWorkTimeScreen extends React.Component {
       workTime = {start:this.state.start,end:this.state.end,id:this.id}
     }
     else{
-      workTime = workTimes[this.state.editIndex]
+      workTime = workTimes[v]
       if(this.state.type == 'start'){
-        workTime.start=currentDate
+        workTime.start=this.roundTime(currentDate)
         
         }
         else{
-          workTime.end=currentDate
+          workTime.end=this.roundTime(currentDate)
         }
     }
-    
-   
     this.checkErrors()
     workTimes.forEach(element => {
       if(JSON.stringify(workTime)!== JSON.stringify(element)&&((workTime.start!=null&&this.roundTime(workTime.start)>=this.roundTime(element.start)&&this.roundTime(workTime.start)<=this.roundTime(element.end))
@@ -102,28 +101,41 @@ export default class AddWorkTimeScreen extends React.Component {
     if(workTime.start!=null&&workTime.end!=null&&this.roundTime(workTime.end) - this.roundTime(workTime.start)<=0){
       this.invalid.push(workTime)
     }
-
-    if(workTime.start!=null&&workTime.end!=null&&this.overlap.includes(workTime) == false&&this.invalid.includes(workTime) == false){
-      if(this.state.editIndex!=-1){
-        workTimes.splice(workTimes.indexOf(workTime),1)
+    if(Platform.OS!=='ios'){
+      if(workTime.start!=null&&workTime.end!=null&&this.overlap.includes(workTime) == false&&this.invalid.includes(workTime) == false){
+        if(v!=-1){
+          workTimes.splice(workTimes.indexOf(workTime),1)
+        }
+        else{
+          this.setState({start:null,end:null})
+          this.id++
+        }
+        workTimes.splice(this.sortWorkTime(workTime),0,workTime)
       }
-      else{
-        this.setState({start:null,end:null})
-        this.id++
-      }
-      workTimes.splice(this.sortWorkTime(workTime),0,workTime)
     }
     this.setState({ready:true})
   };
 
   showTimepicker(index,endStart) {
-    if(index==-1){
-      this.setState({newShow:true})
+    if(Platform.OS==='ios'&&this.state.visible==index){
+      var v = this.state.visible
+      this.setState({visible:-2})
+      var workTime = {start:this.state.start,end:this.state.end,id:this.id}
+      if(workTime.start!=null&&workTime.end!=null&&this.overlap.includes(workTime) == false&&this.invalid.includes(workTime) == false){
+        if(v!=-1){
+          workTimes.splice(workTimes.indexOf(workTime),1)
+        }
+        else{
+          this.setState({start:null,end:null})
+          this.id++
+        }
+        workTimes.splice(this.sortWorkTime(workTime),0,workTime)
+      }
+      this.setState({ready:true})
     }
     else{
-      this.setState({visible:index})
+      this.setState({visible:index,type:endStart})
     }
-    this.setState({type:endStart,editIndex:index})
   }
 
   getData = async () => {
@@ -134,7 +146,6 @@ export default class AddWorkTimeScreen extends React.Component {
       const jsonValue = await AsyncStorage.getItem('savedWorkTimes')
       var timesWork =  JSON.parse(jsonValue);
       workTimes = timesWork[0][new Date().getDay()]
-      console.log(workTimes)
       var max=workTimes.length-1
       workTimes.forEach(element => {
         if(element.id>max){
@@ -221,9 +232,7 @@ export default class AddWorkTimeScreen extends React.Component {
     if(this.state.visible==i){
       return true
     }
-    else{
-      return Platform.OS === 'ios'
-    }
+    return false
   }
 
   changeDay(i){
@@ -256,15 +265,17 @@ export default class AddWorkTimeScreen extends React.Component {
                   <Text style={{ fontSize: 17,color: '#fff' }}>{this.displayTime(workTime.end)}</Text>
                 </TouchableOpacity>
                 {/* start picker */}
-                {this.show(i) && (
+                
+                <Icon size={35} style={{flex: 1}} name="x-circle" type='feather' onPress={() => this.handleDelete(i)}/>
+              </View>
+              {this.show(i) && (
                 <DateTimePicker
                   value={this.state.type=='start'?new Date(workTime.start):new Date(workTime.end)}
                   mode={'time'}
                   display="default"
                   onChange={this.onTimeChange}
+                  style={{width:'100%'}}
                 />)}
-                <Icon size={35} style={{flex: 1}} name="x-circle" type='feather' onPress={() => this.handleDelete(i)}/>
-              </View>
               {this.overlap.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>This overlaps with other work times!</Text>
                 :this.invalid.includes(workTime)==true?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
                 :null
@@ -284,14 +295,16 @@ export default class AddWorkTimeScreen extends React.Component {
             </TouchableOpacity>
             <View style={{flex: 1}}/>
             {/* start picker */}
-            {this.state.newShow && (
+            
+          </View>
+          {this.state.visible==-1 && (
             <DateTimePicker
-              value={this.state.type=='start'&&this.state.start==null?new Date():this.state.type=='start'?new Date(this.state.start):this.state.type=='end'&&this.state.end==null?new Date():this.state.end}
+              value={this.state.type=='start'&&this.state.start==null?new Date():this.state.type=='start'?new Date(this.state.start):this.state.type=='end'&&this.state.end==null?new Date():new Date(this.state.end)}
               mode={'time'}
               display="default"
               onChange={this.onTimeChange}
+              style={{width:'100%'}}
             />)}
-          </View>
           {this.overlap.findIndex((element)=>JSON.stringify({start:this.state.start,end:this.state.end,id:this.id}) == JSON.stringify(element))!=-1?<Text style={{ fontSize: 15, color: 'red' }}>This overlaps with other work times!</Text>
             :this.invalid.findIndex((element)=>JSON.stringify({start:this.state.start,end:this.state.end,id:this.id}) == JSON.stringify(element))!=-1?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
             :null
@@ -300,8 +313,8 @@ export default class AddWorkTimeScreen extends React.Component {
         <Text style={{ fontSize: 17, padding:3 }}>Use for:</Text>
         <CheckBox
             title='Weekly'
-            checked={this.state.checked}
-            onPress={() => this.setState({checked: !this.state.checked})}
+            checked={this.state.weekly}
+            onPress={() => this.setState({weekly: !this.state.weekly})}
           />
           <View style={{padding:8,flexDirection:'row',justifyContent: 'center',alignItems: 'center'}}>
           

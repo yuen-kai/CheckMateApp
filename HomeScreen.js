@@ -300,7 +300,7 @@ export default class HomeScreen extends React.Component {
     if(tasks.length > 0){
       return tasks[this.state.taskIndex].name
     }
-    return 'Select a Task'
+    return 'Add a Task'
   }
 
   findavailableTime(){
@@ -335,23 +335,6 @@ export default class HomeScreen extends React.Component {
     return (
       
       <SafeAreaView style={styles.container}>
-        {/* <SpeedDial
-          isOpen={this.open}
-          icon={{ name: 'edit', color: '#fff' }}
-          openIcon={{ name: 'close', color: '#fff' }}
-          onChange={() => setOpen(!this.open)}
-        >
-          <SpeedDial.Action
-            icon={{ name:"clipboard", type:"feather", color: '#fff' }}
-            title="Add"
-            onPress={() => console.log('Add Something')}
-          />
-          <SpeedDial.Action
-            icon={{name:"clock", type:"feather", color: '#fff' }}
-            title="Delete"
-            onPress={() => console.log('Delete Something')}
-          />
-        </SpeedDial> */}
         <View style={{flex:9}}>
           
         <View style={styles.top}> 
