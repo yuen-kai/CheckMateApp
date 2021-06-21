@@ -13,6 +13,7 @@ var workTimes = [];
 export default class HomeScreen extends React.Component {
   availableTime = 0
   intervalID
+  used =false
   // actions = [
   //   { icon: <Icon name="clipboard" size={50} type="feather"/>, name: 'New Task'},
   //   { icon: <Icon name="clock" size={50} type="feather"/>, name: 'New Work Time'}
@@ -26,11 +27,14 @@ export default class HomeScreen extends React.Component {
     selectable: true,
   };
 
+  day(time){
+    return Math.floor(new Date()/(60*1000*60*24))-Math.floor(new Date(time)/(60*1000*60*24))
+  }
+
   async savedTime(){
     try {
       const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
       var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
-      
       if(savedTime == null){
         savedTime = [new Array(7),new Array(7)]
         savedTime.forEach(element => {
@@ -38,14 +42,19 @@ export default class HomeScreen extends React.Component {
             element[i] = []
           }
         });
-      }
+      } 
       if(savedTime[0][new Date().getDay()].length==0){
         savedTime[0][new Date().getDay()] = [...savedTime[1][new Date().getDay()]]
       }
-      workTimes = savedTime[0][new Date().getDay()]
+      savedTime[0][new Date().getDay()].forEach(e => {
+        e.start=new Date(e.start).setFullYear(new Date(Date.now()).getFullYear(), new Date(Date.now()).getMonth(), new Date(Date.now()).getDate())
+        e.end=new Date(e.end).setFullYear(new Date(Date.now()).getFullYear(), new Date(Date.now()).getMonth(), new Date(Date.now()).getDate())
+      });
+      
+     
+      workTimes = [...savedTime[0][new Date().getDay()]]
         const jsonValue = JSON.stringify(savedTime)
         await AsyncStorage.setItem('savedWorkTimes', jsonValue)
-        this.sortWorkTimes()
         this.setState({ready:true})
     }catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
@@ -61,13 +70,15 @@ export default class HomeScreen extends React.Component {
     this.getData();
     this.intervalID=setInterval(
       () => this.setState({ready:true}),
-      5*1000
+      1000
     );
   }
 
 
   getData = async () => {
-    try {
+    if(this.used == false){
+      this.used = true
+      try {
       const taskJsonValue = await AsyncStorage.getItem('tasks')
       tasks =  taskJsonValue != null ? JSON.parse(taskJsonValue) : null;
       if(tasks == null){
@@ -78,6 +89,10 @@ export default class HomeScreen extends React.Component {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
+    this.used = false
+    }
+    
+    
   } 
 
   sortWorkTimes() {
@@ -410,7 +425,7 @@ export default class HomeScreen extends React.Component {
                         > 
                         
                         <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 17, color:'#555555',alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 17, alignSelf: 'center', color:'#555555'}}>{task.name}</Text>
-                        <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 12, color:'#555555', alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 12, alignSelf: 'center', color:'#555555'}}>{'Length: '+task.length}</Text>
+                        <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 12, color:'#555555', alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 12, alignSelf: 'center', color:'#555555'}}>{'Length: '+task.length+' min'+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
                         </TouchableOpacity>
                       </View>
                       );
