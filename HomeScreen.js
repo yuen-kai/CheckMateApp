@@ -13,7 +13,6 @@ var workTimes = [];
 export default class HomeScreen extends React.Component {
   availableTime = 0
   intervalID
-  used =false
   // actions = [
   //   { icon: <Icon name="clipboard" size={50} type="feather"/>, name: 'New Task'},
   //   { icon: <Icon name="clock" size={50} type="feather"/>, name: 'New Work Time'}
@@ -67,17 +66,25 @@ export default class HomeScreen extends React.Component {
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
 			this.getData();  
 		});
-    this.getData();
+    this.getSelectable()
     this.intervalID=setInterval(
       () => this.setState({ready:true}),
-      1000
+      500
     );
   }
 
+  async getSelectable() {
+    const JsonValue = await AsyncStorage.getItem('selectable')
+    selectable =  JsonValue != null ? JSON.parse(JsonValue) : null;
+    if(selectable == null){
+      selectable=false
+    }
+    this.setState({selectable:selectable})
+    this.savedTime()
+  }
 
   getData = async () => {
-    if(this.used == false){
-      this.used = true
+    
       try {
       const taskJsonValue = await AsyncStorage.getItem('tasks')
       tasks =  taskJsonValue != null ? JSON.parse(taskJsonValue) : null;
@@ -89,10 +96,7 @@ export default class HomeScreen extends React.Component {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
-    this.used = false
-    }
-    
-    
+    this.setState({ready: true})
   } 
 
   sortWorkTimes() {
@@ -100,13 +104,13 @@ export default class HomeScreen extends React.Component {
     for(var i=0; i<=workTimes.length-1;i++){
       if(new Date(workTimes[i].end).getTime()<=Date.now()){
         workTimes.splice(i, 1)
-        if(this.state.selectable==false){
-          this.pause()
-        }
       }
       else if(new Date(workTimes[i].start).getTime()<Date.now()){
         workTimes[i].start=new Date()
       }
+    }
+    if(workTimes.length>0&&new Date(workTimes[0].start).getTime()>Date.now()&&this.state.selectable==false){
+      this.pause()
     }
   }
 
@@ -133,7 +137,13 @@ export default class HomeScreen extends React.Component {
         time = new Date(workTimes[workIndex].start);
       }
       else if(this.state.selectable==false){
-        tasks[0].length -= Math.floor((Date.now()-new Date(tasks[0].start).getTime())/(1000*60))
+        
+        if(tasks[0].length-((this.time(new Date ())-this.time(tasks[0].start))/(1000*60))>0){
+          tasks[0].length -= ((this.time(new Date ())-this.time(new Date(tasks[0].start)))/(1000*60))
+        }
+        else{
+          tasks[0].length = 10
+        }
       }
         for (var i = 0; i <=tasks.length-1; i++){
           if (workIndex<=workTimes.length-1&&new Date(time).getTime()==new Date(workTimes[workIndex].end).getTime())
@@ -201,6 +211,8 @@ export default class HomeScreen extends React.Component {
       this.sortTask()
       tasks.splice(0, 0, selectedTask)
       tasks[0].start=Date.now()
+      this.saveTasks()
+      this.saveSeletable()
     }
     else if(workTimes.length==0||!(Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime())){
       Alert.alert(
@@ -217,15 +229,28 @@ export default class HomeScreen extends React.Component {
     
   }
 
+  async saveSeletable(){
+    try {
+      const jsonValue = JSON.stringify(false)
+      await AsyncStorage.setItem('selectable',jsonValue)
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
+  async removeSeletable(){
+    try {
+      const jsonValue = JSON.stringify(true)
+      await AsyncStorage.setItem('selectable',jsonValue)
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
   pause(){
-      if(tasks[0].length-((this.time(new Date ())-this.time(tasks[0].start))/(1000*60))>0){
-        tasks[0].length -= ((this.time(new Date ())-this.time(new Date(tasks[0].start)))/(1000*60))
-      }
-      else{
-        tasks[0].length = 10
-      }
       this.setState({ready:true,selectable:true})
     this.saveTasks()
+    this.removeSeletable()
   }
 
   remove(){
@@ -233,6 +258,7 @@ export default class HomeScreen extends React.Component {
       this.saveTasks()
       this.setState({taskIndex:0})
       this.setState({selectable:true})
+      this.removeSeletable()
   }
 
   stop(){
