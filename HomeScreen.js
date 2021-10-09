@@ -30,6 +30,40 @@ export default class HomeScreen extends React.Component {
     return Math.floor(new Date()/(60*1000*60*24))-Math.floor(new Date(time)/(60*1000*60*24))
   }
 
+  async savedTasks(){
+    try {
+      const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
+      var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
+      if(savedTask == null){
+        savedTask = [new Array(7),new Array(7)]
+        savedTask.forEach(element => {
+          for (let i = 0; i < element.length; i++) {
+            element[i] = []
+          }
+        });
+      } 
+      if(savedTask[0][new Date().getDay()].length==0){
+        savedTask[0][new Date().getDay()] = [...savedTask[1][new Date().getDay()]]
+      }
+      savedTask[0][new Date().getDay()].forEach(e => {
+        if(e.repeating = true) 
+        {
+          var d = new Date().setHours(0,0,0,0)
+          e.date = new Date(new Date(d).getTime()+e.dueIncrease)
+        }
+      });
+      
+     
+      tasks = [...savedTask[0][new Date().getDay()]]
+        const jsonValue = JSON.stringify(savedTask)
+        await AsyncStorage.setItem('tasks', jsonValue)
+        this.setState({ready:true})
+    }catch(e) {
+      Alert.alert('Failed to get data!','Failed to get data! Please try again.')
+      console.log(e)
+    }
+  }
+
   async savedTime(){
     try {
       const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
@@ -66,6 +100,7 @@ export default class HomeScreen extends React.Component {
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
 			this.getData();  
 		});
+    this.getData()
     this.getSelectable()
     this.intervalID=setInterval(
       () => this.setState({ready:true}),
@@ -84,18 +119,9 @@ export default class HomeScreen extends React.Component {
   }
 
   getData = async () => {
-    
-      try {
-      const taskJsonValue = await AsyncStorage.getItem('tasks')
-      tasks =  taskJsonValue != null ? JSON.parse(taskJsonValue) : null;
-      if(tasks == null){
-        tasks=[]
-      }
+      this.savedTasks()
       this.savedTime()
-    } catch(e) {
-      Alert.alert('Failed to get data!','Failed to get data! Please try again.')
-      console.log(e)
-    }
+    
     this.setState({ready: true})
   } 
 
@@ -276,7 +302,10 @@ export default class HomeScreen extends React.Component {
 
   async saveTasks(){
     try {
-      const jsonValue = JSON.stringify(tasks)
+      const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
+      var savedTask =  savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
+      savedTask[0][new Date().getDay()]=[...tasks]
+      const jsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('tasks', jsonValue)
     } catch (e) {
       console.log(e)
@@ -323,8 +352,8 @@ export default class HomeScreen extends React.Component {
   editTask = async () =>{
     if(tasks.length>0){
       try {
-        const jsonValue = JSON.stringify(this.state.taskIndex)
-        await AsyncStorage.setItem('editIndex', jsonValue)
+        const jsonValue = JSON.stringify(tasks[this.state.taskIndex].name)
+        await AsyncStorage.setItem('editName', jsonValue)
         this.props.navigation.navigate('AddTask')
       } catch (e) {
         Alert.alert('Error getting task edit info!','Failed to get task edit info! Please try again.')

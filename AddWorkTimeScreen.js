@@ -204,7 +204,7 @@ export default class AddWorkTimeScreen extends React.Component {
     if(this.overlap.length==0&&this.invalid.length==0){
       try {
         const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
-        var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
+        var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) :[2][7];
         for(var i=0;i<=this.state.daysUsed.length-1;i++){
           if(this.state.daysUsed[i]==true){
             savedTime[0][i]=[...workTimes]
