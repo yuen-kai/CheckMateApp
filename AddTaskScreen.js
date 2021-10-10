@@ -18,7 +18,7 @@ export default class AddTaskScreen extends React.Component {
   days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
   state = {
     daysUsed:[false,false,false,false,false,false,false],
-    date: new Date(),
+    date: new Date().setHours(24,0,0,0),
     mode: 'date',
     show: false,
     ready: false,
@@ -31,9 +31,9 @@ export default class AddTaskScreen extends React.Component {
     end: new Date(),
     weekly:false,
     repeating: false,
-    // dueIncrease: 0,
   }
 
+  //Get data
   componentDidMount(){
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
 			this.getData();
@@ -41,17 +41,50 @@ export default class AddTaskScreen extends React.Component {
 		});
   }
 
-  onChange = (event, selectedDate) => {
-    const currentDate = selectedDate || date;
-    this.setState({show: Platform.OS === 'ios'});
-    this.setState({date:currentDate});
-  };
+  getData = async () => {
+    let change = [...this.state.daysUsed]
+    change.splice(new Date().getDay(), 1,true)
+    this.setState({daysUsed:change})
+    try {
+      const jsonValue = await AsyncStorage.getItem('tasks')
+      savedTasks =  jsonValue != null ? JSON.parse(jsonValue) : null;
+      this.editInfo()
+      
+    } catch(e) {
+      Alert.alert('Failed to get data!','Failed to get data! Please try again.')
+      console.log(e)
+    }
+  }
 
-  showMode(currentMode) {
-    this.setState({show:true});
-    this.setState({mode:currentMode});
-  };
+  editInfo = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('editName')
+      this.editName = jsonValue != null ? JSON.parse(jsonValue) :null;
+      if(this.editName != null){
+        let change = [...this.state.daysUsed]
+        this.selectedTask = savedTasks[0][new Date().getDay()][savedTasks[0][new Date().getDay()].findIndex((task) =>task.name == this.editName)]
+        this.edit = true
+        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,dueImportance:this.selectedTask.dueImportance,repeating:this.selectedTask.repeating})
+        await AsyncStorage.removeItem('editName')
+        for(var i=0;i<=this.state.daysUsed.length-1;i++){
+          if(savedTasks[0][i].findIndex((task) =>task.name == this.editName)!=-1)
+          {
+            change.splice(i, 1,true)
+          }
+        };
+        if(savedTasks[1][new Date().getDay()].findIndex((task) =>task.name == this.editName)!=-1){
+          this.setState({weekly:true})
+        }
+        this.setState({daysUsed:change})
+      }
+    } catch(e) {
+      Alert.alert('Failed to get edit info!','Failed to get edit info! Please try again.')
+      console.log(e)
+    }
+    this.setState({ready:true})
+ }
 
+ //Date picker
   showDatepicker() {
     if(this.state.show==true){
       this.setState({show: false});
@@ -70,53 +103,19 @@ export default class AddTaskScreen extends React.Component {
     this.showMode('time');
     }
   };
+  
+  showMode(currentMode) {
+    this.setState({show:true});
+    this.setState({mode:currentMode});
+  };
 
-  getData = async () => {
-    let change = [...this.state.daysUsed]
-    change.splice(new Date().getDay(), 1,true)
-    this.setState({daysUsed:change})
-      try {
-        const jsonValue = await AsyncStorage.getItem('tasks')
-        savedTasks =  jsonValue != null ? JSON.parse(jsonValue) : null;
-        this.editInfo()
-        
-      } catch(e) {
-        Alert.alert('Failed to get data!','Failed to get data! Please try again.')
-        console.log(e)
-      }
-      
-   }
+  onChange = (event, selectedDate) => {
+    const currentDate = selectedDate || date;
+    this.setState({show: Platform.OS === 'ios'});
+    this.setState({date:currentDate});
+  };
 
-
-  editInfo = async () => {
-    try {
-      
-      const jsonValue = await AsyncStorage.getItem('editName')
-      this.editName = jsonValue != null ? JSON.parse(jsonValue) :null;
-      if(this.editName != null){
-        let change = [...this.state.daysUsed]
-        this.selectedTask = savedTasks[0][new Date().getDay()][savedTasks[0][new Date().getDay()].findIndex((task) =>task.name == this.editName)]
-        this.edit = true
-        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,dueImportance:this.selectedTask.dueImportance,repeating:this.selectedTask.repeating})
-        await AsyncStorage.removeItem('editName')
-          for(var i=0;i<=this.state.daysUsed.length-1;i++){
-            if(savedTasks[0][i].findIndex((task) =>task.name == this.editName)!=-1)
-            {
-              change.splice(i, 1,true)
-            }
-          };
-          if(savedTasks[1][new Date().getDay()].findIndex((task) =>task.name == this.editName)!=-1){
-            this.setState({weekly:true})
-          }
-          this.setState({daysUsed:change})
-      }
-    } catch(e) {
-      Alert.alert('Failed to get edit info!','Failed to get edit info! Please try again.')
-      console.log(e)
-    }
-    this.setState({ready:true})
- }
-
+  //Sort task into optimal position
   sortTask(tasks){
     for(var i=tasks.length-1; i>=0; i--) {
       
@@ -127,6 +126,7 @@ export default class AddTaskScreen extends React.Component {
     return 0
   }
 
+  //Display Time/Date
   displayTime(date){
     var hours = new Date(date).getHours()
     var minutes = new Date(date).getMinutes()
@@ -146,21 +146,25 @@ export default class AddTaskScreen extends React.Component {
     return hours+':'+minutes+' '+amPm
   }
 
-  changeDay(i){
-    let change = [...this.state.daysUsed]
-    change.splice(i, 1,!this.state.daysUsed[i])
-    this.setState({daysUsed:change})
-  }
-
   displayDate(date) {
     var month = new Date(date).getMonth()+1
     var day = new Date(date).getDate()
     return month+"/"+day
   }
 
+  //Update days used
+  changeDay(i){
+    let change = [...this.state.daysUsed]
+    change.splice(i, 1,!this.state.daysUsed[i])
+    this.setState({daysUsed:change})
+  }
+
+  // Saving/Processing
   handleSave = async () => {
     var sameName = false
     var count = 0
+
+    //Set parameters of the task
     this.state.daysUsed.forEach(element => {
       if(element){
         count++
@@ -169,19 +173,34 @@ export default class AddTaskScreen extends React.Component {
     if(count>=2){
       this.setState({repeating:true})
     }
+
     await this.setState({sortValue: new Date(this.state.date).getTime()-((((this.state.importance*8)/100)*(this.state.length))/((6-this.state.dueImportance)*30))*24*60*60*1000})
     var d = new Date().setHours(0,0,0,0)
     var dueIncrease  = new Date(this.state.date).getTime()-new Date(d).getTime();
     this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance,repeating:this.state.repeating,dueIncrease:dueIncrease}
 
     if(this.edit == false){
-      savedTasks[0][new Date().getDay()].forEach(element => {
-        if(element.name==this.selectedTask.name){
-          sameName = true
+      for (let i = 0; i < this.state.daysUsed.length; i++) {
+        if(this.state.daysUsed[i])
+        {
+          savedTasks[0][i].forEach(element => {
+            if(element.name==this.selectedTask.name){
+              sameName = true
+            }
+          });
+          if(this.state.weekly)
+          {
+            savedTasks[1][i].forEach(element => {
+              if(element.name==this.selectedTask.name){
+                sameName = true
+              }
+            });
+          }
         }
-      });
+      }
     }
     
+    //Check if valid
     if(this.state.name==""||this.state.importance==0||this.state.length==0){
       Alert.alert('Invalid Task','Not all fields have been filled out!')
     }
@@ -189,6 +208,7 @@ export default class AddTaskScreen extends React.Component {
       Alert.alert('Name Used','Name already used. Please select a new name.')
     }
     else{
+      //Put in task for all the days used
       for(var i=0;i<=this.state.daysUsed.length-1;i++){
         if(this.state.daysUsed[i]==true){
           if(this.edit==true){
@@ -203,16 +223,18 @@ export default class AddTaskScreen extends React.Component {
           }
         }
       };
+
       //save data
       try {
-        
         const jsonValue = JSON.stringify(savedTasks)
         await AsyncStorage.setItem('tasks', jsonValue)
       } catch (e) {
         console.log(e)
       }
+
+      //Go back to home page
       this.props.navigation.navigate('Home');
-      }
+    }
   };
 
 
@@ -223,7 +245,6 @@ export default class AddTaskScreen extends React.Component {
     return (
       <View style={styles.container}>
         <ScrollView style={{padding:20}} contentContainerStyle={{height:'100%'}}>
-          {/* behavior={Platform.OS == 'ios' ? 'padding' : 'height'} */}
           <View style={{flex:1}} >
           <View style={styles.section}>
           <Text style={{ fontSize: 17, padding:3}}>Name:</Text>
