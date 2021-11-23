@@ -6,7 +6,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Slider,Input,CheckBox,Avatar} from 'react-native-elements'
+import {Slider,Input,CheckBox,Avatar,Switch,Tooltip,Icon} from 'react-native-elements'
 
 var savedTasks
 
@@ -31,6 +31,8 @@ export default class AddTaskScreen extends React.Component {
     end: new Date(),
     weekly:false,
     repeating: false,
+    editMode: true,
+    overridable: false,
   }
 
   //Get data
@@ -64,7 +66,7 @@ export default class AddTaskScreen extends React.Component {
         let change = [...this.state.daysUsed]
         this.selectedTask = savedTasks[0][new Date().getDay()][savedTasks[0][new Date().getDay()].findIndex((task) =>task.name == this.editName)]
         this.edit = true
-        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,dueImportance:this.selectedTask.dueImportance,repeating:this.selectedTask.repeating})
+        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,dueImportance:this.selectedTask.dueImportance,repeating:this.selectedTask.repeating,overridable:this.selectedTask.overridable})
         await AsyncStorage.removeItem('editName')
         for(var i=0;i<=this.state.daysUsed.length-1;i++){
           if(savedTasks[0][i].findIndex((task) =>task.name == this.editName)!=-1)
@@ -115,17 +117,6 @@ export default class AddTaskScreen extends React.Component {
     this.setState({date:currentDate});
   };
 
-  //Sort task into optimal position
-  sortTask(tasks){
-    for(var i=tasks.length-1; i>=0; i--) {
-      
-      if(tasks[i].sortValue<=this.state.sortValue){
-        return i+1
-      }
-    }
-    return 0
-  }
-
   //Display Time/Date
   displayTime(date){
     var hours = new Date(date).getHours()
@@ -153,31 +144,24 @@ export default class AddTaskScreen extends React.Component {
   }
 
   //Update days used
-  changeDay(i){
+  async changeDay(i){
     let change = [...this.state.daysUsed]
     change.splice(i, 1,!this.state.daysUsed[i])
-    this.setState({daysUsed:change})
+    await this.setState({daysUsed:change})
+    this.isRepeating()
   }
 
   // Saving/Processing
   handleSave = async () => {
     var sameName = false
-    var count = 0
+    this.isRepeating();
 
-    //Set parameters of the task
-    this.state.daysUsed.forEach(element => {
-      if(element){
-        count++
-      }
-    });
-    if(count>=2){
-      this.setState({repeating:true})
-    }
-
-    await this.setState({sortValue: new Date(this.state.date).getTime()-((((this.state.importance*8)/100)*(this.state.length))/((6-this.state.dueImportance)*30))*24*60*60*1000})
+    //Set parameters
+    await this.setState({sortValue: (((new Date(this.state.date).getTime())/(1000*60*60))*(6-this.state.dueImportance)*(11-this.state.importance))+this.state.length})
+    // ((((this.state.importance*8)/100)*(this.state.length))/((6-this.state.dueImportance)*30))*24*60*60*1000
     var d = new Date().setHours(0,0,0,0)
     var dueIncrease  = new Date(this.state.date).getTime()-new Date(d).getTime();
-    this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance,repeating:this.state.repeating,dueIncrease:dueIncrease}
+    this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance,repeating:this.state.repeating,dueIncrease:dueIncrease,overridable:this.state.overridable}
 
     if(this.edit == false){
       for (let i = 0; i < this.state.daysUsed.length; i++) {
@@ -214,12 +198,17 @@ export default class AddTaskScreen extends React.Component {
           if(this.edit==true){
             savedTasks[0][i].splice(savedTasks[0][i].findIndex((task) =>task.name == this.editName),1)
           }
-          savedTasks[0][i].splice(this.sortTask(savedTasks[0][i]),0,this.selectedTask)
+          if(this.state.editMode==true){
+            savedTasks[0][i].push(this.selectedTask)
+          }
           if(this.state.weekly==true){
             if(this.edit==true){
               savedTasks[1][i].splice(savedTasks[1][i].findIndex((task) =>task.name == this.editName),1)
             }
-            savedTasks[1][i].splice(this.sortTask(savedTasks[1][i]),0,this.selectedTask)
+            if(this.state.editMode==true)
+            {
+              savedTasks[1][i].push(this.selectedTask)
+            }
           }
         }
       };
@@ -237,6 +226,23 @@ export default class AddTaskScreen extends React.Component {
     }
   };
 
+  //Set repeating
+  isRepeating() {
+    var count = 0;
+
+    this.state.daysUsed.forEach(element => {
+      if (element) {
+        count++;
+      }
+    });
+
+    if(this.setState.weekly||count >= 2) {
+      this.setState({ repeating: true, ready: true });
+    }
+    else{
+      this.setState({ repeating: false, ready: true});
+    }
+  }
 
   render(){
     if(!this.state.ready){
@@ -246,15 +252,15 @@ export default class AddTaskScreen extends React.Component {
       <View style={styles.container}>
         <ScrollView style={{padding:20}} contentContainerStyle={{height:'100%'}}>
           <View style={{flex:1}} >
-          <View style={styles.section}>
-          <Text style={{ fontSize: 17, padding:3}}>Name:</Text>
-          <Input
-              placeholder='Practice Piano'
-              renderErrorMessage={false}
-              onChangeText={name => this.setState({name})}
-              value = {this.state.name}
-            />
-          </View>
+            <View style={styles.section}>
+              <Text style={{ fontSize: 17, padding:3}}>Name:</Text>
+              <Input
+                placeholder='Practice Piano'
+                renderErrorMessage={false}
+                onChangeText={name => this.setState({name})}
+                value = {this.state.name}
+              />
+            </View>
           <View style={styles.section}>        
             <Text style={{ fontSize: 17,padding:3}}>Importance:</Text>
             <View style={{flexGrow:1,marginLeft:20}}>
@@ -347,12 +353,21 @@ export default class AddTaskScreen extends React.Component {
             />
             </View>
           </View>
-          <Text style={{ fontSize: 17, padding:3 }}>Use for:</Text>
-        <CheckBox
+          <View style={{flexDirection:'row'}}>
+            {this.state.editMode?<Text style={{ fontSize: 17, padding:3 }}>Use for:</Text>:<Text style={{ fontSize: 17, padding:3 }}>Remove for:</Text>}
+            {this.edit?
+              <Switch
+                value={this.state.editMode}
+                onValueChange={(value) => this.setState({editMode: value})}
+              />
+            :null}
+          </View>
+          <CheckBox
             title='Weekly'
             checked={this.state.weekly}
             onPress={() => this.setState({weekly: !this.state.weekly})}
           />
+          
           <View style={{padding:8,flexDirection:'row',justifyContent: 'center',alignItems: 'center'}}>
           
           {
@@ -370,7 +385,24 @@ export default class AddTaskScreen extends React.Component {
           }
           </View>
           {this.state.daysUsed.includes(true)==false?<Text style={{ fontSize: 15, color: 'red', alignSelf:'center'}}>Nothing is selected!</Text>:null}
-      
+          {this.state.repeating||this.state.weekly?
+          <View style={{flexDirection: 'row'}}>
+            <View style={{flexGrow:1}}>
+              <CheckBox
+                title='Overridable'
+                checked={this.state.overridable}
+                onPress={() => this.setState({overridable: !this.state.overridable})}
+              />
+            </View>
+            <View style={{alignItems: 'flex-end',justifyContent: 'center'}}>
+              <Tooltip popover={<Text>Should the new repeated version of the task overide the old one? If not, the versions will be combined into one."</Text>} height={120}>
+                {/* <Icon name='InfoCircleOutline' type='antdesign'/> */}
+                <Icon name="question-circle" type='font-awesome-5'/>
+              </Tooltip>
+            </View>
+          </View>
+          :null}
+
           <TouchableOpacity
             onPress={() => this.handleSave()}
             style={[styles.button,{bottom:0,right:0,alignSelf:'flex-end',position:'absolute',paddingVertical:0}]}>

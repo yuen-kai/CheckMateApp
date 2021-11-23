@@ -4,8 +4,7 @@ import { StyleSheet, Text, View,TouchableOpacity, ScrollView, Alert} from 'react
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Divider, SpeedDial} from 'react-native-elements';
-
+import {Icon,Divider, SpeedDial,Overlay,Button} from 'react-native-elements';
 var tasks = [];
 var workTimes = [];
 
@@ -17,9 +16,9 @@ export default class HomeScreen extends React.Component {
   state = {
     open:false,
     ready: false,
-    taskIndex: 0, 
-    previousIndex:0,
+    taskIndex: 0,
     selectable: true,
+    firstTime: false,
   };
 
   //get data
@@ -36,16 +35,38 @@ export default class HomeScreen extends React.Component {
   }
   
   getData = async () => {
-      this.savedTasks()
-      this.savedTime()
-    
+    this.firstTime()
+    this.savedTasks()
+    this.savedTime()
+    this.changeDay()
     this.setState({ready: true})
   } 
 
+  async firstTime(){
+    try {
+      const JsonValue = await AsyncStorage.getItem('first')
+      
+      var first = JsonValue != null ? JSON.parse(JsonValue) :null;
+      if(first==null){
+        this.setState({firstTime: true,ready:true})
+        const jsonValue = JSON.stringify(false)
+        await AsyncStorage.setItem('first', jsonValue)
+      }
+      this.setState({ready:true})
+    }catch(e) {
+      Alert.alert('Failed to get data!','Failed to get data! Please try again.')
+      console.log(e)
+    }
+  }
   async savedTasks(){
     try {
+      const dayJsonValue = await AsyncStorage.getItem('day')
+      var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
+      var oldTasks=[]
       const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
       var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
+
+      //Set up savedTask
       if(savedTask == null){
         savedTask = [new Array(7),new Array(7)]
         savedTask.forEach(element => {
@@ -53,24 +74,59 @@ export default class HomeScreen extends React.Component {
             element[i] = []
           }
         });
-      } 
-      if(savedTask[0][new Date().getDay()].length==0){
-        savedTask[0][new Date().getDay()] = [...savedTask[1][new Date().getDay()]]
       }
-      savedTask[0][new Date().getDay()].forEach(e => {
-        if(e.repeating = true) 
-        {
-          var d = new Date().setHours(0,0,0,0)
-          e.date = new Date(new Date(d).getTime()+e.dueIncrease)
+      //If it is a new day
+      if (day != null&&new Date(new Date().setHours(0,0,0,0)).getTime()!=new Date(day).getTime()) {
+        oldTasks = [...savedTask[0][new Date(day).getDay()]]
+        //If it is a new week, set the week's tasks to the weekly ones
+        if(new Date(new Date().setHours(0,0,0,0)).getTime()-new Date(day).getTime()>(new Date().getDay()-new Date(day).getDay())*1000*60*60*24){
+          savedTask[0]=[...savedTask[1]]
         }
-      });
+
+        //Shift due dates
+        savedTask[0][new Date().getDay()].forEach(e => {
+          if(e.repeating = true) 
+          {
+            var d = new Date().setHours(0,0,0,0)
+            e.date = new Date(new Date(d).getTime()+e.dueIncrease)
+          }
+        });
+        //Remove or edit recuring tasks
+        for(let i=0;i<oldTasks.length;i++){
+          var newIndex = savedTask[0][new Date().getDay()].findIndex((element)=>element.name.str==oldTasks[i].name.str)
+          if(newIndex!=-1){
+            if(savedTask[0][new Date().getDay()][newIndex].overridable){
+              oldTasks.splice(i,1)
+            }
+            else{
+              savedTask[0][new Date().getDay()][newIndex].length=parseInt(savedTask[0][new Date().getDay()][newIndex].length)
+              oldTasks[i].length = parseInt(oldTasks[i].length)
+              savedTask[0][new Date().getDay()][newIndex].length+=oldTasks[i].length
+              savedTask[0][new Date().getDay()][newIndex].date=new Date((new Date(savedTask[0][new Date().getDay()][newIndex].date).getTime()+new Date(oldTasks[i].date).getTime())/2)
+              savedTask[0][new Date().getDay()][newIndex].sortValue = (((new Date(savedTask[0][new Date().getDay()][newIndex].date).getTime())/(1000*60*60))*(6-savedTask[0][new Date().getDay()][newIndex].dueImportance)*(11-savedTask[0][new Date().getDay()][newIndex].importance))+savedTask[0][new Date().getDay()][newIndex].length
+              oldTasks.splice(i,1)
+
+              savedTask[0][new Date().getDay()][newIndex].repeating = false
+            }
+          }
+        }
+        tasks=oldTasks.concat(savedTask[0][new Date().getDay()])
+        savedTask[0][new Date().getDay()] = [...tasks]
+      }
+      else{
+        if(this.state.taskIndex>=savedTask[0][new Date().getDay()].length){
+          this.setState({taskIndex:0})
+        }
+        tasks = savedTask[0][new Date().getDay()]
+      }
+
+      this.sortTask()
+      this.setState({ready:true})
       
-     
-      tasks = [...savedTask[0][new Date().getDay()]]
-        const jsonValue = JSON.stringify(savedTask)
-        await AsyncStorage.setItem('tasks', jsonValue)
-        this.setState({ready:true})
+      const jsonValue = JSON.stringify(savedTask)
+      await AsyncStorage.setItem('tasks', jsonValue)
     }catch(e) {
+      
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
@@ -78,8 +134,11 @@ export default class HomeScreen extends React.Component {
 
   async savedTime(){
     try {
+      const dayJsonValue = await AsyncStorage.getItem('day')
+      var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
+     
       const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
-      var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
+      var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : new Date().setHours(0,0,0,0);
       if(savedTime == null){
         savedTime = [new Array(7),new Array(7)]
         savedTime.forEach(element => {
@@ -88,8 +147,8 @@ export default class HomeScreen extends React.Component {
           }
         });
       } 
-      if(savedTime[0][new Date().getDay()].length==0){
-        savedTime[0][new Date().getDay()] = [...savedTime[1][new Date().getDay()]]
+      if(new Date(new Date().setHours(0,0,0,0)).getTime()-new Date(day).getTime()>(new Date().getDay()-new Date(day).getDay())*1000*60*60*24){
+        savedTime[0]=[...savedTime[1]]
       }
       savedTime[0][new Date().getDay()].forEach(e => {
         e.start=new Date(e.start).setFullYear(new Date(Date.now()).getFullYear(), new Date(Date.now()).getMonth(), new Date(Date.now()).getDate())
@@ -98,22 +157,37 @@ export default class HomeScreen extends React.Component {
       
      
       workTimes = [...savedTime[0][new Date().getDay()]]
+      this.setState({ready:true})
         const jsonValue = JSON.stringify(savedTime)
         await AsyncStorage.setItem('savedWorkTimes', jsonValue)
-        this.setState({ready:true})
     }catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
   }
   
+  async changeDay(){
+    try {
+      const dayJsonValue = await AsyncStorage.getItem('day')
+      var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
+      if (day == null||new Date().setHours(0,0,0,0)!=day){
+        day = new Date().setHours(0,0,0,0)
+        this.setState({ready:true})
+        const jsonValue = JSON.stringify(day)
+        await AsyncStorage.setItem('day', jsonValue)
+      }
+    }catch(e) {
+      console.log(e)
+    }
+  }
+
   async getSelectable() {
     const JsonValue = await AsyncStorage.getItem('selectable')
     selectable =  JsonValue != null ? JSON.parse(JsonValue) : null;
     if(selectable == null){
       selectable=false
     }
-    this.setState({selectable:selectable})
+    this.setState({ready:true,selectable:selectable})
     this.savedTime()
   }
 
@@ -311,16 +385,10 @@ export default class HomeScreen extends React.Component {
     }
   }
 
-  //Rearange tasks to original order; moves first task back to optimized position
+  //Sort tasks
   sortTask(){
-    for(var i=tasks.length-1; i>=0; i--) {
-      if(tasks[i].sortValue<=tasks[0].sortValue){
-        var sortTask = tasks[0]
-        tasks.splice(0,1)
-        tasks.splice(i, 0, sortTask)
-      }
-    }
-    this.saveTasks()
+    tasks.sort(function(a, b){return a.sortValue - b.sortValue});
+    
     this.setState({ready:true})
   }
 
@@ -408,22 +476,43 @@ export default class HomeScreen extends React.Component {
     return (
       
       <SafeAreaView style={styles.container}>
-        
+
+        <Overlay isVisible={this.state.firstTime} onBackdropPress={()=>this.setState({firstTime:false})}>
+          <Text style={{ fontSize: 30, alignSelf: 'center' }}>Welcome to CheckMate!</Text>
+          <Text style={{fontSize:23, alignSelf: 'center'}}>Instructions:{"\n"}</Text>
+          <Text style={{fontSize:17,padding:5}}>
+1. Add tasks by clicking the "Add Task" button at the top of the screen and then answering the questions that follow.{"\n\n"}
+2. Add work times (times your available to work) by clicking the "Add WorkTimes" button at the top of the screen and then filling out the start and end times. You can set your work times to be also used on other days in the 'use for' section.{"\n\n"}
+3. Back on the home page, select a task by clicking on it.{"\n\n"}
+4. During your work times, play, pause and finish the selected task by clicking the buttons on the bottom of the page.{"\n\n"}
+5. Repeat{"\n\n"}
+6. Be productive!{"\n\n\n"}</Text>
+          <Button
+            containerStyle = {{justifyContent:"flex-end"}}
+            title = "Close"
+            onPress={()=>this.setState({firstTime:false,ready:true})}
+          />
+        </Overlay>
+
         <View style={{flex:9}}>
         <View style={styles.top}> 
           {/* Adding Display */}
-         <TouchableOpacity style={{flexDirection:'row', backgroundColor:'#152075', marginRight:7, padding:5, borderRadius:5}} onPress={() =>navigate('AddTask')}>   
-          <Icon name="plus-circle" color='#fff' size={20} type="feather"/>
-          <View style={{alignItems: 'center',marginHorizontal:5}}>
-            <Text style={{ fontSize: 13, color: '#fff' }}>Add</Text>
-            <Text style={{ fontSize: 13, color: '#fff' }}>Task</Text>
-          </View>
+          <Button
+            icon={<Icon name="question-circle" type='font-awesome-5'/>}
+            onPress={()=>this.setState({firstTime:true})}
+          />
+          <TouchableOpacity style={{flexDirection:'row', backgroundColor:'#152075', marginRight:7, padding:5, borderRadius:5}} onPress={() =>navigate('AddTask')}>   
+            <Icon name="plus-circle" color='#fff' size={20} type="feather"/>
+            <View style={{alignItems: 'center',marginHorizontal:5}}>
+              <Text style={{ fontSize: 13, color: '#fff' }}>Add</Text>
+              <Text style={{ fontSize: 13, color: '#fff' }}>Task</Text>
+            </View>
           </TouchableOpacity>    
           <TouchableOpacity style={{flexDirection:'row', backgroundColor:'#152075', padding:5, borderRadius:5}} onPress={() =>navigate('AddWorkTime')}>
           <Icon name="clock" color='#fff' size={20} type="feather"/> 
           <View style={{alignItems: 'center',marginHorizontal:5}}>
             <Text style={{ fontSize: 13, color: '#fff' }}>Add</Text>
-            <Text style={{ fontSize: 13, color: '#fff'}}>WorkTime</Text>
+            <Text style={{ fontSize: 13, color: '#fff'}}>WorkTimes</Text>
           </View>
           </TouchableOpacity>
         </View>
@@ -494,7 +583,7 @@ export default class HomeScreen extends React.Component {
               
             {/* Reset order display */}
             <View style={{padding:8}}>
-              {tasks.length>=2&&tasks[1].sortValue<tasks[0].sortValue?
+              {tasks.length>=2&&tasks[0].sortValue<tasks[1].sortValue?
               <TouchableOpacity onPress={() => this.sortTask()} style={[styles.button,{flex:1}]}>
               <Text style={{ fontSize: 20, color: '#fff' }}>Reset Order</Text>
             </TouchableOpacity>
