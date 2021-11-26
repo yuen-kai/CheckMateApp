@@ -35,8 +35,9 @@ export default class HomeScreen extends React.Component {
   }
   
   getData = async () => {
-    this.firstTime()
+    
     this.savedTasks()
+    this.firstTime()
     this.savedTime()
     this.changeDay()
     this.setState({ready: true})
@@ -65,9 +66,12 @@ export default class HomeScreen extends React.Component {
       var oldTasks=[]
       const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
       var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
-
+      const JsonValue = await AsyncStorage.getItem('first')
+      var first = JsonValue != null ? JSON.parse(JsonValue) :true;
+      var needUpdate = false;
       //Set up savedTask
       if(savedTask == null){
+        needUpdate = true
         savedTask = [new Array(7),new Array(7)]
         savedTask.forEach(element => {
           for (let i = 0; i < element.length; i++) {
@@ -89,27 +93,37 @@ export default class HomeScreen extends React.Component {
           {
             var d = new Date().setHours(0,0,0,0)
             e.date = new Date(new Date(d).getTime()+e.dueIncrease)
+            e.sortValue = parseInt(((new Date(e.date).getTime())/(1000*60*60))*(6-e.dueImportance)*(11-e.importance))+parseInt(e.length)
           }
         });
         //Remove or edit recuring tasks
         for(let i=0;i<oldTasks.length;i++){
-          var newIndex = savedTask[0][new Date().getDay()].findIndex((element)=>element.name.str==oldTasks[i].name.str)
+          console.log(i)
+          console.log(oldTasks[i]);
+          var newIndex = savedTask[0][new Date().getDay()].findIndex((element)=>element.name==oldTasks[i].name)
+          console.log(savedTask[0][new Date().getDay()][newIndex])
           if(newIndex!=-1){
+            console.log("repeat")
             if(savedTask[0][new Date().getDay()][newIndex].overridable){
+              console.log("the fuck?")
               oldTasks.splice(i,1)
+              i--
             }
             else{
+              console.log("not overridable")
               savedTask[0][new Date().getDay()][newIndex].length=parseInt(savedTask[0][new Date().getDay()][newIndex].length)
               oldTasks[i].length = parseInt(oldTasks[i].length)
               savedTask[0][new Date().getDay()][newIndex].length+=oldTasks[i].length
-              savedTask[0][new Date().getDay()][newIndex].date=new Date((new Date(savedTask[0][new Date().getDay()][newIndex].date).getTime()+new Date(oldTasks[i].date).getTime())/2)
-              savedTask[0][new Date().getDay()][newIndex].sortValue = (((new Date(savedTask[0][new Date().getDay()][newIndex].date).getTime())/(1000*60*60))*(6-savedTask[0][new Date().getDay()][newIndex].dueImportance)*(11-savedTask[0][new Date().getDay()][newIndex].importance))+savedTask[0][new Date().getDay()][newIndex].length
+              // savedTask[0][new Date().getDay()][newIndex].date=new Date((new Date(savedTask[0][new Date().getDay()][newIndex].date).getTime()+new Date(oldTasks[i].date).getTime())/2)
+              savedTask[0][new Date().getDay()][newIndex].sortValue = parseInt(((new Date(savedTask[0][new Date().getDay()][newIndex].date).getTime())/(1000*60*60))*(6-savedTask[0][new Date().getDay()][newIndex].dueImportance)*(11-savedTask[0][new Date().getDay()][newIndex].importance))+parseInt(savedTask[0][new Date().getDay()][newIndex].length)
               oldTasks.splice(i,1)
-
+              i--
               savedTask[0][new Date().getDay()][newIndex].repeating = false
             }
           }
         }
+        console.log(oldTasks)
+        console.log(savedTask[0][new Date().getDay()])
         tasks=oldTasks.concat(savedTask[0][new Date().getDay()])
         savedTask[0][new Date().getDay()] = [...tasks]
       }
@@ -119,7 +133,12 @@ export default class HomeScreen extends React.Component {
         }
         tasks = savedTask[0][new Date().getDay()]
       }
-
+      
+      if(first&&!needUpdate){
+        tasks.forEach(element => {
+          element.sortValue=parseInt(((new Date(element.date).getTime())/(1000*60*60))*(6-element.dueImportance)*(11-element.importance))+parseInt(element.length)
+        });
+      }
       this.sortTask()
       this.setState({ready:true})
       
@@ -307,7 +326,6 @@ export default class HomeScreen extends React.Component {
       var selectedTask = tasks[this.state.taskIndex]
       tasks.splice(this.state.taskIndex, 1)
       this.setState({taskIndex: 0})
-      this.sortTask()
       tasks.splice(0, 0, selectedTask)
       tasks[0].start=Date.now()
       this.saveTasks()
@@ -387,8 +405,15 @@ export default class HomeScreen extends React.Component {
 
   //Sort tasks
   sortTask(){
+    // console.log("before")
+    // tasks.forEach(element => {
+    //   console.log(element.sortValue)
+    // });
     tasks.sort(function(a, b){return a.sortValue - b.sortValue});
-    
+    // console.log("after")
+    // tasks.forEach(element => {
+    //   console.log(element.sortValue)
+    // });
     this.setState({ready:true})
   }
 
@@ -478,18 +503,19 @@ export default class HomeScreen extends React.Component {
       <SafeAreaView style={styles.container}>
 
         <Overlay isVisible={this.state.firstTime} onBackdropPress={()=>this.setState({firstTime:false})}>
-          <Text style={{ fontSize: 30, alignSelf: 'center' }}>Welcome to CheckMate!</Text>
+          <Text style={{ fontSize: 28, alignSelf: 'center' }}>Welcome to CheckMate!</Text>
           <Text style={{fontSize:23, alignSelf: 'center'}}>Instructions:{"\n"}</Text>
           <Text style={{fontSize:17,padding:5}}>
-1. Add tasks by clicking the "Add Task" button at the top of the screen and then answering the questions that follow.{"\n\n"}
-2. Add work times (times your available to work) by clicking the "Add WorkTimes" button at the top of the screen and then filling out the start and end times. You can set your work times to be also used on other days in the 'use for' section.{"\n\n"}
+1. Add tasks by clicking the "Add Task" button at the top of the screen and then answering the questions that follow. You can set your tasks to be also used on other days in the "use for" section.{"\n\n"}
+2. Add work times (times your available to work) by clicking the "Add WorkTimes" button at the top of the screen and then filling out the start and end times. Just like for tasks, you can set your work times to be also used on other days in the "use for" section.{"\n\n"}
 3. Back on the home page, select a task by clicking on it.{"\n\n"}
 4. During your work times, play, pause and finish the selected task by clicking the buttons on the bottom of the page.{"\n\n"}
 5. Repeat{"\n\n"}
-6. Be productive!{"\n\n\n"}</Text>
+6. Be productive!{"\n\n"}</Text>
           <Button
             containerStyle = {{justifyContent:"flex-end"}}
             title = "Close"
+            raised = {true}
             onPress={()=>this.setState({firstTime:false,ready:true})}
           />
         </Overlay>
@@ -497,10 +523,14 @@ export default class HomeScreen extends React.Component {
         <View style={{flex:9}}>
         <View style={styles.top}> 
           {/* Adding Display */}
-          <Button
-            icon={<Icon name="question-circle" type='font-awesome-5'/>}
-            onPress={()=>this.setState({firstTime:true})}
-          />
+          <View style={{position: 'absolute', left: 0, padding:10}}>
+            <Icon 
+              name="question-circle" 
+              type='font-awesome-5' 
+              size = {25}
+              onPress={()=>this.setState({firstTime:true})}
+            />
+          </View>
           <TouchableOpacity style={{flexDirection:'row', backgroundColor:'#152075', marginRight:7, padding:5, borderRadius:5}} onPress={() =>navigate('AddTask')}>   
             <Icon name="plus-circle" color='#fff' size={20} type="feather"/>
             <View style={{alignItems: 'center',marginHorizontal:5}}>
@@ -583,7 +613,7 @@ export default class HomeScreen extends React.Component {
               
             {/* Reset order display */}
             <View style={{padding:8}}>
-              {tasks.length>=2&&tasks[0].sortValue<tasks[1].sortValue?
+              {tasks.length>=2&&parseInt(tasks[0].sortValue)>parseInt(tasks[1].sortValue)?
               <TouchableOpacity onPress={() => this.sortTask()} style={[styles.button,{flex:1}]}>
               <Text style={{ fontSize: 20, color: '#fff' }}>Reset Order</Text>
             </TouchableOpacity>

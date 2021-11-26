@@ -157,7 +157,7 @@ export default class AddTaskScreen extends React.Component {
     this.isRepeating();
 
     //Set parameters
-    await this.setState({sortValue: (((new Date(this.state.date).getTime())/(1000*60*60))*(6-this.state.dueImportance)*(11-this.state.importance))+this.state.length})
+    await this.setState({sortValue: parseInt(((new Date(this.state.date).getTime())/(1000*60*60))*(6-this.state.dueImportance)*(11-this.state.importance))+parseInt(this.state.length)})
     // ((((this.state.importance*8)/100)*(this.state.length))/((6-this.state.dueImportance)*30))*24*60*60*1000
     var d = new Date().setHours(0,0,0,0)
     var dueIncrease  = new Date(this.state.date).getTime()-new Date(d).getTime();
@@ -269,12 +269,16 @@ export default class AddTaskScreen extends React.Component {
               <Text style={{ fontSize: 13}}>Most</Text>
               </View>
             <Slider
-            thumbStyle={{width:25,height:25}}
-            trackStyle={{width:'100%'}}
+              thumbStyle={{width:25,height:25}}
+              trackStyle={{width:'100%'}}
               value={this.state.importance}
+              animateTransitions={true}
+              allowTouchTrack={true}
               onValueChange={(importance) => this.setState({ importance })}
+              
               minimumValue={1}
               maximumValue={10}
+              
               thumbTintColor='#152075'
               thumbProps={{
                 children: (
@@ -282,7 +286,7 @@ export default class AddTaskScreen extends React.Component {
                 ),
               }}
               
-              allowTouchTrack={true}
+              
               step={1}
             />
             </View>
@@ -341,6 +345,7 @@ export default class AddTaskScreen extends React.Component {
               onValueChange={(dueImportance) => this.setState({ dueImportance })}
               minimumValue={1}
               maximumValue={5}
+              allowTouchTrack={true}
               thumbTintColor='#152075'
               thumbProps={{
                 children: (
@@ -348,7 +353,7 @@ export default class AddTaskScreen extends React.Component {
                 ),
               }}
               trackStyle={{width:'100%'}}
-              allowTouchTrack={true}
+              
               step={1}
             />
             </View>
@@ -389,13 +394,13 @@ export default class AddTaskScreen extends React.Component {
           <View style={{flexDirection: 'row'}}>
             <View style={{flexGrow:1}}>
               <CheckBox
-                title='Overridable'
+                title='Override'
                 checked={this.state.overridable}
                 onPress={() => this.setState({overridable: !this.state.overridable})}
               />
             </View>
             <View style={{alignItems: 'flex-end',justifyContent: 'center'}}>
-              <Tooltip popover={<Text>Should the new repeated version of the task overide the old one? If not, the versions will be combined into one."</Text>} height={120}>
+              <Tooltip popover={<Text>Should the new repeated version of the task override the old one? If not, the versions will be combined into one.</Text>} height={120}>
                 {/* <Icon name='InfoCircleOutline' type='antdesign'/> */}
                 <Icon name="question-circle" type='font-awesome-5'/>
               </Tooltip>
