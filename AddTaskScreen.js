@@ -163,7 +163,12 @@ export default class AddTaskScreen extends React.Component {
       var d = new Date().setHours(0,0,0,0)
     }
     else{
-      var d = new Date().setDate(new Date().getDate()+this.state.daysUsed.indexOf(true)-new Date().getDay())
+      if(this.state.daysUsed.indexOf(true)-new Date().getDay()>0){
+        var d = new Date().setDate(new Date().getDate()+this.state.daysUsed.indexOf(true)-new Date().getDay())
+      }
+      else{
+        var d = new Date().setDate(new Date().getDate()+this.state.daysUsed.indexOf(true)-new Date().getDay()+7)
+      }
       d = new Date(d).setHours(0,0,0,0)
     }
     var dueIncrease  = new Date(this.state.date).getTime()-new Date(d).getTime();
