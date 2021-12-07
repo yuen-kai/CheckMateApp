@@ -24,7 +24,7 @@ export default class AddTaskScreen extends React.Component {
     ready: false,
     name: "",
     importance: 5,
-    dueImportance: 1,
+    dueImportance: 3,
     length: 0,
     sortValue: 0,
     start: new Date(),
@@ -157,9 +157,15 @@ export default class AddTaskScreen extends React.Component {
     this.isRepeating();
 
     //Set parameters
-    await this.setState({sortValue: parseInt(((new Date(this.state.date).getTime())/(1000*60*60))*(6-this.state.dueImportance)*(11-this.state.importance))+parseInt(this.state.length)})
+    await this.setState({sortValue: parseInt(((new Date(this.state.date).getTime())/(1000*60*60))+(6-this.state.dueImportance)*2*(11-this.state.importance))+parseInt(this.state.length)/10})
     // ((((this.state.importance*8)/100)*(this.state.length))/((6-this.state.dueImportance)*30))*24*60*60*1000
-    var d = new Date().setHours(0,0,0,0)
+    if(this.state.daysUsed[new Date().getDay()]){
+      var d = new Date().setHours(0,0,0,0)
+    }
+    else{
+      var d = new Date().setDate(new Date().getDate()+this.state.daysUsed.indexOf(true)-new Date().getDay())
+      d = new Date(d).setHours(0,0,0,0)
+    }
     var dueIncrease  = new Date(this.state.date).getTime()-new Date(d).getTime();
     this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance,repeating:this.state.repeating,dueIncrease:dueIncrease,overridable:this.state.overridable}
 
@@ -359,7 +365,7 @@ export default class AddTaskScreen extends React.Component {
             </View>
           </View>
           <View style={{flexDirection:'row'}}>
-            {this.state.editMode?<Text style={{ fontSize: 17, padding:3 }}>Use for:</Text>:<Text style={{ fontSize: 17, padding:3 }}>Remove for:</Text>}
+            {this.state.editMode?this.edit?<Text style={{ fontSize: 17, padding:3 }}>Edit for:</Text>:<Text style={{ fontSize: 17, padding:3 }}>Use for:</Text>:<Text style={{ fontSize: 17, padding:3 }}>Remove for:</Text>}
             {this.edit?
               <Switch
                 value={this.state.editMode}

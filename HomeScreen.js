@@ -19,6 +19,7 @@ export default class HomeScreen extends React.Component {
     taskIndex: 0,
     selectable: true,
     firstTime: false,
+    sTask: null,
   };
 
   //get data
@@ -26,7 +27,7 @@ export default class HomeScreen extends React.Component {
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
       this.getData();  
     });
-    this.getData()
+    // this.getData()
     this.getSelectable()
     this.intervalID=setInterval(
       () => this.setState({ready:true}),
@@ -35,7 +36,6 @@ export default class HomeScreen extends React.Component {
   }
   
   getData = async () => {
-    
     this.savedTasks()
     this.firstTime()
     this.savedTime()
@@ -45,15 +45,15 @@ export default class HomeScreen extends React.Component {
 
   async firstTime(){
     try {
-      const JsonValue = await AsyncStorage.getItem('first')
+      const JsonValue = await AsyncStorage.getItem('newfirst')
       
       var first = JsonValue != null ? JSON.parse(JsonValue) :null;
       if(first==null){
         this.setState({firstTime: true,ready:true})
         const jsonValue = JSON.stringify(false)
-        await AsyncStorage.setItem('first', jsonValue)
+        await AsyncStorage.setItem('newfirst', jsonValue)
       }
-      this.setState({ready:true})
+      // this.setState({ready:true})
     }catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
@@ -61,13 +61,19 @@ export default class HomeScreen extends React.Component {
   }
   async savedTasks(){
     try {
+      const JsonValue = await AsyncStorage.getItem('newfirst')
+      var first = JsonValue != null ? JSON.parse(JsonValue) :true;
       const dayJsonValue = await AsyncStorage.getItem('day')
       var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
       var oldTasks=[]
       const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
       var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
-      const JsonValue = await AsyncStorage.getItem('first')
-      var first = JsonValue != null ? JSON.parse(JsonValue) :true;
+
+      if(first){
+        day = null;
+        savedTask = null;
+      }
+      
       var needUpdate = false;
       //Set up savedTask
       if(savedTask == null){
@@ -93,37 +99,29 @@ export default class HomeScreen extends React.Component {
           {
             var d = new Date().setHours(0,0,0,0)
             e.date = new Date(new Date(d).getTime()+e.dueIncrease)
-            e.sortValue = parseInt(((new Date(e.date).getTime())/(1000*60*60))*(6-e.dueImportance)*(11-e.importance))+parseInt(e.length)
+            e.sortValue =this.updateSortValue(e)
           }
         });
         //Remove or edit recuring tasks
         for(let i=0;i<oldTasks.length;i++){
-          console.log(i)
-          console.log(oldTasks[i]);
           var newIndex = savedTask[0][new Date().getDay()].findIndex((element)=>element.name==oldTasks[i].name)
-          console.log(savedTask[0][new Date().getDay()][newIndex])
           if(newIndex!=-1){
-            console.log("repeat")
             if(savedTask[0][new Date().getDay()][newIndex].overridable){
-              console.log("the fuck?")
               oldTasks.splice(i,1)
               i--
             }
             else{
-              console.log("not overridable")
               savedTask[0][new Date().getDay()][newIndex].length=parseInt(savedTask[0][new Date().getDay()][newIndex].length)
               oldTasks[i].length = parseInt(oldTasks[i].length)
               savedTask[0][new Date().getDay()][newIndex].length+=oldTasks[i].length
               // savedTask[0][new Date().getDay()][newIndex].date=new Date((new Date(savedTask[0][new Date().getDay()][newIndex].date).getTime()+new Date(oldTasks[i].date).getTime())/2)
-              savedTask[0][new Date().getDay()][newIndex].sortValue = parseInt(((new Date(savedTask[0][new Date().getDay()][newIndex].date).getTime())/(1000*60*60))*(6-savedTask[0][new Date().getDay()][newIndex].dueImportance)*(11-savedTask[0][new Date().getDay()][newIndex].importance))+parseInt(savedTask[0][new Date().getDay()][newIndex].length)
+              savedTask[0][new Date().getDay()][newIndex].sortValue = this.updateSortValue(savedTask[0][new Date().getDay()][newIndex])
               oldTasks.splice(i,1)
               i--
               savedTask[0][new Date().getDay()][newIndex].repeating = false
             }
           }
         }
-        console.log(oldTasks)
-        console.log(savedTask[0][new Date().getDay()])
         tasks=oldTasks.concat(savedTask[0][new Date().getDay()])
         savedTask[0][new Date().getDay()] = [...tasks]
       }
@@ -136,12 +134,13 @@ export default class HomeScreen extends React.Component {
       
       if(first&&!needUpdate){
         tasks.forEach(element => {
-          element.sortValue=parseInt(((new Date(element.date).getTime())/(1000*60*60))*(6-element.dueImportance)*(11-element.importance))+parseInt(element.length)
+          element.sortValue = this.updateSortValue(element)
+          element.repeating = false;
         });
       }
       this.sortTask()
-      this.setState({ready:true})
-      
+      // this.selectTasks()
+      // this.setState({ready:true})
       const jsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('tasks', jsonValue)
     }catch(e) {
@@ -157,7 +156,7 @@ export default class HomeScreen extends React.Component {
       var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
      
       const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
-      var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : new Date().setHours(0,0,0,0);
+      var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
       if(savedTime == null){
         savedTime = [new Array(7),new Array(7)]
         savedTime.forEach(element => {
@@ -176,7 +175,7 @@ export default class HomeScreen extends React.Component {
       
      
       workTimes = [...savedTime[0][new Date().getDay()]]
-      this.setState({ready:true})
+      // this.setState({ready:true})
         const jsonValue = JSON.stringify(savedTime)
         await AsyncStorage.setItem('savedWorkTimes', jsonValue)
     }catch(e) {
@@ -184,14 +183,18 @@ export default class HomeScreen extends React.Component {
       console.log(e)
     }
   }
+
+  updateSortValue(element){
+    return parseInt(((new Date(element.date).getTime())/(1000*60*60))+(6-element.dueImportance)*2*(11-element.importance))+parseInt(element.length)/10
+  }
   
   async changeDay(){
     try {
       const dayJsonValue = await AsyncStorage.getItem('day')
       var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
-      if (day == null||new Date().setHours(0,0,0,0)!=day){
+      if (day == null||new Date(new Date().setHours(0,0,0,0)).getTime()!=new Date(day).getTime()){
         day = new Date().setHours(0,0,0,0)
-        this.setState({ready:true})
+        // this.setState({ready:true})
         const jsonValue = JSON.stringify(day)
         await AsyncStorage.setItem('day', jsonValue)
       }
@@ -202,11 +205,13 @@ export default class HomeScreen extends React.Component {
 
   async getSelectable() {
     const JsonValue = await AsyncStorage.getItem('selectable')
-    selectable =  JsonValue != null ? JSON.parse(JsonValue) : null;
-    if(selectable == null){
-      selectable=false
+    const JsonValueT = await AsyncStorage.getItem('sTask')
+    selectable =  JsonValue != null ? JSON.parse(JsonValue) : true;
+    if(!selectable){
+      var test = JsonValueT != null ? JSON.parse(JsonValueT) : null;
     }
-    this.setState({ready:true,selectable:selectable})
+    this.setState({selectable:selectable})
+    this.setState({sTask:test})
     this.savedTime()
   }
 
@@ -348,8 +353,9 @@ export default class HomeScreen extends React.Component {
 
   pause(){
     this.setState({ready:true,selectable:true})
+    tasks[0].sortValue=this.updateSortValue(tasks[0])
     this.saveTasks()
-    this.removeSeletable()
+    this.removeSelectable()
   }
 
   stop(){
@@ -376,15 +382,19 @@ export default class HomeScreen extends React.Component {
     try {
       const jsonValue = JSON.stringify(false)
       await AsyncStorage.setItem('selectable',jsonValue)
+      const sTjsonValue = JSON.stringify(tasks[this.state.taskIndex])
+      await AsyncStorage.setItem('sTask',sTjsonValue)
     } catch (e) {
       console.log(e)
     }
   }
 
-  async removeSeletable(){
+  async removeSelectable(){
     try {
       const jsonValue = JSON.stringify(true)
       await AsyncStorage.setItem('selectable',jsonValue)
+      const sTjsonValue = JSON.stringify(null)
+      await AsyncStorage.setItem('sTask',sTjsonValue)
     } catch (e) {
       console.log(e)
     }
@@ -405,16 +415,17 @@ export default class HomeScreen extends React.Component {
 
   //Sort tasks
   sortTask(){
-    // console.log("before")
-    // tasks.forEach(element => {
-    //   console.log(element.sortValue)
-    // });
     tasks.sort(function(a, b){return a.sortValue - b.sortValue});
-    // console.log("after")
-    // tasks.forEach(element => {
-    //   console.log(element.sortValue)
-    // });
+    this.selectTasks()
     this.setState({ready:true})
+  }
+
+  selectTasks(){
+    if(this.state.sTask!=null){
+      tasks.splice(tasks.findIndex((element)=>element.name==this.state.sTask.name),1)
+      tasks.splice(0,0,this.state.sTask);
+      this.setState({sTask:null});
+    }
   }
 
   //Get task information
@@ -503,10 +514,12 @@ export default class HomeScreen extends React.Component {
       <SafeAreaView style={styles.container}>
 
         <Overlay isVisible={this.state.firstTime} onBackdropPress={()=>this.setState({firstTime:false})}>
+          <ScrollView style={{height:'100%'}}>
+            {/* <View style={{flex:1,justifyContent:'center'}}> */}
           <Text style={{ fontSize: 28, alignSelf: 'center' }}>Welcome to CheckMate!</Text>
           <Text style={{fontSize:23, alignSelf: 'center'}}>Instructions:{"\n"}</Text>
           <Text style={{fontSize:17,padding:5}}>
-1. Add tasks by clicking the "Add Task" button at the top of the screen and then answering the questions that follow. You can set your tasks to be also used on other days in the "use for" section.{"\n\n"}
+1. Add tasks by clicking the "Add Task" button at the top of the screen and then filling out the parameters that follow. You can set your tasks to be also used on other days in the "use for" section.{"\n\n"}
 2. Add work times (times your available to work) by clicking the "Add WorkTimes" button at the top of the screen and then filling out the start and end times. Just like for tasks, you can set your work times to be also used on other days in the "use for" section.{"\n\n"}
 3. Back on the home page, select a task by clicking on it.{"\n\n"}
 4. During your work times, play, pause and finish the selected task by clicking the buttons on the bottom of the page.{"\n\n"}
@@ -518,6 +531,8 @@ export default class HomeScreen extends React.Component {
             raised = {true}
             onPress={()=>this.setState({firstTime:false,ready:true})}
           />
+          {/* </View> */}
+          </ScrollView>
         </Overlay>
 
         <View style={{flex:9}}>
