@@ -21,8 +21,11 @@
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-native": "https://github.com/expo/react-native/archive/sdk-40.0.1.tar.gz",
+    "react-native-draggable-flatlist": "^3.0.6",
     "react-native-elements": "^3.4.0",
+    "react-native-gesture-handler": "~1.8.0",
     "react-native-picker-select": "^8.0.4",
+    "react-native-reanimated": "^2.4.1",
     "react-native-safe-area-context": "3.1.9",
     "react-native-web": "~0.13.12",
     "react-navigation": "^4.4.3"

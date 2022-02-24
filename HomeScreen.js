@@ -5,9 +5,13 @@ import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {Icon,Divider, SpeedDial,Overlay,Button} from 'react-native-elements';
-var tasks = [];
-var workTimes = [];
+import DraggableFlatList, {
+  ScaleDecorator,
+} from "react-native-draggable-flatlist";
 
+var tasks = [];
+var setTasks = [];
+var combined = []
 
 export default class HomeScreen extends React.Component {
   availableTime = 0
@@ -138,7 +142,9 @@ export default class HomeScreen extends React.Component {
           element.repeating = false;
         });
       }
-      this.sortTask()
+      if(!this.resetOrder()){
+        this.sortTask()
+      }
       // this.selectTasks()
       // this.setState({ready:true})
       const jsonValue = JSON.stringify(savedTask)
@@ -150,35 +156,81 @@ export default class HomeScreen extends React.Component {
     }
   }
 
-  async savedTime(){
+  async savedSetTasks(){
     try {
+      const JsonValue = await AsyncStorage.getItem('newfirst')
+      var first = JsonValue != null ? JSON.parse(JsonValue) :true;
       const dayJsonValue = await AsyncStorage.getItem('day')
       var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
-     
-      const savedTimeJsonValue = await AsyncStorage.getItem('savedWorkTimes')
-      var savedTime =  savedTimeJsonValue != null ? JSON.parse(savedTimeJsonValue) : null;
-      if(savedTime == null){
-        savedTime = [new Array(7),new Array(7)]
-        savedTime.forEach(element => {
+      var oldTasks=[]
+      const savedTaskJsonValue = await AsyncStorage.getItem('setTasks')
+      var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
+
+      if(first){
+        day = null;
+        savedTask = null;
+      }
+      
+      var needUpdate = false;
+      //Set up savedTask
+      if(savedTask == null){
+        needUpdate = true
+        savedTask = [new Array(7),new Array(7)]
+        savedTask.forEach(element => {
           for (let i = 0; i < element.length; i++) {
             element[i] = []
           }
         });
-      } 
-      if(new Date(new Date().setHours(0,0,0,0)).getTime()-new Date(day).getTime()>(new Date().getDay()-new Date(day).getDay())*1000*60*60*24){
-        savedTime[0]=[...savedTime[1]]
       }
-      savedTime[0][new Date().getDay()].forEach(e => {
-        e.start=new Date(e.start).setFullYear(new Date(Date.now()).getFullYear(), new Date(Date.now()).getMonth(), new Date(Date.now()).getDate())
-        e.end=new Date(e.end).setFullYear(new Date(Date.now()).getFullYear(), new Date(Date.now()).getMonth(), new Date(Date.now()).getDate())
-      });
+      //If it is a new day
+      if (day != null&&new Date(new Date().setHours(0,0,0,0)).getTime()!=new Date(day).getTime()) {
+        oldTasks = [...savedTask[0][new Date(day).getDay()]]
+        //If it is a new week, set the week's tasks to the weekly ones
+        if(new Date(new Date().setHours(0,0,0,0)).getTime()-new Date(day).getTime()>(new Date().getDay()-new Date(day).getDay())*1000*60*60*24){
+          savedTask[0]=[...savedTask[1]]
+        }
+
+        //Shift due dates
+        savedTask[0][new Date().getDay()].forEach(e => {
+          if(e.repeating = true) 
+          {
+            var d = new Date().setHours(0,0,0,0)
+            e.start = new Date().setHours(new Date(e.start).getHours(),new Date(e.start).getMinutes())
+            e.end = new Date().setHours(new Date(e.end).getHours(),new Date(e.end).getMinutes())
+          }
+        });
+        //Remove or edit recuring tasks
+        for(let i=0;i<oldTasks.length;i++){
+          var newIndex = savedTask[0][new Date().getDay()].findIndex((element)=>element.name==oldTasks[i].name)
+          if(newIndex!=-1){
+            oldTasks.splice(i,1)
+            i--
+          }
+        }
+        setTasks=oldTasks.concat(savedTask[0][new Date().getDay()])
+        savedTask[0][new Date().getDay()] = [...tasks]
+      }
+      else{
+        if(this.state.taskIndex>=savedTask[0][new Date().getDay()].length){
+          this.setState({taskIndex:0})
+        }
+        setTasks = savedTask[0][new Date().getDay()]
+      }
       
-     
-      workTimes = [...savedTime[0][new Date().getDay()]]
+      if(first&&!needUpdate){
+        setTasks.forEach(element => {
+          element.repeating = false;
+        });
+      }
+      if(!this.resetOrder()){
+        this.sortTask()
+      }
+      // this.selectTasks()
       // this.setState({ready:true})
-        const jsonValue = JSON.stringify(savedTime)
-        await AsyncStorage.setItem('savedWorkTimes', jsonValue)
+      const jsonValue = JSON.stringify(savedTask)
+      await AsyncStorage.setItem('tasks', jsonValue)
     }catch(e) {
+      
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
@@ -224,42 +276,34 @@ export default class HomeScreen extends React.Component {
     return new Date(Math.floor(new Date(t)/(60*1000))*60*1000)
   }
   
-  //Update workTimes based on current time
-  sortWorkTimes() {
-    for(var i=0; i<=workTimes.length-1;i++){
-      if(new Date(workTimes[i].end).getTime()<=Date.now()){
-        workTimes.splice(i, 1)
+  //Update setTasks based on current time
+  sortSetTasks() {
+    for(var i=0; i<=setTasks.length-1;i++){
+      if(new Date(setTasks[i].end).getTime()<=Date.now()){
+        setTasks.splice(i, 1)
       }
-      else if(new Date(workTimes[i].start).getTime()<Date.now()){
-        workTimes[i].start=new Date()
+      else if(new Date(setTasks[i].start).getTime()<Date.now()){
+        setTasks[i].start=new Date()
       }
     }
-    if(workTimes.length>0&&new Date(workTimes[0].start).getTime()>Date.now()&&this.state.selectable==false){
+    if(setTasks.length>0&&new Date(setTasks[0].start).getTime()>Date.now()&&this.state.selectable==false){
       this.pause()
     }
   }
 
-  //Make Schedule
-  makeSchedule(){
-    var workIndex = 0;
+  //Combine tasks and setTasks
+  makeCombined(){
+    var setIndex = 0;
     var lastTask = new Date()
-    this.sortWorkTimes()
-      var schedule = []
-      for(var i = 0; i <= workTimes.length;i++){
-        schedule.push([])
-      }
+    this.sortSetTasks()
     if(tasks.length > 0){
-      
-      
       var time = this.time(Date.now())
-      
       var newIndex = false
       
-      if(this.state.selectable==true&&workTimes.length>0){
-        time = new Date(workTimes[workIndex].start);
+      if(this.state.selectable==true&&setTasks.length>0){
+        time = new Date(setTasks[setIndex].start);
       }
       else if(this.state.selectable==false){
-        
         if(tasks[0].length-((this.time(new Date ())-this.time(tasks[0].start))/(1000*60))>0){
           tasks[0].length -= ((this.time(new Date ())-this.time(new Date(tasks[0].start)))/(1000*60))
         }
@@ -267,66 +311,113 @@ export default class HomeScreen extends React.Component {
           tasks[0].length = 10
         }
       }
-        for (var i = 0; i <=tasks.length-1; i++){
-          if (workIndex<=workTimes.length-1&&new Date(time).getTime()==new Date(workTimes[workIndex].end).getTime())
-          { 
-            workIndex++;
-            newIndex = true
+      for (var i = 0; i <=tasks.length-1; i++){
+        if (setIndex<=setTasks.length-1&&new Date(time).getTime()==new Date(setTasks[setIndex].end).getTime())
+        { 
+          setIndex++;
+          newIndex = true
+        }
+        if(setIndex <= setTasks.length-1){
+          if (newIndex==true&&new Date(time).getTime()==new Date(setTasks[setIndex-1].end).getTime())
+          {
+            combined.push(setTasks[setIndex])
+            newIndex = false
+            time=setTasks[setIndex].start;
           }
-          if(workIndex <= workTimes.length-1){
-            if (newIndex==true&&new Date(time).getTime()==new Date(workTimes[workIndex-1].end).getTime())
-            { 
-              newIndex = false
-              time=workTimes[workIndex].start;
-              
-            }
-            if (tasks[i].length<=Math.round((new Date(workTimes[workIndex].end).getTime()-new Date(time).getTime())/(1000*60)))
-            {
-              tasks[i].start = time
-              tasks[i].end = this.time(new Date(time).getTime()+tasks[i].length*1000*60)
-              time=tasks[i].end;
-              schedule[workIndex].push({...tasks[i]})
-            }
-            else
-            {
-              
-              tasks[i].start = time
-              tasks[i].end = this.time(workTimes[workIndex].end)
-              schedule[workIndex].push({...tasks[i]})
-              if(tasks[i].length-(this.time(workTimes[workIndex].end)-this.time(time))/(1000*60)>0){
-                tasks.splice(i+1,0,{...tasks[i]})
-                tasks[i+1].length -= (this.time(workTimes[workIndex].end)-this.time(time))/(1000*60)
-              }
-              time = tasks[i].end
-            }
-          }
-          else{
+          if (tasks[i].length<=Math.round((new Date(setTasks[setIndex].end).getTime()-new Date(time).getTime())/(1000*60)))
+          {
             tasks[i].start = time
             tasks[i].end = this.time(new Date(time).getTime()+tasks[i].length*1000*60)
-            schedule[workIndex].push({...tasks[i]})
             time=tasks[i].end;
+            combined.push({...tasks[i]})
           }
-          lastTask = tasks[i].end
-          if(i>0&&tasks[i].name==tasks[i-1].name){
-            tasks.splice(i, 1)
-            i-=1
+          else
+          {
+            tasks[i].start = time
+            tasks[i].end = this.time(setTasks[setIndex].end)
+            combined.push({...tasks[i]})
+            if(tasks[i].length-(this.time(setTasks[setIndex].end)-this.time(time))/(1000*60)>0){
+              tasks.splice(i+1,0,{...tasks[i]})
+              tasks[i+1].length -= (this.time(setTasks[setIndex].end)-this.time(time))/(1000*60)
+              if(!(tasks[i].name.substring(tasks[i].name.length-8).equals(" (cont.)"))){
+                tasks[i+1].name = tasks[i].name + " (cont.)"
+              }
+            }
+            time = tasks[i].end
           }
         }
-        
-      
+        else{
+          tasks[i].start = time
+          tasks[i].end = this.time(new Date(time).getTime()+tasks[i].length*1000*60)
+          combined.push({...tasks[i]})
+          time=tasks[i].end;
+        }
+        lastTask = tasks[i].end
+        if(i>0&&tasks[i].name.substring(tasks[i].name.length-8).equals(" (cont.)")){
+          tasks.splice(i, 1)
+          i-=1
+        }
+      }
     }
-    if(workTimes.length>0){
-      this.availableTime = this.time(workTimes[workTimes.length-1].end)-this.time(lastTask)
+    if(setTasks.length>0){
+      this.availableTime = this.time(setTasks[setTasks.length-1].end)-this.time(lastTask)
     }
     else{
       this.availableTime = this.time(Date.now())-this.time(lastTask)
     }
-    return schedule
+    this.setState({ready:true})
+    return combined
+  }
+
+  renderItem(item, index, drag, isActive){
+    return (
+      <ScaleDecorator>
+        <TouchableOpacity
+          onLongPress={item.sortValue!=null?drag:null}
+          style={
+            styles.tasks
+          }
+        >
+          <View  key={item.name}>
+            <TouchableOpacity
+            onPress={() => this.setState({taskIndex: tasks.findIndex((element)=>element.name==item.name)})}
+            style={this.state.taskIndex==tasks.findIndex((element)=>element.name==item.name)?[styles.tasks,{backgroundColor:'#6163c7'}]:styles.tasks}
+            > 
+            <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==item.name)?{ fontSize: 17, alignSelf: 'center',fontWeight: 'bold', color:'#fff' }:{ fontSize: 17, alignSelf: 'center', color:'#fff' }}>{item.name}</Text>
+            <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==item.name)?{ fontSize: 12, alignSelf: 'center',fontWeight: 'bold', color: '#fff' }:{ fontSize: 12, alignSelf: 'center', color: '#fff'}}>{this.displayTime(item.start)+' - '+this.displayTime(item.end)+' (Due: '+this.displayDate(item.date)+' '+this.displayTime(item.date)+')'}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </ScaleDecorator>
+    );
+  };
+
+  startDrag(index){
+    if(combined[index].sortValue != null){
+      for(i=0;i<combined.length;i++){
+        if(combined[i].name + " (cont.)"== combined[index].name||combined[i].name== combined[index].name+" (cont.)"||combined[i].name== combined[index].name){
+          combined.splice(i,1)
+        }
+      }
+    }
+    this.setState({ready:true})
+  }
+
+  setData(data,to){
+    for(i=to-1;i>=0;i--){
+      if(data[i].sortValue!=null){
+        tasks.splice(tasks.indexOf(data[i])+1,0,data[to])
+        this.makeCombined()
+        return
+      }
+    }
+    tasks.splice(0,0,data[to])
+    this.makeCombined
   }
 
   //Task controls
   start(){
-    if(workTimes.length>0&&Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime()){
+    if(setTasks.length>0&&Date.now()>new Date(setTasks[0].start).getTime()&&Date.now()<new Date(setTasks[0].end).getTime()){
       this.setState({selectable:false})
       var selectedTask = tasks[this.state.taskIndex]
       tasks.splice(this.state.taskIndex, 1)
@@ -336,7 +427,7 @@ export default class HomeScreen extends React.Component {
       this.saveTasks()
       this.saveSeletable()
     }
-    else if(workTimes.length==0||!(Date.now()>new Date(workTimes[0].start).getTime()&&Date.now()<new Date(workTimes[0].end).getTime())){
+    else if(setTasks.length==0||!(Date.now()>new Date(setTasks[0].start).getTime()&&Date.now()<new Date(setTasks[0].end).getTime())){
       Alert.alert(
         'Outside of Work Times',
         "You are only able to do tasks during your work times. Please add/edit your work times instead.",
@@ -420,6 +511,12 @@ export default class HomeScreen extends React.Component {
     this.setState({ready:true})
   }
 
+  sortTimes(){
+    tasks.sort(function(a, b){return new Date(a.start).getTime() - new Date(b.start).getTime()});
+    this.setState({ready:true})
+  }
+
+
   selectTasks(){
     if(this.state.sTask!=null){
       tasks.splice(tasks.findIndex((element)=>element.name==this.state.sTask.name),1)
@@ -475,7 +572,7 @@ export default class HomeScreen extends React.Component {
     }
   }
 
-  editWorkTimes(){
+  editsetTasks(){
     this.props.navigation.navigate('AddWorkTime')
   }
 
@@ -503,6 +600,17 @@ export default class HomeScreen extends React.Component {
       return '#a6a6a6'
     }
   }
+
+  resetOrder(){
+    var temp = tasks.sort(function(a, b){return a.sortValue - b.sortValue});
+    for(i=0;i<tasks.length();i++){
+      if(!(tasks[i].name.equals(temp[i].name))){
+        return true
+      }
+    }
+    return false
+  }
+
   render(){
     const { navigate } = this.props.navigation;
     if(!this.state.ready){
@@ -514,25 +622,28 @@ export default class HomeScreen extends React.Component {
       <SafeAreaView style={styles.container}>
 
         <Overlay isVisible={this.state.firstTime} onBackdropPress={()=>this.setState({firstTime:false})}>
-          <ScrollView style={{height:'100%'}}>
-            {/* <View style={{flex:1,justifyContent:'center'}}> */}
-          <Text style={{ fontSize: 28, alignSelf: 'center' }}>Welcome to CheckMate!</Text>
-          <Text style={{fontSize:23, alignSelf: 'center'}}>Instructions:{"\n"}</Text>
-          <Text style={{fontSize:17,padding:5}}>
-1. Add tasks by clicking the "Add Task" button at the top of the screen and then filling out the parameters that follow. You can set your tasks to be also used on other days in the "use for" section.{"\n\n"}
-2. Add work times (times your available to work) by clicking the "Add WorkTimes" button at the top of the screen and then filling out the start and end times. Just like for tasks, you can set your work times to be also used on other days in the "use for" section.{"\n\n"}
-3. Back on the home page, select a task by clicking on it.{"\n\n"}
-4. During your work times, play, pause and finish the selected task by clicking the buttons on the bottom of the page.{"\n\n"}
-5. Repeat{"\n\n"}
-6. Be productive!{"\n\n"}</Text>
-          <Button
-            containerStyle = {{justifyContent:"flex-end"}}
-            title = "Close"
-            raised = {true}
-            onPress={()=>this.setState({firstTime:false,ready:true})}
-          />
-          {/* </View> */}
-          </ScrollView>
+          <SafeAreaView style = {styles.container}>
+        
+            <ScrollView style={{height:'100%'}}>
+              {/* <View style={{flex:1,justifyContent:'center'}}> */}
+            <Text style={{ fontSize: 28, alignSelf: 'center' }}>Welcome to CheckMate!</Text>
+            <Text style={{fontSize:23, alignSelf: 'center'}}>Instructions:{"\n"}</Text>
+            <Text style={{fontSize:17,padding:5}}>
+  1. Add tasks by clicking the "Add Task" button at the top of the screen and then filling out the parameters that follow. You can set your tasks to be also used on other days in the "use for" section.{"\n\n"}
+  2. Add work times (times your available to work) by clicking the "Add setTasks" button at the top of the screen and then filling out the start and end times. Just like for tasks, you can set your work times to be also used on other days in the "use for" section.{"\n\n"}
+  3. Back on the home page, select a task by clicking on it.{"\n\n"}
+  4. During your work times, play, pause and finish the selected task by clicking the buttons on the bottom of the page.{"\n\n"}
+  5. Repeat{"\n\n"}
+  6. Be productive!{"\n\n"}</Text>
+            <Button
+              containerStyle = {{justifyContent:"flex-end"}}
+              title = "Close"
+              raised = {true}
+              onPress={()=>this.setState({firstTime:false,ready:true})}
+            />
+            {/* </View> */}
+            </ScrollView>
+          </SafeAreaView>
         </Overlay>
 
         <View style={{flex:9}}>
@@ -557,78 +668,23 @@ export default class HomeScreen extends React.Component {
           <Icon name="clock" color='#fff' size={20} type="feather"/> 
           <View style={{alignItems: 'center',marginHorizontal:5}}>
             <Text style={{ fontSize: 13, color: '#fff' }}>Add</Text>
-            <Text style={{ fontSize: 13, color: '#fff'}}>WorkTimes</Text>
+            <Text style={{ fontSize: 13, color: '#fff'}}>setTasks</Text>
           </View>
           </TouchableOpacity>
         </View>
         <View style={{flex:8}}>
           <ScrollView style={{height: '100%'}}>
-                {
-                  workTimes.map((workTime, i) => {
-                    
-                    return (
-                    // {/* Worktime display */}
-                      <View key={i} style={{flexDirection: 'row',alignSelf:'stretch',padding:5}}>
-                        
-                          <TouchableOpacity
-                          onPress={() => this.editWorkTimes()}
-                          style={styles.workTimes}
-                          >
-                            <Text style={{ fontSize: 13, color: '#fff' }}>{this.displayTime(workTime.start)+' - '+this.displayTime(workTime.end)}</Text>
-                          </TouchableOpacity>
-                          <View style={{flex:4,flexDirection:'column',borderBottomWidth:2,borderBottomColor:this.numTasks(schedule,i)}}>
-                            {
-                              schedule[i].map((task, j) => {
-                                return (
-                                  // Task Display
-                                <View  key={task.name}>
-                                  <TouchableOpacity
-                                  onPress={() => this.setState({taskIndex: tasks.findIndex((element)=>element.name==task.name)})}
-                                  style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?[styles.tasks,{backgroundColor:'#6163c7'}]:styles.tasks}
-                                  > 
-                                  <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 17, alignSelf: 'center',fontWeight: 'bold', color:'#fff' }:{ fontSize: 17, alignSelf: 'center', color:'#fff' }}>{task.name}</Text>
-                                  <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 12, alignSelf: 'center',fontWeight: 'bold', color: '#fff' }:{ fontSize: 12, alignSelf: 'center', color: '#fff'}}>{this.displayTime(task.start)+' - '+this.displayTime(task.end)+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
-                                  </TouchableOpacity>
-                                </View>
-                                );
-                              })
-                            }
-                          </View>
-                      </View>
-                    );
-                  })
-                }
-
-                {/*Unable to fit display*/}
-                <View style={{flexDirection: 'row',alignSelf:'stretch',padding:5}}>
-                  {schedule[schedule.length-1].length>0?
-                    <View style={[styles.workTimes,{backgroundColor:'#AAAFB4'}]}>
-                      <Text style={{ fontSize: 13}}>Unable to Fit</Text>
-                      </View>
-                  :null}
-                  {/*Unable to fit tasks display*/}
-                  <View style={{flex: 4,borderBottomWidth:2,borderBottomColor:this.numTasks(schedule,schedule.length-1)}}>
-                  {
-                    schedule[schedule.length-1].map((task, i) => {
-                      return (
-                      <View  key={task.name} >
-                        <TouchableOpacity
-                        onPress={() => this.setState({taskIndex: tasks.findIndex((element)=>element.name==task.name)})}
-                        style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?[styles.overTasks,{backgroundColor:'#53e0fc'}]:styles.overTasks}
-                        > 
-                        <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 17, color:'#555555',alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 17, alignSelf: 'center', color:'#555555'}}>{task.name}</Text>
-                        <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==task.name)?{ fontSize: 12, color:'#555555', alignSelf: 'center',fontWeight: 'bold'}:{ fontSize: 12, alignSelf: 'center', color:'#555555'}}>{'Length: '+task.length+' min'+' (Due: '+this.displayDate(task.date)+' '+this.displayTime(task.date)+')'}</Text>
-                        </TouchableOpacity>
-                      </View>
-                      );
-                    })
-                  }
-                  </View>
-                </View>
+            <DraggableFlatList
+              data={this.makeCombined()}
+              onDragBegin = {({index})=>this.startDrag(index)}
+              onDragEnd={({ data, to }) => this.setData(data, to)}
+              keyExtractor={(item) => item.key}
+              renderItem={renderItem}
+            />
               
             {/* Reset order display */}
             <View style={{padding:8}}>
-              {tasks.length>=2&&parseInt(tasks[0].sortValue)>parseInt(tasks[1].sortValue)?
+              {this.resetOrder()?
               <TouchableOpacity onPress={() => this.sortTask()} style={[styles.button,{flex:1}]}>
               <Text style={{ fontSize: 20, color: '#fff' }}>Reset Order</Text>
             </TouchableOpacity>
@@ -714,7 +770,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderBottomWidth:0,
   },
-  workTimes: {
+  setTasks: {
     flex: 1,
     backgroundColor: "#152075",
     padding: 8,
