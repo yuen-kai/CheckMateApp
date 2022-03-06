@@ -170,7 +170,6 @@ export default class AddWorkTimeScreen extends React.Component {
       savedTasks.forEach(element => {
         if((new Date(element.start).getTime()>=new Date(selectedTask.start).getTime()&&new Date(element.start).getTime()<new Date(selectedTask.end).getTime())||(new Date(element.end).getTime()>new Date(selectedTask.start).getTime()&&new Date(element.end).getTime()<=new Date(selectedTask.end).getTime())){
           overlap = true
-          break
         }
       });
       if(overlap){

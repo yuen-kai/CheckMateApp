@@ -7,7 +7,7 @@ import HomeScreen from './HomeScreen';
 import AddTaskScreen from './AddTaskScreen';
 import AddWorkTimeScreen from './AddWorkTimeScreen';
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
 
 export default class App extends React.Component {
