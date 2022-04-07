@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { StyleSheet, Text, View, } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from './HomeScreen';
 import AddTaskScreen from './AddTaskScreen';
 import AddWorkTimeScreen from './AddWorkTimeScreen';
@@ -13,7 +13,6 @@ const Stack = createNativeStackNavigator();
 export default class App extends React.Component {
   render(){
     return (
-      
       <NavigationContainer>
         <Stack.Navigator>
           <Stack.Screen options={{headerShown: false}} name="Home" component={HomeScreen}/>

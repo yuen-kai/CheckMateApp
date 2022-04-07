@@ -80,6 +80,7 @@ export default class AddTaskScreen extends React.Component {
         this.setState({daysUsed:change})
       }
     } catch(e) {
+      await AsyncStorage.removeItem('editName')
       Alert.alert('Failed to get edit info!','Failed to get edit info! Please try again.')
       console.log(e)
     }

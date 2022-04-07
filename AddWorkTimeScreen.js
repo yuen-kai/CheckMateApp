@@ -5,10 +5,10 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Tooltip,Avatar,CheckBox} from 'react-native-elements'
+import {Icon,Tooltip,Avatar,CheckBox,Input} from 'react-native-elements'
 import ThemedListItem from 'react-native-elements/dist/list/ListItem';
 
-var savedTasks
+var workTimes
 
 
 export default class AddWorkTimeScreen extends React.Component {
@@ -16,6 +16,7 @@ export default class AddWorkTimeScreen extends React.Component {
   selectedTask
   edit = false
   days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+  monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul","Aug", "Sep", "Oct", "Nov", "Dec"];
   state = {
     daysUsed:[false,false,false,false,false,false,false],
     startShow: false,
@@ -40,7 +41,7 @@ export default class AddWorkTimeScreen extends React.Component {
     this.setState({daysUsed:change})
     try {
       const jsonValue = await AsyncStorage.getItem('setTasks')
-      savedTasks =  jsonValue != null ? JSON.parse(jsonValue) : null;
+      workTimes =  jsonValue != null ? JSON.parse(jsonValue) : null;
       this.editInfo()
     } catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
@@ -51,21 +52,21 @@ export default class AddWorkTimeScreen extends React.Component {
 
   editInfo = async () => {
     try {
-      const jsonValue = await AsyncStorage.getItem('setEditName')
+      const jsonValue = await AsyncStorage.getItem('editName')
       this.editName = jsonValue != null ? JSON.parse(jsonValue) :null;
       if(this.editName != null){
         let change = [...this.state.daysUsed]
-        this.selectedTask = savedTasks[0][new Date().getDay()][savedTasks[0][new Date().getDay()].findIndex((task) =>task.name == this.editName)]
+        this.selectedTask = workTimes[0][new Date().getDay()][workTimes[0][new Date().getDay()].findIndex((task) =>task.name == this.editName)]
         this.edit = true
-        this.setState({start:new Date(new Date(this.selectedTask.start).getTime()),end:new Date(new Date(this.selectedTask.end).getTime()),repeating:this.selectedTask.repeating})
-        await AsyncStorage.removeItem('setEditName')
+        this.setState({name:this.editName,start:new Date(new Date(this.selectedTask.start).getTime()),end:new Date(new Date(this.selectedTask.end).getTime()),repeating:this.selectedTask.repeating})
+        await AsyncStorage.removeItem('editName')
         for(var i=0;i<=this.state.daysUsed.length-1;i++){
-          if(savedTasks[0][i].findIndex((task) =>task.name == this.editName)!=-1)
+          if(workTimes[0][i].findIndex((task) =>task.name == this.editName)!=-1)
           {
             change.splice(i, 1,true)
           }
         };
-        if(savedTasks[1][new Date().getDay()].findIndex((task) =>task.name == this.editName)!=-1){
+        if(workTimes[1][new Date().getDay()].findIndex((task) =>task.name == this.editName)!=-1){
           this.setState({weekly:true})
         }
         this.setState({daysUsed:change})
@@ -94,7 +95,13 @@ export default class AddWorkTimeScreen extends React.Component {
   };
   
   showTimepicker(type) {
-    if(type=='start'){
+    if(this.state.startShow==true){
+      this.setState({startShow: false});
+    }
+    else if(this.state.endShow==true){
+      this.setState({endShow: false});
+    }
+    else if(type=='start'){
       this.setState({startShow:true});
     }
     else{
@@ -137,14 +144,14 @@ export default class AddWorkTimeScreen extends React.Component {
       for (let i = 0; i < this.state.daysUsed.length; i++) {
         if(this.state.daysUsed[i])
         {
-          savedTasks[0][i].forEach(element => {
+          workTimes[0][i].forEach(element => {
             if(element.name==this.selectedTask.name){
               sameName = true
             }
           });
           if(this.state.weekly)
           {
-            savedTasks[1][i].forEach(element => {
+            workTimes[1][i].forEach(element => {
               if(element.name==this.selectedTask.name){
                 sameName = true
               }
@@ -158,7 +165,7 @@ export default class AddWorkTimeScreen extends React.Component {
     if(this.state.name==""){
       Alert.alert('Empty Name','Please enter a name.')
     }
-    else if(workTimes.start!=null&&workTimes.end!=null&&this.roundTime(workTime.end) - this.roundTime(workTime.start)>=1){
+    else if(!(this.selectedTask.start!=null&&this.selectedTask.end!=null&&this.roundTime(this.selectedTask.end) - this.roundTime(this.selectedTask.start)>=1)){
       Alert.alert("Invalid Time","The times that you have set for this task are invalid.")
     }
     else if(sameName==true){
@@ -167,8 +174,8 @@ export default class AddWorkTimeScreen extends React.Component {
     else{
       var overlap = false
       var accept = true
-      savedTasks.forEach(element => {
-        if((new Date(element.start).getTime()>=new Date(selectedTask.start).getTime()&&new Date(element.start).getTime()<new Date(selectedTask.end).getTime())||(new Date(element.end).getTime()>new Date(selectedTask.start).getTime()&&new Date(element.end).getTime()<=new Date(selectedTask.end).getTime())){
+      workTimes.forEach(element => {
+        if((new Date(element.start).getTime()>=new Date(this.selectedTask.start).getTime()&&new Date(element.start).getTime()<new Date(this.selectedTask.end).getTime())||(new Date(element.end).getTime()>new Date(this.selectedTask.start).getTime()&&new Date(element.end).getTime()<=new Date(this.selectedTask.end).getTime())){
           overlap = true
         }
       });
@@ -191,18 +198,18 @@ export default class AddWorkTimeScreen extends React.Component {
         for(var i=0;i<=this.state.daysUsed.length-1;i++){
           if(this.state.daysUsed[i]==true){
             if(this.edit==true){
-              savedTasks[0][i].splice(savedTasks[0][i].findIndex((task) =>task.name == this.editName),1)
+              workTimes[0][i].splice(workTimes[0][i].findIndex((task) =>task.name == this.editName),1)
             }
             if(this.state.editMode==true){
-              savedTasks[0][i].push(this.selectedTask)
+              workTimes[0][i].push(this.selectedTask)
             }
             if(this.state.weekly==true){
               if(this.edit==true){
-                savedTasks[1][i].splice(savedTasks[1][i].findIndex((task) =>task.name == this.editName),1)
+                workTimes[1][i].splice(workTimes[1][i].findIndex((task) =>task.name == this.editName),1)
               }
               if(this.state.editMode==true)
               {
-                savedTasks[1][i].push(this.selectedTask)
+                workTimes[1][i].push(this.selectedTask)
               }
             }
           }
@@ -210,7 +217,7 @@ export default class AddWorkTimeScreen extends React.Component {
 
         //save data
         try {
-          const jsonValue = JSON.stringify(savedTasks)
+          const jsonValue = JSON.stringify(workTimes)
           await AsyncStorage.setItem('setTasks', jsonValue)
         } catch (e) {
           console.log(e)
@@ -249,15 +256,22 @@ export default class AddWorkTimeScreen extends React.Component {
     <View style={styles.container}>
       <ScrollView style={{padding:10}}>      
         <Text style={{ fontSize: 20, padding:4}}>{this.days[new Date().getDay()]}, {this.monthNames[new Date().getMonth()]} {new Date().getDate()}</Text>
-
-        <Text style={{ fontSize: 14, padding:4}}>Enter the times when you're available to work:</Text>
         <View style={{flexDirection: 'column'}}>
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker(-1,'start')}>
+          <View style={styles.section}>
+            <Text style={{ fontSize: 17, padding:3}}>Name:</Text>
+            <Input
+              placeholder='Practice Piano'
+              renderErrorMessage={false}
+              onChangeText={name => this.setState({name})}
+              value = {this.state.name}
+            />
+          </View>
+          <View style={styles.section}>
+            <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker('start')}>
               <Text style={{ fontSize: 17,  color: '#fff' }}>{this.state.start!=null?this.displayTime(this.state.start):"Start"}</Text>
             </TouchableOpacity>
             <Text style={{flex: 1,fontSize: 18,}}>to</Text>
-            <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker(-1,'end')}>
+            <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker('end')}>
               <Text style={{ fontSize: 17, color: '#fff'}}>{this.state.end!=null?this.displayTime(this.state.end):'End'}</Text>
             </TouchableOpacity>
             <View style={{flex: 1}}/>
@@ -265,6 +279,7 @@ export default class AddWorkTimeScreen extends React.Component {
           {/* start picker */}
           {this.state.startShow && (
           <DateTimePicker
+            testID="startDateTimePicker"
             value={this.state.start}
             mode={"time"}
             display="default"
@@ -274,13 +289,14 @@ export default class AddWorkTimeScreen extends React.Component {
           {/* end picker */}
           {this.state.endShow && (
           <DateTimePicker
+            testID="endDateTimePicker"
             value={this.state.end}
-            mode={this.state.mode}
-            display="time"
+            mode={"time"}
+            display="default"
             onChange={this.onEndChange}
           />)}
 
-          {workTimes.start!=null&&workTimes.end!=null&&this.roundTime(workTime.end) - this.roundTime(workTime.start)<=0?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
+          {this.state.start!=null&&this.state.end!=null&&this.roundTime(this.state.end) - this.roundTime(this.state.start)<=0?<Text style={{ fontSize: 15, color: 'red' }}>You need at least 1 minute of work time!</Text>
             :null
           }
         </View>
@@ -342,5 +358,12 @@ workButton:{
   margin: 10,
   borderRadius: 5,
   flex:4
-}
+},
+section:{
+  // backgroundColor:'blue',
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginVertical: '3%'
+},
 });

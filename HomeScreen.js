@@ -25,7 +25,6 @@ export default class HomeScreen extends React.Component {
     firstTime: false,
     sTask: null,
   };
-
   //get data
   componentDidMount(){
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
@@ -34,28 +33,28 @@ export default class HomeScreen extends React.Component {
     // this.getData()
     this.getSelectable()
     this.intervalID=setInterval(
-      () => this.setState({ready:true}),
-      500
+      () => {this.makeCombined()},
+      10000
     );
   }
   
   getData = async () => {
     this.savedTasks()
+    this.savedSetTasks()
     this.firstTime()
-    this.savedTime()
     this.changeDay()
+    this.makeCombined()
     this.setState({ready: true})
   } 
 
   async firstTime(){
     try {
-      const JsonValue = await AsyncStorage.getItem('newfirst')
-      
+      const JsonValue = await AsyncStorage.getItem('firsty')
       var first = JsonValue != null ? JSON.parse(JsonValue) :null;
       if(first==null){
         this.setState({firstTime: true,ready:true})
         const jsonValue = JSON.stringify(false)
-        await AsyncStorage.setItem('newfirst', jsonValue)
+        await AsyncStorage.setItem('firsty', jsonValue)
       }
       // this.setState({ready:true})
     }catch(e) {
@@ -65,7 +64,7 @@ export default class HomeScreen extends React.Component {
   }
   async savedTasks(){
     try {
-      const JsonValue = await AsyncStorage.getItem('newfirst')
+      const JsonValue = await AsyncStorage.getItem('firsty')
       var first = JsonValue != null ? JSON.parse(JsonValue) :true;
       const dayJsonValue = await AsyncStorage.getItem('day')
       var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
@@ -149,6 +148,8 @@ export default class HomeScreen extends React.Component {
       // this.setState({ready:true})
       const jsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('tasks', jsonValue)
+      console.log("task:")
+      console.log(tasks)
     }catch(e) {
       
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
@@ -158,7 +159,7 @@ export default class HomeScreen extends React.Component {
 
   async savedSetTasks(){
     try {
-      const JsonValue = await AsyncStorage.getItem('newfirst')
+      const JsonValue = await AsyncStorage.getItem('firsty')
       var first = JsonValue != null ? JSON.parse(JsonValue) :true;
       const dayJsonValue = await AsyncStorage.getItem('day')
       var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
@@ -208,7 +209,7 @@ export default class HomeScreen extends React.Component {
           }
         }
         setTasks=oldTasks.concat(savedTask[0][new Date().getDay()])
-        savedTask[0][new Date().getDay()] = [...tasks]
+        savedTask[0][new Date().getDay()] = [...setTasks]
       }
       else{
         if(this.state.taskIndex>=savedTask[0][new Date().getDay()].length){
@@ -223,12 +224,14 @@ export default class HomeScreen extends React.Component {
         });
       }
       if(!this.resetOrder()){
-        this.sortTask()
+        this.sortTimes()
       }
       // this.selectTasks()
       // this.setState({ready:true})
       const jsonValue = JSON.stringify(savedTask)
-      await AsyncStorage.setItem('tasks', jsonValue)
+      await AsyncStorage.setItem('setTasks', jsonValue)
+      console.log("setTasks:")
+      console.log(setTasks)
     }catch(e) {
       
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
@@ -264,7 +267,6 @@ export default class HomeScreen extends React.Component {
     }
     this.setState({selectable:selectable})
     this.setState({sTask:test})
-    this.savedTime()
   }
 
   //Find day and time
@@ -283,11 +285,8 @@ export default class HomeScreen extends React.Component {
         setTasks.splice(i, 1)
       }
       else if(new Date(setTasks[i].start).getTime()<Date.now()){
-        setTasks[i].start=new Date()
+        setTasks[i].start=this.time(Date.now())
       }
-    }
-    if(setTasks.length>0&&new Date(setTasks[0].start).getTime()>Date.now()&&this.state.selectable==false){
-      this.pause()
     }
   }
 
@@ -295,68 +294,76 @@ export default class HomeScreen extends React.Component {
   makeCombined(){
     var setIndex = 0;
     var lastTask = new Date()
+    combined = []
     this.sortSetTasks()
-    if(tasks.length > 0){
+    if(tasks.length > 0||setTasks.length>0){
       var time = this.time(Date.now())
-      var newIndex = false
       
-      if(this.state.selectable==true&&setTasks.length>0){
-        time = new Date(setTasks[setIndex].start);
-      }
-      else if(this.state.selectable==false){
-        if(tasks[0].length-((this.time(new Date ())-this.time(tasks[0].start))/(1000*60))>0){
-          tasks[0].length -= ((this.time(new Date ())-this.time(new Date(tasks[0].start)))/(1000*60))
+      if(this.state.selectable==false){
+        if(combined[0].length-((this.time(new Date ())-this.time(combined[0].start))/(1000*60))>0){
+          combined[0].length -= ((this.time(new Date ())-this.time(combined[0].start))/(1000*60))
         }
         else{
-          tasks[0].length = 10
+          combined[0].length = 10
         }
       }
       for (var i = 0; i <=tasks.length-1; i++){
-        if (setIndex<=setTasks.length-1&&new Date(time).getTime()==new Date(setTasks[setIndex].end).getTime())
+        if (setIndex<setTasks.length-1||(setIndex==0&&this.time(time).getTime()<this.time(setTasks[setIndex].start).getTime()))
         { 
-          setIndex++;
-          newIndex = true
-        }
-        if(setIndex <= setTasks.length-1){
-          if (newIndex==true&&new Date(time).getTime()==new Date(setTasks[setIndex-1].end).getTime())
+          if (this.time(time).getTime()==this.time(setTasks[setIndex].start).getTime())
           {
-            combined.push(setTasks[setIndex])
-            newIndex = false
-            time=setTasks[setIndex].start;
+            //Add set task
+            console.log("Add set task")
+            time=setTasks[setIndex].end;
+            combined.push({...setTasks[setIndex]})
+            setIndex++;
           }
-          if (tasks[i].length<=Math.round((new Date(setTasks[setIndex].end).getTime()-new Date(time).getTime())/(1000*60)))
+          if (tasks[i].length<=Math.round((this.time(setTasks[setIndex].start).getTime()-this.time(time).getTime())/(1000*60)))
           {
+            //Task length <= time until set task -> add task
+            console.log("Task length <= time until set task -> add task")
             tasks[i].start = time
             tasks[i].end = this.time(new Date(time).getTime()+tasks[i].length*1000*60)
-            time=tasks[i].end;
             combined.push({...tasks[i]})
           }
           else
           {
+            //Split Task
+            console.log("Split Task")
             tasks[i].start = time
-            tasks[i].end = this.time(setTasks[setIndex].end)
+            tasks[i].end = this.time(setTasks[setIndex].start)
             combined.push({...tasks[i]})
-            if(tasks[i].length-(this.time(setTasks[setIndex].end)-this.time(time))/(1000*60)>0){
-              tasks.splice(i+1,0,{...tasks[i]})
-              tasks[i+1].length -= (this.time(setTasks[setIndex].end)-this.time(time))/(1000*60)
-              if(!(tasks[i].name.substring(tasks[i].name.length-8).equals(" (cont.)"))){
-                tasks[i+1].name = tasks[i].name + " (cont.)"
-              }
+            tasks.splice(i+1,0,{...tasks[i]})
+            tasks[i+1].length -= (this.time(setTasks[setIndex].start)-this.time(time))/(1000*60)
+            if(!(tasks[i].name.substring(tasks[i].name.length-8)==" (cont.)")){
+              tasks[i+1].name = tasks[i].name + " (cont.)"
             }
-            time = tasks[i].end
           }
         }
-        else{
+        else if(setIndex==setTasks.length-1){
+          console.log("last setTask")
+          time=setTasks[setIndex].end;
+          combined.push({...setTasks[setIndex]})
+          setIndex++
+        }
+        if(setIndex==setTasks.length){
+          //no more set tasks -> Add task
+          console.log("no more set tasks -> Add task")
           tasks[i].start = time
-          tasks[i].end = this.time(new Date(time).getTime()+tasks[i].length*1000*60)
+          tasks[i].end = this.time(this.time(time).getTime()+tasks[i].length*1000*60)
           combined.push({...tasks[i]})
-          time=tasks[i].end;
         }
         lastTask = tasks[i].end
-        if(i>0&&tasks[i].name.substring(tasks[i].name.length-8).equals(" (cont.)")){
+        time = tasks[i].end
+        if(i>0&&tasks[i].name.substring(tasks[i].name.length-8)==" (cont.)"){
           tasks.splice(i, 1)
           i-=1
         }
+      }
+      //Add remaining setTasks
+      for(setIndex;setIndex<setTasks.length;setIndex++){
+        console.log("Add remaining setTasks")
+        combined.push({...setTasks[setIndex]})
       }
     }
     if(setTasks.length>0){
@@ -365,28 +372,29 @@ export default class HomeScreen extends React.Component {
     else{
       this.availableTime = this.time(Date.now())-this.time(lastTask)
     }
+    console.log("combined:")
+    console.log(combined)
     this.setState({ready:true})
     return combined
+    
   }
 
   renderItem(item, index, drag, isActive){
+    // console.log(item.index)
+    // console.log(this.state.taskIndex)
+    // console.log((item.index === this.state.taskIndex))
+    // console.log(combined[item.index].name)
     return (
       <ScaleDecorator>
         <TouchableOpacity
-          onLongPress={item.sortValue!=null?drag:null}
-          style={
-            styles.tasks
-          }
+          onLongPress={item.item.sortValue!=null?drag:null}
+          onPress={() => this.setState({taskIndex:item.index})}
+          style={this.state.taskIndex==combined.findIndex((element)=>element.name==item.item.name)?[styles.tasks,{backgroundColor:'#6163c7'}]:styles.tasks}
         >
-          <View  key={item.name}>
-            <TouchableOpacity
-            onPress={() => this.setState({taskIndex: tasks.findIndex((element)=>element.name==item.name)})}
-            style={this.state.taskIndex==tasks.findIndex((element)=>element.name==item.name)?[styles.tasks,{backgroundColor:'#6163c7'}]:styles.tasks}
-            > 
-            <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==item.name)?{ fontSize: 17, alignSelf: 'center',fontWeight: 'bold', color:'#fff' }:{ fontSize: 17, alignSelf: 'center', color:'#fff' }}>{item.name}</Text>
-            <Text style={this.state.taskIndex==tasks.findIndex((element)=>element.name==item.name)?{ fontSize: 12, alignSelf: 'center',fontWeight: 'bold', color: '#fff' }:{ fontSize: 12, alignSelf: 'center', color: '#fff'}}>{this.displayTime(item.start)+' - '+this.displayTime(item.end)+' (Due: '+this.displayDate(item.date)+' '+this.displayTime(item.date)+')'}</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={this.state.taskIndex==combined.findIndex((element)=>element.name==item.item.name)?{ fontSize: 17, alignSelf: 'center',fontWeight: 'bold', color:'#fff' }:{ fontSize: 17, alignSelf: 'center', color:'#fff' }}>{item.item.name}</Text>
+          <Text style={this.state.taskIndex==combined.findIndex((element)=>element.name==item.item.name)?{ fontSize: 12, alignSelf: 'center',fontWeight: 'bold', color: '#fff' }:{ fontSize: 12, alignSelf: 'center', color: '#fff'}}>{this.displayTime(item.item.start)+' - '+this.displayTime(item.item.end)}</Text>
+          
+          {item.item.sortValue!=null?<Text style={this.state.taskIndex==combined.findIndex((element)=>element.name==item.item.name)?{ fontSize: 12, alignSelf: 'center',fontWeight: 'bold', color: '#fff' }:{ fontSize: 12, alignSelf: 'center', color: '#fff'}}>{' (Due: '+this.displayDate(item.item.date)+' '+this.displayTime(item.item.date)+')'}</Text>:null}
         </TouchableOpacity>
       </ScaleDecorator>
     );
@@ -406,18 +414,20 @@ export default class HomeScreen extends React.Component {
   setData(data,to){
     for(i=to-1;i>=0;i--){
       if(data[i].sortValue!=null){
+        tasks.remove(data[to])
         tasks.splice(tasks.indexOf(data[i])+1,0,data[to])
         this.makeCombined()
         return
       }
     }
     tasks.splice(0,0,data[to])
-    this.makeCombined
+    this.makeCombined()
   }
 
   //Task controls
   start(){
-    if(setTasks.length>0&&Date.now()>new Date(setTasks[0].start).getTime()&&Date.now()<new Date(setTasks[0].end).getTime()){
+    if(setTasks.length==0||(setTasks.length>0&&Date.now()<this.time(setTasks[0].start).getTime())){
+      console.log("in")
       this.setState({selectable:false})
       var selectedTask = tasks[this.state.taskIndex]
       tasks.splice(this.state.taskIndex, 1)
@@ -425,21 +435,9 @@ export default class HomeScreen extends React.Component {
       tasks.splice(0, 0, selectedTask)
       tasks[0].start=Date.now()
       this.saveTasks()
-      this.saveSeletable()
+      this.saveSelectable()
+      this.setState({ready:true, selectable:false})
     }
-    else if(setTasks.length==0||!(Date.now()>new Date(setTasks[0].start).getTime()&&Date.now()<new Date(setTasks[0].end).getTime())){
-      Alert.alert(
-        'Outside of Work Times',
-        "You are only able to do tasks during your work times. Please add/edit your work times instead.",
-        [
-          { text: 'Dismiss',style:"cancel"},
-          {text:'Add/Edit',onPress: ()=>this.props.navigation.navigate('AddWorkTime')}
-        ],
-        { cancelable: true }
-        
-      )
-    }
-    
   }
 
   pause(){
@@ -463,13 +461,19 @@ export default class HomeScreen extends React.Component {
   }
 
   remove(){
-    this.pause()
-    tasks.splice(this.state.taskIndex,1)
-    this.setState({taskIndex:0})
+    this.removeSelectable()
+    if(combined[this.state.taskIndex].sortValue!=null){
+      tasks.splice(this.state.taskIndex,1)
+    }
+    else{
+      setTasks.splice(this.state.taskIndex,1)
+    }
+    this.saveTasks()
+    this.setState({taskIndex:0,selectable:true, ready:true})
   }
 
   //Store selectable(working on task) status
-  async saveSeletable(){
+  async saveSelectable(){
     try {
       const jsonValue = JSON.stringify(false)
       await AsyncStorage.setItem('selectable',jsonValue)
@@ -499,6 +503,11 @@ export default class HomeScreen extends React.Component {
       savedTask[0][new Date().getDay()]=[...tasks]
       const jsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('tasks', jsonValue)
+      const savedSetTaskJsonValue = await AsyncStorage.getItem('setTasks')
+      var savedTask =  savedSetTaskJsonValue != null ? JSON.parse(savedSetTaskJsonValue) :null;
+      savedTask[0][new Date().getDay()]=[...tasks]
+      const setJsonValue = JSON.stringify(savedTask)
+      await AsyncStorage.setItem('setTasks', jsonValue)
     } catch (e) {
       console.log(e)
     }
@@ -512,7 +521,7 @@ export default class HomeScreen extends React.Component {
   }
 
   sortTimes(){
-    tasks.sort(function(a, b){return new Date(a.start).getTime() - new Date(b.start).getTime()});
+    setTasks.sort(function(a, b){return new Date(a.start).getTime() - new Date(b.start).getTime()});
     this.setState({ready:true})
   }
 
@@ -552,29 +561,30 @@ export default class HomeScreen extends React.Component {
   }
 
   taskName(){
-    if(tasks.length > 0){
-      return tasks[this.state.taskIndex].name
+    if(combined.length > 0){
+      // console.log(this.state.taskIndex)
+      return combined[this.state.taskIndex].name
     }
     return 'Add a Task'
   }
 
   //Editing
-  editTask = async () =>{
-    if(tasks.length>0){
-      try {
-        const jsonValue = JSON.stringify(tasks[this.state.taskIndex].name)
-        await AsyncStorage.setItem('editName', jsonValue)
+  async editTask(){
+    try {
+      const jsonValue = JSON.stringify(combined[this.state.taskIndex].name)
+      await AsyncStorage.setItem('editName', jsonValue)
+      if(combined[this.state.taskIndex].sortValue!=null){
         this.props.navigation.navigate('AddTask')
-      } catch (e) {
-        Alert.alert('Error getting task edit info!','Failed to get task edit info! Please try again.')
-        console.log(e)
       }
+      else{
+        this.props.navigation.navigate('AddWorkTime')
+      }
+    } catch (e) {
+      Alert.alert('Error getting task edit info!','Failed to get task edit info! Please try again.')
+      console.log(e)
     }
   }
 
-  editsetTasks(){
-    this.props.navigation.navigate('AddWorkTime')
-  }
 
   //Find time left
   findavailableTime(){
@@ -591,20 +601,10 @@ export default class HomeScreen extends React.Component {
    
   }
 
-  //Time vs no time task color
-  numTasks(schedule,workTimeNum){
-    if(schedule[workTimeNum].length==0){
-      return '#F6F6F6'
-    }
-    else{
-      return '#a6a6a6'
-    }
-  }
-
   resetOrder(){
     var temp = tasks.sort(function(a, b){return a.sortValue - b.sortValue});
-    for(i=0;i<tasks.length();i++){
-      if(!(tasks[i].name.equals(temp[i].name))){
+    for(i=0;i<tasks.length;i++){
+      if(!(tasks[i].name==temp[i].name)){
         return true
       }
     }
@@ -616,7 +616,6 @@ export default class HomeScreen extends React.Component {
     if(!this.state.ready){
       return null
     }
-    var schedule=this.makeSchedule()
     return (
       
       <SafeAreaView style={styles.container}>
@@ -673,13 +672,12 @@ export default class HomeScreen extends React.Component {
           </TouchableOpacity>
         </View>
         <View style={{flex:8}}>
-          <ScrollView style={{height: '100%'}}>
             <DraggableFlatList
-              data={this.makeCombined()}
+              data={combined}
               onDragBegin = {({index})=>this.startDrag(index)}
               onDragEnd={({ data, to }) => this.setData(data, to)}
-              keyExtractor={(item) => item.key}
-              renderItem={renderItem}
+              keyExtractor={(item) => item.name}
+              renderItem={(item,index,drag,isActive)=>this.renderItem(item,index,drag,isActive)}
             />
               
             {/* Reset order display */}
@@ -690,8 +688,6 @@ export default class HomeScreen extends React.Component {
             </TouchableOpacity>
             :null}
             </View>
-            
-          </ScrollView>
           
         </View>
 
@@ -704,12 +700,12 @@ export default class HomeScreen extends React.Component {
         <View style={styles.selectView}>
           <View style={styles.inSelection}>
             <Text style={{ fontSize: 20}}>{this.taskName()}</Text>
-            <Icon color={this.state.selectable==false||tasks.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={this.state.selectable==false||tasks.length==0?null:() => this.editTask()}/>
+            <Icon color={this.state.selectable==false||combined.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={this.state.selectable==false||combined.length==0?null:() => this.editTask()}/>
           </View>
           <View style={styles.inSelection}>
-          {this.state.selectable==true?<Icon name="play" type='font-awesome-5' size={25} color={tasks.length>0?'limegreen':'gray'} onPress={tasks.length>0?() => this.start(): null}></Icon>:<Icon name="pause" size={30} type='font-awesome-5' color={'#FFCC00'} onPress={() => this.pause()}/>}
+          {this.state.selectable==true?<Icon name="play" type='font-awesome-5' size={25} color={combined.length>0?'limegreen':'gray'} onPress={combined.length>0&&combined[this.state.taskIndex].sortValue!=null?() => this.start(): null}></Icon>:<Icon name="pause" size={30} type='font-awesome-5' color={'#FFCC00'} onPress={() => this.pause()}/>}
             
-            <Icon name="stop" type='font-awesome-5'color={tasks.length>0?'red':'gray'} size={25} onPress={tasks.length>0?() => this.stop():null}/>
+            <Icon name="stop" type='font-awesome-5'color={combined.length>0?'red':'gray'} size={25} onPress={combined.length>0?() => this.stop():null}/>
           </View>
           <View style={{flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-around',padding:3}}>
             {this.findavailableTime()}
