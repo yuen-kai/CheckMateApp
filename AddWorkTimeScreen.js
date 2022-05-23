@@ -27,6 +27,7 @@ export default class AddWorkTimeScreen extends React.Component {
     weekly:false,
     repeating: false,
     editMode: true,
+    name: "",
   }
 
   componentDidMount(){
@@ -136,28 +137,25 @@ export default class AddWorkTimeScreen extends React.Component {
 
   handleSave = async () => {
     var sameName = false
+    const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
+    var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
     this.isRepeating();
 
     this.selectedTask = {name:this.state.name,start:this.state.start, end:this.state.end,repeating:this.state.repeating}
 
-    if(this.edit == false){
-      for (let i = 0; i < this.state.daysUsed.length; i++) {
-        if(this.state.daysUsed[i])
-        {
-          workTimes[0][i].forEach(element => {
-            if(element.name==this.selectedTask.name){
-              sameName = true
-            }
-          });
-          if(this.state.weekly)
-          {
-            workTimes[1][i].forEach(element => {
-              if(element.name==this.selectedTask.name){
-                sameName = true
-              }
-            });
-          }
-        }
+    for (let i = 0; i < this.state.daysUsed.length; i++) {
+      // console.log("working")
+      if(this.state.daysUsed[i])
+      {
+        // console.log("plz")
+        sameName = ((workTimes[0][i].some((element) => element.name==this.selectedTask.name))
+                  ||(this.state.weekly&&workTimes[1][i].some((element) => element.name == this.selectedTask.name))
+                  ||(savedTask[0][i].some((element) => element.name == this.selectedTask.name))
+                  ||(this.state.weekly&&savedTask[1][i].some((element) => element.name == this.selectedTask.name)))
+        // console.log((workTimes[0][i].indexOf(this.selectedTask.name)>=0)
+        //            +(this.state.weekly&&workTimes[1][i].indexOf(this.selectedTask.name)>=0)
+        //            +(savedTask[0][i].indexOf(this.selectedTask.name)>=0)
+        //            +(this.state.weekly&&savedTask[1][i].indexOf(this.selectedTask.name)>=0))
       }
     }
     

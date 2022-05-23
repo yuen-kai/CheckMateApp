@@ -103,7 +103,7 @@ export default class AddTaskScreen extends React.Component {
       this.setState({show: false});
     }
     else{
-    this.showMode('time');
+      this.showMode('time');
     }
   };
   
