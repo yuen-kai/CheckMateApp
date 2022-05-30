@@ -89,22 +89,12 @@ export default class AddTaskScreen extends React.Component {
 
  //Date picker
   showDatepicker() {
-    if(this.state.show==true){
-      this.setState({show: false});
-    }
-    else{
-      this.showMode('date');
-    }
+    this.showMode('date');
     
   };
 
   showTimepicker() {
-    if(this.state.show==true){
-      this.setState({show: false});
-    }
-    else{
-      this.showMode('time');
-    }
+    this.showMode('time');
   };
   
   showMode(currentMode) {
@@ -113,8 +103,8 @@ export default class AddTaskScreen extends React.Component {
   };
 
   onChange = (event, selectedDate) => {
-    const currentDate = selectedDate || date;
-    this.setState({show: Platform.OS === 'ios'});
+    const currentDate = selectedDate;
+    this.setState({show: false});
     this.setState({date:currentDate});
   };
 
@@ -156,6 +146,8 @@ export default class AddTaskScreen extends React.Component {
   handleSave = async () => {
     var sameName = false
     this.isRepeating();
+    const savedTaskJsonValue = await AsyncStorage.getItem('setTasks')
+    var workTimes = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
 
     //Set parameters
     await this.setState({sortValue: parseInt(((new Date(this.state.date).getTime())/(1000*60*60))+(6-this.state.dueImportance)*2*(11-this.state.importance))+parseInt(this.state.length)/10})
@@ -175,23 +167,15 @@ export default class AddTaskScreen extends React.Component {
     var dueIncrease  = new Date(this.state.date).getTime()-new Date(d).getTime();
     this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance,repeating:this.state.repeating,dueIncrease:dueIncrease,overridable:this.state.overridable}
 
-    if(this.edit == false){
-      for (let i = 0; i < this.state.daysUsed.length; i++) {
-        if(this.state.daysUsed[i])
-        {
-          savedTasks[0][i].forEach(element => {
-            if(element.name==this.selectedTask.name){
-              sameName = true
-            }
-          });
-          if(this.state.weekly)
-          {
-            savedTasks[1][i].forEach(element => {
-              if(element.name==this.selectedTask.name){
-                sameName = true
-              }
-            });
-          }
+    //Same name
+    for (let i = 0; i < this.state.daysUsed.length; i++) {
+      if(this.state.daysUsed[i])
+      {
+        if((this.edit == true&&this.selectedTask.name != this.editName)||this.edit == false){
+          sameName = ((workTimes[0][i].some((element) => element.name==this.selectedTask.name))
+                  ||(this.state.weekly&&workTimes[1][i].some((element) => element.name == this.selectedTask.name))
+                  ||(savedTasks[0][i].some((element) => element.name == this.selectedTask.name))
+                  ||(this.state.weekly&&savedTasks[1][i].some((element) => element.name == this.selectedTask.name)))
         }
       }
     }
@@ -338,7 +322,7 @@ export default class AddTaskScreen extends React.Component {
               testID="dateTimePicker"
               value={this.state.date}
               mode={this.state.mode}
-              display="default"
+              // display="default"
               onChange={this.onChange}
               style={{width:'100%'}}
             />

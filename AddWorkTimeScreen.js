@@ -22,8 +22,8 @@ export default class AddWorkTimeScreen extends React.Component {
     startShow: false,
     endShow: false,
     ready: false,
-    start: new Date(),
-    end: new Date(),
+    start: new Date(new Date().setHours(new Date().getHours()+1)).setMinutes(0),
+    end: new Date(new Date().setHours(new Date().getHours()+2)).setMinutes(0),
     weekly:false,
     repeating: false,
     editMode: true,
@@ -141,21 +141,17 @@ export default class AddWorkTimeScreen extends React.Component {
     var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
     this.isRepeating();
 
-    this.selectedTask = {name:this.state.name,start:this.state.start, end:this.state.end,repeating:this.state.repeating}
+    this.selectedTask = {name:this.state.name,start:this.state.start, end:this.state.end,length:this.state.end-this.state.start,repeating:this.state.repeating}
 
     for (let i = 0; i < this.state.daysUsed.length; i++) {
-      // console.log("working")
       if(this.state.daysUsed[i])
       {
-        // console.log("plz")
-        sameName = ((workTimes[0][i].some((element) => element.name==this.selectedTask.name))
+        if((this.edit == true&&this.selectedTask.name != this.editName)||this.edit == false){
+          sameName = ((workTimes[0][i].some((element) => element.name==this.selectedTask.name))
                   ||(this.state.weekly&&workTimes[1][i].some((element) => element.name == this.selectedTask.name))
                   ||(savedTask[0][i].some((element) => element.name == this.selectedTask.name))
                   ||(this.state.weekly&&savedTask[1][i].some((element) => element.name == this.selectedTask.name)))
-        // console.log((workTimes[0][i].indexOf(this.selectedTask.name)>=0)
-        //            +(this.state.weekly&&workTimes[1][i].indexOf(this.selectedTask.name)>=0)
-        //            +(savedTask[0][i].indexOf(this.selectedTask.name)>=0)
-        //            +(this.state.weekly&&savedTask[1][i].indexOf(this.selectedTask.name)>=0))
+        }
       }
     }
     

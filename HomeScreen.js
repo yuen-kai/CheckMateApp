@@ -87,6 +87,7 @@ export default class HomeScreen extends React.Component {
       //If it is a new day
       if (day != null&&new Date(new Date().setHours(0,0,0,0)).getTime()!=new Date(day).getTime()) {
         oldTasks = [...savedTask[0][new Date(day).getDay()]]
+        // console.log(oldTasks)
         //If it is a new week, set the week's tasks to the weekly ones
         if(new Date(new Date().setHours(0,0,0,0)).getTime()-new Date(day).getTime()>(new Date().getDay()-new Date(day).getDay())*1000*60*60*24){
           savedTask[0]=[...savedTask[1]]
@@ -136,7 +137,7 @@ export default class HomeScreen extends React.Component {
           element.repeating = false;
         });
       }
-      if(!this.resetOrder()){
+      if(this.resetOrder()){
         this.sortTask()
       }
       const jsonValue = JSON.stringify(savedTask)
@@ -208,7 +209,7 @@ export default class HomeScreen extends React.Component {
           element.repeating = false;
         });
       }
-      if(!this.resetOrder()){
+      if(this.resetOrder()){
         this.sortTimes()
       }
       // this.selectTasks()
@@ -278,7 +279,8 @@ export default class HomeScreen extends React.Component {
 
   //Combine tasks and setTasks
   makeCombined(){
-    // console.log("in")
+    // console.log("start")
+    // console.log(tasks)
     var setIndex = 0;
     var lastTask = new Date()
     // var splitTask = false
@@ -286,13 +288,10 @@ export default class HomeScreen extends React.Component {
     this.sortSetTasks()
     if(tasks.length > 0||setTasks.length>0){
       var time = this.time(Date.now())
-      
-      if(this.state.selectable==false){
-        if(combined.length>0&&combined[0].length-((this.time(new Date ())-this.time(combined[0].start))/(1000*60))>0){
-          combined[0].length -= ((this.time(new Date ())-this.time(combined[0].start))/(1000*60))
-        }
-        else{
-          combined[0].length = 10
+      if(this.state.selectable==false&&tasks.length>0){
+        tasks[0].length -= ((this.time(tasks[0].start))-this.time(new Date()))/(1000*60)
+        if(tasks[0].length<=0){
+          tasks[0].length = 10
         }
       }
       for (var i = 0; i <=tasks.length-1; i++){
@@ -305,14 +304,7 @@ export default class HomeScreen extends React.Component {
             //Add set task
             // console.log("Add set task")
             time=setTasks[setIndex].end;
-            // if(splitTask==true){
-            //   console.log("sandwiched settask")
-            //   splitTask = false
-            //   combined.splice(combined.length-2,0,...setTasks[setIndex])
-            // }
-            // else{
-              combined.push({...setTasks[setIndex]})
-            // }
+            combined.push({...setTasks[setIndex]})
             
             setIndex++;
             // console.log(this.displayTime(time))
@@ -334,31 +326,16 @@ export default class HomeScreen extends React.Component {
             time = tasks[i].end
             combined.push({...tasks[i]})
             tasks.splice(i+1,0,{...tasks[i]})
-            tasks[i+1].length -= (this.time(setTasks[setIndex].start)-this.time(time))/(1000*60)
+            tasks[i+1].length -= (this.time(tasks[i].end)-this.time(tasks[i].start))/(1000*60)
             if(!(tasks[i].name.substring(tasks[i].name.length-8)==" (cont.)")){
               tasks[i+1].name = tasks[i].name + " (cont.)"
             }
-            // combined.push({...tasks[i]})
-            // combined[combined.length-1].length -= (this.time(setTasks[setIndex].start)-this.time(time))/(1000*60)
-            // if(!(combined[combined.length-2].name.substring(combined[combined.length-2].name.length-8)==" (cont.)")){
-            //   combined[combined.length-1].name = combined[combined.length-2].name + " (cont.)"
-            // }
-            // combined[combined.length-1].start = this.time(setTasks[setIndex].end)
-            // combined[combined.length-1].end = this.time(new Date(combined[combined.length-1].start).getTime()+combined[combined.length-1].length*1000*60)
-            // splitTask = true
           }
         }
         else if(setTasks.length>0&&setIndex==setTasks.length-1){
-          console.log("last setTask")
+          // console.log("last setTask")
           time=setTasks[setIndex].end;
-          // if(splitTask==true){
-          //   console.log("sandwiched settask")
-          //   splitTask = false
-          //   combined.splice(combined.length-2,0,...setTasks[setIndex])
-          // }
-          // else{
-            combined.push({...setTasks[setIndex]})
-          // }
+          combined.push({...setTasks[setIndex]})
           setIndex++
           
         }
@@ -378,7 +355,7 @@ export default class HomeScreen extends React.Component {
       }
       //Add remaining setTasks
       for(setIndex;setIndex<setTasks.length;setIndex++){
-        console.log("Add remaining setTasks")
+        // console.log("Add remaining setTasks")
         // console.log(setTasks[setIndex])
         
         // if(splitTask==true){
@@ -401,8 +378,8 @@ export default class HomeScreen extends React.Component {
     else{
       this.availableTime = this.time(Date.now())-this.time(lastTask)
     }
-    // console.log("combined:")
-    // console.log(combined)
+    // console.log("end")
+    // console.log(tasks)
     this.setState({ready:true})
     return combined
     
@@ -417,7 +394,8 @@ export default class HomeScreen extends React.Component {
     return (
       <ScaleDecorator>
         <TouchableOpacity
-          onLongPress={item.sortValue!=null?drag:null}
+          onLongPress={item.sortValue!=null&&item.name.substring(item.name.length-8)!=" (cont.)"?drag:null}
+          disabled={isActive}
           onPress={() => item.name.substring(item.name.length-8)!=" (cont.)"?this.setState({taskIndex:index}):this.setState({taskIndex:combined.findIndex((task)=>task.name==item.name.substring(0,item.name.length-8))})}
           style={this.state.taskIndex==index?[styles.tasks,{backgroundColor:'#6163c7'}]:styles.tasks}
         >
@@ -432,26 +410,26 @@ export default class HomeScreen extends React.Component {
 
   setData(data){
     tasks = data.data.filter((task) => task.sortValue!=null && task.name.substring(task.name.length-8)!= " (cont.)")
-    console.log(data.data)
-    console.log(data.from)
-    console.log(data.to)
-    console.log(tasks)
+    // console.log("setData "+tasks[0].name)
     this.makeCombined()
   }
 
   //Task controls
   start(){
     if(setTasks.length==0||(setTasks.length>0&&Date.now()<this.time(setTasks[0].start).getTime())){
-      console.log("in")
+      // console.log("in")
       this.setState({selectable:false})
-      var selectedTask = tasks[this.state.taskIndex]
-      tasks.splice(this.state.taskIndex, 1)
+      var selectedTask = combined[this.state.taskIndex]
+      //remove selectedTask from tasks
+      tasks.splice(tasks.findIndex((task)=>task.name==selectedTask.name),1)
       this.setState({taskIndex: 0})
       tasks.splice(0, 0, selectedTask)
       tasks[0].start=Date.now()
       this.saveTasks()
       this.saveSelectable()
       this.setState({ready:true, selectable:false})
+      // console.log("start"+ tasks[0].name)
+      this.makeCombined()
     }
   }
 
@@ -477,7 +455,7 @@ export default class HomeScreen extends React.Component {
 
   remove(){
     this.removeSelectable()
-    console.log(combined[this.state.taskIndex])
+    // console.log(combined[this.state.taskIndex])
     if(combined[this.state.taskIndex].sortValue!=undefined&&combined[this.state.taskIndex].sortValue!=null){
       tasks.splice(this.state.taskIndex,1)
     }
@@ -514,9 +492,10 @@ export default class HomeScreen extends React.Component {
   //Save tasks
   async saveTasks(){
     try {
+      // console.log("saveTasks1 "+tasks[0].name)
       const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
       var savedTask =  savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
-      savedTask[0][new Date().getDay()]= [...new Set(tasks)]
+      savedTask[0][new Date().getDay()]= [...tasks]
       const jsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('tasks', jsonValue)
 
@@ -525,7 +504,7 @@ export default class HomeScreen extends React.Component {
       savedTask[0][new Date().getDay()]=[...setTasks]
       const setJsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('setTasks', setJsonValue)
-
+      // console.log("saveTasks2 "+tasks[0].name)
       this.makeCombined()
     } catch (e) {
       console.log(e)
@@ -534,24 +513,29 @@ export default class HomeScreen extends React.Component {
 
   //Sort tasks
   sortTask(){
+    // console.log("hmmmmm")
+    // console.log("sortTask "+tasks[0].name)
     tasks.sort(function(a, b){return a.sortValue - b.sortValue});
-    this.selectTasks()
+    // this.selectTasks()
+    
     this.makeCombined()
+    // console.log("oh no")
   }
 
   sortTimes(){
     setTasks.sort(function(a, b){return new Date(a.start).getTime() - new Date(b.start).getTime()});
+    // console.log("sortTimes "+tasks[0].name)
     this.makeCombined()
   }
 
 
-  selectTasks(){
-    if(this.state.sTask!=null){
-      tasks.splice(tasks.findIndex((element)=>element.name==this.state.sTask.name),1)
-      tasks.splice(0,0,this.state.sTask);
-      this.setState({sTask:null});
-    }
-  }
+  // selectTasks(){
+  //   if(this.state.sTask!=null){
+  //     tasks.splice(tasks.findIndex((element)=>element.name==this.state.sTask.name),1)
+  //     tasks.splice(0,0,this.state.sTask);
+  //     this.setState({sTask:null});
+  //   }
+  // }
 
   //Get task information
   displayTime(date){
@@ -591,7 +575,7 @@ export default class HomeScreen extends React.Component {
     try {
       const jsonValue = JSON.stringify(combined[this.state.taskIndex].name)
       await AsyncStorage.setItem('editName', jsonValue)
-      console.log(combined[this.state.taskIndex])
+      // console.log(combined[this.state.taskIndex])
       if(combined[this.state.taskIndex].sortValue!=undefined&&combined[this.state.taskIndex].sortValue!=null){
         this.props.navigation.navigate('AddTask')
       }
@@ -621,13 +605,11 @@ export default class HomeScreen extends React.Component {
   }
 
   resetOrder(){
+    var original = [...tasks]
     var temp = tasks.sort(function(a, b){return a.sortValue - b.sortValue});
-    for(i=0;i<tasks.length;i++){
-      if(!(tasks[i].name==temp[i].name)){
-        return true
-      }
-    }
-    return false
+    tasks = [...original]
+    //Check if tasks and temp are identical arrays
+    return JSON.stringify(tasks)!=JSON.stringify(temp)
   }
 
   render(){
@@ -699,13 +681,13 @@ export default class HomeScreen extends React.Component {
             />
               
             {/* Reset order display */}
-            <View style={{padding:8}}>
-              {this.resetOrder()?
-              <TouchableOpacity onPress={() => this.sortTask()} style={[styles.button,{flex:1}]}>
-              <Text style={{ fontSize: 20, color: '#fff' }}>Reset Order</Text>
-            </TouchableOpacity>
+            {this.resetOrder()?
+              <View style={{padding:8}}>
+                <TouchableOpacity onPress={() => this.sortTask()} style={[styles.button]}>
+                  <Text style={{ fontSize: 20, color: '#fff' }}>Reset Order</Text>
+                </TouchableOpacity>
+              </View>
             :null}
-            </View>
           
         </View>
 
@@ -721,7 +703,7 @@ export default class HomeScreen extends React.Component {
             <Icon color={this.state.selectable==false||combined.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={this.state.selectable==false||combined.length==0?null:() => this.editTask()}/>
           </View> */}
           <View style={styles.inSelection}>
-            {this.state.selectable==true?<Icon name="play-circle" type='font-awesome' size={30} color={'white'} onPress={combined.length>0&&combined[this.state.taskIndex].sortValue!=undefined&&combined[this.state.taskIndex].sortValue!=null?() => this.start(): null}></Icon>:<Icon name="circle-pause" size={30} type='font-awesome' color={'#FFCC00'} onPress={() => this.pause()}/>}
+            {this.state.selectable==true?<Icon name="play-circle" type='font-awesome' size={30} color={'white'} onPress={combined.length>0&&combined[this.state.taskIndex].sortValue!=undefined&&combined[this.state.taskIndex].sortValue!=null?() => this.start(): null}></Icon>:<Icon name="pause-circle" size={30} type='font-awesome' color={"white"} onPress={() => this.pause()}/>}
             <Icon name="stop-circle" type='font-awesome' color={'white'} size={30} onPress={combined.length>0?() => this.stop():null}/>
             <Icon color={'white'} name="pencil-circle" type='material-community' size={30} onPress={this.state.selectable==false||combined.length==0?null:() => this.editTask()}/>
           </View>
