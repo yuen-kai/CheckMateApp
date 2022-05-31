@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from './HomeScreen';
 import AddTaskScreen from './AddTaskScreen';
 import AddWorkTimeScreen from './AddWorkTimeScreen';
+import 'react-native-gesture-handler';
 
 const Stack = createNativeStackNavigator();
 

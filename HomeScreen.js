@@ -2,14 +2,15 @@ import React from 'react';
 import { StyleSheet, Text, View,TouchableOpacity, ScrollView, Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Divider,Overlay,Button} from 'react-native-elements';
+import {Icon,Divider,Overlay,Button,SpeedDial} from 'react-native-elements';
+// import { SpeedDial } from "@rneui/themed";
 import DraggableFlatList, {
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
 
 var tasks = [];
 var setTasks = [];
-var combined = []
+// var combined = []
 
 export default class HomeScreen extends React.Component {
   availableTime = 0
@@ -22,6 +23,7 @@ export default class HomeScreen extends React.Component {
     selectable: true,
     firstTime: false,
     sTask: null,
+    combined: []
   };
   //get data
   componentDidMount(){
@@ -32,7 +34,7 @@ export default class HomeScreen extends React.Component {
     this.getSelectable()
     this.intervalID=setInterval(
       () => {this.makeCombined()},
-      10000
+      500
     );
   }
   
@@ -213,7 +215,7 @@ export default class HomeScreen extends React.Component {
         this.sortTimes()
       }
       // this.selectTasks()
-      // this.setState({ready:true})
+      this.setState({ready:true})
       const jsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('setTasks', jsonValue)
       // console.log("setTasks:")
@@ -284,7 +286,7 @@ export default class HomeScreen extends React.Component {
     var setIndex = 0;
     var lastTask = new Date()
     // var splitTask = false
-    combined = []
+    var tempC = []
     this.sortSetTasks()
     if(tasks.length > 0||setTasks.length>0){
       var time = this.time(Date.now())
@@ -304,7 +306,7 @@ export default class HomeScreen extends React.Component {
             //Add set task
             // console.log("Add set task")
             time=setTasks[setIndex].end;
-            combined.push({...setTasks[setIndex]})
+            tempC.push({...setTasks[setIndex]})
             
             setIndex++;
             // console.log(this.displayTime(time))
@@ -315,7 +317,7 @@ export default class HomeScreen extends React.Component {
             // console.log("Task length <= time until set task -> add task")
             tasks[i].start = time
             tasks[i].end = this.time(new Date(time).getTime()+tasks[i].length*1000*60)
-            combined.push({...tasks[i]})
+            tempC.push({...tasks[i]})
           }
           else if(Math.round((this.time(setTasks[setIndex].start).getTime()-this.time(time).getTime())/(1000*60))>0)
           {
@@ -324,7 +326,7 @@ export default class HomeScreen extends React.Component {
             tasks[i].start = time
             tasks[i].end = this.time(setTasks[setIndex].start)
             time = tasks[i].end
-            combined.push({...tasks[i]})
+            tempC.push({...tasks[i]})
             tasks.splice(i+1,0,{...tasks[i]})
             tasks[i+1].length -= (this.time(tasks[i].end)-this.time(tasks[i].start))/(1000*60)
             if(!(tasks[i].name.substring(tasks[i].name.length-8)==" (cont.)")){
@@ -335,7 +337,7 @@ export default class HomeScreen extends React.Component {
         else if(setTasks.length>0&&setIndex==setTasks.length-1){
           // console.log("last setTask")
           time=setTasks[setIndex].end;
-          combined.push({...setTasks[setIndex]})
+          tempC.push({...setTasks[setIndex]})
           setIndex++
           
         }
@@ -344,7 +346,7 @@ export default class HomeScreen extends React.Component {
           // console.log("no more set tasks -> Add task")
           tasks[i].start = time
           tasks[i].end = this.time(this.time(time).getTime()+tasks[i].length*1000*60)
-          combined.push({...tasks[i]})
+          tempC.push({...tasks[i]})
         }
         lastTask = tasks[i].end
         time = tasks[i].end
@@ -365,7 +367,7 @@ export default class HomeScreen extends React.Component {
         //   // combined.push({...setTasks[setIndex]})
         // }
         // else{
-          combined.push({...setTasks[setIndex]})
+          tempC.push({...setTasks[setIndex]})
           time=setTasks[setIndex].end;
         // }
         setIndex++
@@ -380,9 +382,7 @@ export default class HomeScreen extends React.Component {
     }
     // console.log("end")
     // console.log(tasks)
-    this.setState({ready:true})
-    return combined
-    
+    this.setState({combined:tempC})
   }
 
   renderItem(item){
@@ -396,8 +396,9 @@ export default class HomeScreen extends React.Component {
         <TouchableOpacity
           onLongPress={item.sortValue!=null&&item.name.substring(item.name.length-8)!=" (cont.)"?drag:null}
           disabled={isActive}
-          onPress={() => item.name.substring(item.name.length-8)!=" (cont.)"?this.setState({taskIndex:index}):this.setState({taskIndex:combined.findIndex((task)=>task.name==item.name.substring(0,item.name.length-8))})}
+          onPress={() => item.name.substring(item.name.length-8)!=" (cont.)"?this.setState({taskIndex:index}):this.setState({taskIndex:this.state.combined.findIndex((task)=>task.name==item.name.substring(0,item.name.length-8))})}
           style={this.state.taskIndex==index?[styles.tasks,{backgroundColor:'#6163c7'}]:styles.tasks}
+          // style={isActive?[styles.tasks,{backgroundColor:'#6163c7'}]:styles.tasks}
         >
           <Text style={this.state.taskIndex==index?{ fontSize: 17, alignSelf: 'center',fontWeight: 'bold', color:'#fff' }:{ fontSize: 17, alignSelf: 'center', color:'#fff' }}>{item.name}</Text>
           <Text style={this.state.taskIndex==index?{ fontSize: 12, alignSelf: 'center',fontWeight: 'bold', color: '#fff' }:{ fontSize: 12, alignSelf: 'center', color: '#fff'}}>{this.displayTime(item.start)+' - '+this.displayTime(item.end)}</Text>
@@ -416,10 +417,16 @@ export default class HomeScreen extends React.Component {
 
   //Task controls
   start(){
-    if(setTasks.length==0||(setTasks.length>0&&Date.now()<this.time(setTasks[0].start).getTime())){
+    if(this.state.combined[this.state.taskIndex].sortValue==null){
+      Alert.alert("Events can't be started","They will automatically start once it is the starting time.")
+    }
+    else if(setTasks.length>0&&this.time(new Date()).getTime()>=this.time(setTasks[0].start).getTime()){
+      Alert.alert("Event in progress","You can start this task when the event has finished.")
+    }
+    else{
       // console.log("in")
       this.setState({selectable:false})
-      var selectedTask = combined[this.state.taskIndex]
+      var selectedTask = this.state.combined[this.state.taskIndex]
       //remove selectedTask from tasks
       tasks.splice(tasks.findIndex((task)=>task.name==selectedTask.name),1)
       this.setState({taskIndex: 0})
@@ -455,8 +462,8 @@ export default class HomeScreen extends React.Component {
 
   remove(){
     this.removeSelectable()
-    // console.log(combined[this.state.taskIndex])
-    if(combined[this.state.taskIndex].sortValue!=undefined&&combined[this.state.taskIndex].sortValue!=null){
+    // console.log(this.state.combined[this.state.taskIndex])
+    if(this.state.combined[this.state.taskIndex].sortValue!=undefined&&this.state.combined[this.state.taskIndex].sortValue!=null){
       tasks.splice(this.state.taskIndex,1)
     }
     else{
@@ -564,8 +571,8 @@ export default class HomeScreen extends React.Component {
   }
 
   taskName(){
-    if(combined.length > 0){
-      return combined[this.state.taskIndex].name
+    if(this.state.combined.length > 0){
+      return this.state.combined[this.state.taskIndex].name
     }
     return 'Add a Task'
   }
@@ -573,10 +580,10 @@ export default class HomeScreen extends React.Component {
   //Editing
   async editTask(){
     try {
-      const jsonValue = JSON.stringify(combined[this.state.taskIndex].name)
+      const jsonValue = JSON.stringify(this.state.combined[this.state.taskIndex].name)
       await AsyncStorage.setItem('editName', jsonValue)
-      // console.log(combined[this.state.taskIndex])
-      if(combined[this.state.taskIndex].sortValue!=undefined&&combined[this.state.taskIndex].sortValue!=null){
+      // console.log(this.state.combined[this.state.taskIndex])
+      if(this.state.combined[this.state.taskIndex].sortValue!=undefined&&this.state.combined[this.state.taskIndex].sortValue!=null){
         this.props.navigation.navigate('AddTask')
       }
       else{
@@ -657,7 +664,7 @@ export default class HomeScreen extends React.Component {
               onPress={()=>this.setState({firstTime:true})}
             />
           </View>
-          <TouchableOpacity style={{flexDirection:'row', backgroundColor:'#152075', marginRight:7, padding:5, borderRadius:5}} onPress={() =>navigate('AddTask')}>   
+          {/* <TouchableOpacity style={{flexDirection:'row', backgroundColor:'#152075', marginRight:7, padding:5, borderRadius:5}} onPress={() =>navigate('AddTask')}>   
             <Icon name="plus-circle" color='#fff' size={20} type="feather"/>
             <View style={{alignItems: 'center',marginHorizontal:5}}>
               <Text style={{ fontSize: 13, color: '#fff' }}>Add</Text>
@@ -670,16 +677,39 @@ export default class HomeScreen extends React.Component {
             <Text style={{ fontSize: 13, color: '#fff' }}>Add</Text>
             <Text style={{ fontSize: 13, color: '#fff'}}>setTasks</Text>
           </View>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
-        <View style={{flex:8}}>
-            <DraggableFlatList
-              data={combined}
-              onDragEnd={(data) => this.setData(data)}
-              keyExtractor={(item,index) => item.name+index}
-              renderItem={(item)=>this.renderItem(item)}
-            />
-              
+
+        <SpeedDial
+          isOpen={this.state.open}
+          icon={{ name: 'add', color: '#fff' }}
+          openIcon={{ name: 'close', color: '#fff' }}
+          onOpen={() => this.setState({ open: !this.state.open })}
+          onClose={() => this.setState({ open: !this.state.open })}
+          color='#2877f7'
+        >
+          <SpeedDial.Action
+            icon={{ name: 'check-square', color: '#fff', type: "feather" }}
+            title="Task"
+            onPress={() => {this.setState({ open: false });navigate('AddTask')}}
+            color='#2877f7'
+          />
+          <SpeedDial.Action
+            icon={{ name: 'clock', color: '#fff', type: "feather" }}
+            title="Event"
+            onPress={() => {this.setState({ open: false });navigate('AddWorkTime')}}
+            color='#2877f7'
+          />
+        </SpeedDial>
+
+        <View style={{flex:10, marginHorizontal:5}}>
+          <DraggableFlatList
+            // debug={true}
+            data={this.state.combined}
+            onDragEnd={(data) => this.setData(data)}
+            keyExtractor={(item,index) => item.name+index}
+            renderItem={(item)=>this.renderItem(item)}
+          /> 
             {/* Reset order display */}
             {this.resetOrder()?
               <View style={{padding:8}}>
@@ -703,9 +733,23 @@ export default class HomeScreen extends React.Component {
             <Icon color={this.state.selectable==false||combined.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={this.state.selectable==false||combined.length==0?null:() => this.editTask()}/>
           </View> */}
           <View style={styles.inSelection}>
-            {this.state.selectable==true?<Icon name="play-circle" type='font-awesome' size={30} color={'white'} onPress={combined.length>0&&combined[this.state.taskIndex].sortValue!=undefined&&combined[this.state.taskIndex].sortValue!=null?() => this.start(): null}></Icon>:<Icon name="pause-circle" size={30} type='font-awesome' color={"white"} onPress={() => this.pause()}/>}
-            <Icon name="stop-circle" type='font-awesome' color={'white'} size={30} onPress={combined.length>0?() => this.stop():null}/>
-            <Icon color={'white'} name="pencil-circle" type='material-community' size={30} onPress={this.state.selectable==false||combined.length==0?null:() => this.editTask()}/>
+            {this.state.selectable==true?
+              <Icon name="play-circle" 
+                type='font-awesome' 
+                size={30} 
+                // color={'white'} 
+                onPress={() => this.start()}
+                disabled={this.state.combined.length<0}
+              />
+             :<Icon name="pause-circle" 
+                size={30} 
+                type='font-awesome' 
+                // color={"white"} 
+                onPress={() => this.pause()}
+              />
+            }
+            <Icon name="stop-circle" type='font-awesome' size={30} onPress={this.state.combined.length>0?() => this.stop():null}/>
+            <Icon  name="pencil-circle" type='material-community' size={30} onPress={this.state.selectable==false||this.state.combined.length==0?null:() => this.editTask()}/>
           </View>
           <View style={{flex: 1, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-around',padding:3}}>
             {this.findavailableTime()}
@@ -720,7 +764,7 @@ export default class HomeScreen extends React.Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#3A3B3C',
+    // backgroundColor: '#3A3B3C',
     alignItems: 'stretch',
     justifyContent: 'flex-start',
     flexDirection: 'column'
@@ -729,7 +773,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     flexDirection: 'row',
-    flex: 1,
+    flex: 0.5,
     padding: 8
   },
   button: {
