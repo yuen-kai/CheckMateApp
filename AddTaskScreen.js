@@ -67,7 +67,7 @@ export default class AddTaskScreen extends React.Component {
         this.selectedTask = savedTasks[0][new Date().getDay()][savedTasks[0][new Date().getDay()].findIndex((task) =>task.name == this.editName)]
         this.edit = true
         this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,dueImportance:this.selectedTask.dueImportance,repeating:this.selectedTask.repeating,overridable:this.selectedTask.overridable})
-        await AsyncStorage.removeItem('editName')
+        // await AsyncStorage.removeItem('editName')
         for(var i=0;i<=this.state.daysUsed.length-1;i++){
           if(savedTasks[0][i].findIndex((task) =>task.name == this.editName)!=-1)
           {
@@ -80,7 +80,7 @@ export default class AddTaskScreen extends React.Component {
         this.setState({daysUsed:change})
       }
     } catch(e) {
-      await AsyncStorage.removeItem('editName')
+      // await AsyncStorage.removeItem('editName')
       Alert.alert('Failed to get edit info!','Failed to get edit info! Please try again.')
       console.log(e)
     }
@@ -320,7 +320,7 @@ export default class AddTaskScreen extends React.Component {
           {this.state.show && (
             <DateTimePicker
               testID="dateTimePicker"
-              value={this.state.date}
+              value={new Date(this.state.date)}
               mode={this.state.mode}
               // display="default"
               onChange={this.onChange}

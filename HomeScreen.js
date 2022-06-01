@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View,TouchableOpacity, ScrollView, Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Divider,Overlay,Button,SpeedDial} from 'react-native-elements';
+import {Icon,Divider,Overlay,Button,SpeedDial,ListItem} from 'react-native-elements';
 // import { SpeedDial } from "@rneui/themed";
 import DraggableFlatList, {
   ScaleDecorator,
@@ -10,6 +10,7 @@ import DraggableFlatList, {
 
 var tasks = [];
 var setTasks = [];
+var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 // var combined = []
 
 export default class HomeScreen extends React.Component {
@@ -39,11 +40,31 @@ export default class HomeScreen extends React.Component {
   }
   
   getData = async () => {
-    this.savedTasks()
-    this.savedSetTasks()
-    this.firstTime()
-    this.changeDay()
-    this.makeCombined()
+    try {
+      this.savedTasks()
+      this.savedSetTasks()
+      this.firstTime()
+      this.changeDay()
+      await this.makeCombined()
+      if(this.state.taskIndex>=this.state.combined.length){
+        console.log(this.state.taskIndex+" "+this.state.combined.length)
+        this.setState({taskIndex:0})
+      }
+      else{
+        console.log("hello")
+        const JsonValue = await AsyncStorage.getItem('editName')
+        if(JsonValue != null){
+          console.log(this.state.combined)
+          console.log(JSON.parse(JsonValue))
+          console.log(this.state.combined.findIndex((task) => task.name==JSON.parse(JsonValue)))
+          this.setState({taskIndex:this.state.combined.findIndex((task)=>task.name==JSON.parse(JsonValue))})
+        }
+        await AsyncStorage.removeItem('editName')
+      }
+    } catch(e) {
+      Alert.alert('Failed to get data!','Failed to get data! Please try again.')
+      console.log(e)
+    }
   } 
 
   async firstTime(){
@@ -127,9 +148,6 @@ export default class HomeScreen extends React.Component {
         savedTask[0][new Date().getDay()] = [...tasks]
       }
       else{
-        if(this.state.taskIndex>=savedTask[0][new Date().getDay()].length){
-          this.setState({taskIndex:0})
-        }
         tasks = savedTask[0][new Date().getDay()]
       }
       
@@ -200,9 +218,10 @@ export default class HomeScreen extends React.Component {
         savedTask[0][new Date().getDay()] = [...setTasks]
       }
       else{
-        if(this.state.taskIndex>=savedTask[0][new Date().getDay()].length){
-          this.setState({taskIndex:0})
-        }
+        // if(this.state.taskIndex>=savedTask[0][new Date().getDay()].length){
+        //   console.log(this.state.taskIndex+" "+savedTask[0][new Date().getDay()].length)
+        //   this.setState({taskIndex:0})
+        // }
         setTasks = savedTask[0][new Date().getDay()]
       }
       
@@ -393,7 +412,7 @@ export default class HomeScreen extends React.Component {
     
     return (
       <ScaleDecorator>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onLongPress={item.sortValue!=null&&item.name.substring(item.name.length-8)!=" (cont.)"?drag:null}
           disabled={isActive}
           onPress={() => item.name.substring(item.name.length-8)!=" (cont.)"?this.setState({taskIndex:index}):this.setState({taskIndex:this.state.combined.findIndex((task)=>task.name==item.name.substring(0,item.name.length-8))})}
@@ -404,6 +423,25 @@ export default class HomeScreen extends React.Component {
           <Text style={this.state.taskIndex==index?{ fontSize: 12, alignSelf: 'center',fontWeight: 'bold', color: '#fff' }:{ fontSize: 12, alignSelf: 'center', color: '#fff'}}>{this.displayTime(item.start)+' - '+this.displayTime(item.end)}</Text>
           
           {item.sortValue!=undefined&&item.sortValue!=null?<Text style={this.state.taskIndex==index?{ fontSize: 12, alignSelf: 'center',fontWeight: 'bold', color: '#fff' }:{ fontSize: 12, alignSelf: 'center', color: '#fff'}}>{' (Due: '+this.displayDate(item.date)+' '+this.displayTime(item.date)+')'}</Text>:null}
+        </TouchableOpacity> */}
+        <TouchableOpacity
+          onLongPress={item.sortValue!=null&&item.name.substring(item.name.length-8)!=" (cont.)"?drag:null}
+          disabled={isActive}
+          onPress={() => item.name.substring(item.name.length-8)!=" (cont.)"?this.setState({taskIndex:index}):this.setState({taskIndex:this.state.combined.findIndex((task)=>task.name==item.name.substring(0,item.name.length-8))})}
+          // style={this.state.taskIndex==index?[styles.tasks,{backgroundColor:'#6163c7'}]:styles.tasks}
+          // style={isActive?[styles.tasks,{backgroundColor:'#6163c7'}]:styles.tasks}
+        >
+          <ListItem bottomDivider containerStyle={this.state.taskIndex==index?{backgroundColor:'#2d67c4'}:null}>
+            <ListItem.Content>
+              <ListItem.Title style={this.state.taskIndex!=index?{fontWeight: 'bold'}:{fontWeight: 'bold',color:"white"}}>{item.name}</ListItem.Title>
+              <ListItem.Subtitle style={this.state.taskIndex==index?{color:"white"}:null}>{this.displayTime(item.start)+' - '+this.displayTime(item.end)}</ListItem.Subtitle>
+              {item.sortValue!=null?
+                <ListItem.Subtitle style={this.state.taskIndex==index?{color:"white"}:null}>
+                  {'(Due: '+days[new Date(item.date).getDay()]+' '+this.displayDate(item.date)+' '+this.displayTime(item.date)+')'}
+                </ListItem.Subtitle>
+                :null}
+            </ListItem.Content>
+          </ListItem>
         </TouchableOpacity>
       </ScaleDecorator>
     );
@@ -686,23 +724,23 @@ export default class HomeScreen extends React.Component {
           openIcon={{ name: 'close', color: '#fff' }}
           onOpen={() => this.setState({ open: !this.state.open })}
           onClose={() => this.setState({ open: !this.state.open })}
-          color='#2877f7'
+          color='#2d67c4'
         >
           <SpeedDial.Action
             icon={{ name: 'check-square', color: '#fff', type: "feather" }}
             title="Task"
             onPress={() => {this.setState({ open: false });navigate('AddTask')}}
-            color='#2877f7'
+            color='#2d67c4'
           />
           <SpeedDial.Action
             icon={{ name: 'clock', color: '#fff', type: "feather" }}
             title="Event"
             onPress={() => {this.setState({ open: false });navigate('AddWorkTime')}}
-            color='#2877f7'
+            color='#2d67c4'
           />
         </SpeedDial>
 
-        <View style={{flex:10, marginHorizontal:5}}>
+        <View style={{flex:10, marginHorizontal:20}}>
           <DraggableFlatList
             // debug={true}
             data={this.state.combined}
