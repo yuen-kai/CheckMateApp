@@ -41,11 +41,11 @@ export default class HomeScreen extends React.Component {
   
   getData = async () => {
     try {
-      this.savedTasks()
-      this.savedSetTasks()
-      this.firstTime()
-      this.changeDay()
-      await this.makeCombined()
+      await this.savedTasks()
+      await this.savedSetTasks()
+      await this.firstTime()
+      await this.changeDay()
+      this.makeCombined()
       if(this.state.taskIndex>=this.state.combined.length){
         console.log(this.state.taskIndex+" "+this.state.combined.length)
         this.setState({taskIndex:0})

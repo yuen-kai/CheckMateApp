@@ -249,8 +249,9 @@ export default class AddTaskScreen extends React.Component {
         <ScrollView style={{padding:20}} contentContainerStyle={{height:'100%'}}>
           <View style={{flex:1}} >
             <View style={styles.section}>
-              <Text style={{ fontSize: 17, padding:3}}>Name:</Text>
+              {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
               <Input
+                label = 'Name'
                 placeholder='Practice Piano'
                 renderErrorMessage={false}
                 onChangeText={name => this.setState({name})}
@@ -288,8 +289,9 @@ export default class AddTaskScreen extends React.Component {
             </View>
           </View>
           <View style={styles.section}>
-            <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text>
+            {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
             <Input
+              label = 'Length (min)'
               placeholder='30'
               renderErrorMessage={false}
               keyboardType = "numeric"
