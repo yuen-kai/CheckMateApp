@@ -1,11 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity,Alert, ScrollView} from 'react-native';
+import { StyleSheet, View, TouchableOpacity,Alert, ScrollView} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Tooltip,Avatar,CheckBox,Input} from 'react-native-elements'
+import {Icon,Tooltip,Avatar,CheckBox,Input, Button,Text} from 'react-native-elements'
 import ThemedListItem from 'react-native-elements/dist/list/ListItem';
 
 var workTimes
@@ -59,7 +59,7 @@ export default class AddWorkTimeScreen extends React.Component {
         let change = [...this.state.daysUsed]
         this.selectedTask = workTimes[0][new Date().getDay()][workTimes[0][new Date().getDay()].findIndex((task) =>task.name == this.editName)]
         this.edit = true
-        this.setState({name:this.editName,start:new Date(new Date(this.selectedTask.start).getTime()),end:new Date(new Date(this.selectedTask.end).getTime()),repeating:this.selectedTask.repeating})
+        this.setState({name:this.editName,start:new Date(new Date(this.selectedTask.pStart).getTime()),end:new Date(new Date(this.selectedTask.pEnd).getTime()),repeating:this.selectedTask.repeating})
         await AsyncStorage.removeItem('editName')
         for(var i=0;i<=this.state.daysUsed.length-1;i++){
           if(workTimes[0][i].findIndex((task) =>task.name == this.editName)!=-1)
@@ -80,7 +80,7 @@ export default class AddWorkTimeScreen extends React.Component {
  }
 
   roundTime(time){
-    return (Math.floor((new Date(time).getTime())/(60*1000)) * (60*1000))
+   return new Date(Math.floor(new Date(time)/(60*1000))*60*1000)
   }
 
   onStartChange = (event, selectedDate) => {
@@ -141,8 +141,8 @@ export default class AddWorkTimeScreen extends React.Component {
     var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
     this.isRepeating();
 
-    this.selectedTask = {name:this.state.name,start:this.state.start, end:this.state.end,length:this.state.end-this.state.start,repeating:this.state.repeating}
-
+    this.selectedTask = {name:this.state.name,pStart:this.state.start, pEnd:this.state.end,start:this.state.start, end:this.state.end,length:(this.roundTime(this.state.end)-this.roundTime(this.state.start))/(60*1000),repeating:this.state.repeating}
+    console.log(this.selectedTask.length)
     for (let i = 0; i < this.state.daysUsed.length; i++) {
       if(this.state.daysUsed[i])
       {
@@ -252,8 +252,9 @@ export default class AddWorkTimeScreen extends React.Component {
         <Text style={{ fontSize: 20, padding:4}}>{this.days[new Date().getDay()]}, {this.monthNames[new Date().getMonth()]} {new Date().getDate()}</Text>
         <View style={{flexDirection: 'column'}}>
           <View style={styles.section}>
-            <Text style={{ fontSize: 17, padding:3}}>Name:</Text>
+            {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
             <Input
+              label = "Name"
               placeholder='Practice Piano'
               renderErrorMessage={false}
               onChangeText={name => this.setState({name})}
@@ -261,20 +262,23 @@ export default class AddWorkTimeScreen extends React.Component {
             />
           </View>
           <View style={styles.section}>
-            <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker('start')}>
-              <Text style={{ fontSize: 17,  color: '#fff' }}>{this.state.start!=null?this.displayTime(this.state.start):"Start"}</Text>
-            </TouchableOpacity>
-            <Text style={{flex: 1,fontSize: 18,}}>to</Text>
-            <TouchableOpacity style={styles.workButton} onPress={() => this.showTimepicker('end')}>
-              <Text style={{ fontSize: 17, color: '#fff'}}>{this.state.end!=null?this.displayTime(this.state.end):'End'}</Text>
-            </TouchableOpacity>
-            <View style={{flex: 1}}/>
+            <Button 
+              title = {this.state.start!=null?this.displayTime(this.state.start):"Start"}
+              buttonStyle={{backgroundColor: '#6a99e6',margin:10}}
+              onPress={() => this.showTimepicker('start')}
+            />
+            <Text h4 h4Style={{fontWeight: 'normal',fontSize:18,margin:10}}>to</Text>
+            <Button 
+              title = {this.state.end!=null?this.displayTime(this.state.end):"End"}
+              buttonStyle={{backgroundColor: '#6a99e6',margin:10}}
+              onPress={() => this.showTimepicker('end')}
+            />
           </View>
           {/* start picker */}
           {this.state.startShow && (
           <DateTimePicker
             testID="startDateTimePicker"
-            value={this.state.start}
+            value={new Date(this.state.start)}
             mode={"time"}
             display="default"
             onChange={this.onStartChange}
@@ -284,7 +288,7 @@ export default class AddWorkTimeScreen extends React.Component {
           {this.state.endShow && (
           <DateTimePicker
             testID="endDateTimePicker"
-            value={this.state.end}
+            value={new Date(this.state.end)}
             mode={"time"}
             display="default"
             onChange={this.onEndChange}
@@ -321,11 +325,11 @@ export default class AddWorkTimeScreen extends React.Component {
              
           
       </ScrollView>
-      <TouchableOpacity
+      <Button
+        title = 'Save'
+        buttonStyle={{backgroundColor: '#6a99e6',alignSelf:'flex-end',bottom:5,right:5}}
         onPress={() => this.handleSave()}
-        style={[styles.button,{bottom:0,right:0,alignSelf:'flex-end',paddingVertical:0}]}>
-        <Text style={{ fontSize: 17, color: '#fff', padding:3 }}>Save</Text>
-        </TouchableOpacity> 
+      />
     </View>      
 
     )
@@ -356,7 +360,7 @@ workButton:{
 section:{
   // backgroundColor:'blue',
   flexDirection: 'row',
-  justifyContent: 'space-between',
+  // justifyContent: 'space-around',
   alignItems: 'center',
   marginVertical: '3%'
 },

@@ -18,7 +18,7 @@ export default class App extends React.Component {
         <Stack.Navigator>
           <Stack.Screen options={{headerShown: false}} name="Home" component={HomeScreen}/>
           <Stack.Screen name="AddTask" component={AddTaskScreen} options={{ title: 'Task' }}/>
-          <Stack.Screen name="AddWorkTime" component={AddWorkTimeScreen} options={{ title: 'Work Times' }} />
+          <Stack.Screen name="AddWorkTime" component={AddWorkTimeScreen} options={{ title: 'Event' }} />
         </Stack.Navigator>
       </NavigationContainer>
     );

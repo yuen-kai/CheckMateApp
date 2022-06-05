@@ -1,12 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
 import React, {Component} from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, TextInput, ScrollView, Platform,Alert,KeyboardAvoidingView} from 'react-native';
+import { StyleSheet, View, TouchableOpacity, TextInput, ScrollView, Platform,Alert,KeyboardAvoidingView} from 'react-native';
 import { createStackNavigator } from '@react-navigation/stack';
 import RNPickerSelect from 'react-native-picker-select';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Slider,Input,CheckBox,Avatar,Switch,Tooltip,Icon} from 'react-native-elements'
+import {Slider,Input,CheckBox,Avatar,Switch,Tooltip,Icon,Text,Button} from 'react-native-elements'
 
 var savedTasks
 
@@ -74,10 +74,11 @@ export default class AddTaskScreen extends React.Component {
             change.splice(i, 1,true)
           }
         };
+        await this.setState({daysUsed:change})
+        this.isRepeating()
         if(savedTasks[1][new Date().getDay()].findIndex((task) =>task.name == this.editName)!=-1){
           this.setState({weekly:true})
         }
-        this.setState({daysUsed:change})
       }
     } catch(e) {
       // await AsyncStorage.removeItem('editName')
@@ -166,7 +167,7 @@ export default class AddTaskScreen extends React.Component {
     }
     var dueIncrease  = new Date(this.state.date).getTime()-new Date(d).getTime();
     this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance,repeating:this.state.repeating,dueIncrease:dueIncrease,overridable:this.state.overridable}
-
+    console.log(this.selectedTask.length)
     //Same name
     for (let i = 0; i < this.state.daysUsed.length; i++) {
       if(this.state.daysUsed[i])
@@ -245,8 +246,7 @@ export default class AddTaskScreen extends React.Component {
       return null
     }
     return (
-      <View style={styles.container}>
-        <ScrollView style={{padding:20}} contentContainerStyle={{height:'100%'}}>
+        <ScrollView contentContainerStyle={styles.container}>
           <View style={{flex:1}} >
             <View style={styles.section}>
               {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
@@ -259,12 +259,13 @@ export default class AddTaskScreen extends React.Component {
               />
             </View>
           <View style={styles.section}>        
-            <Text style={{ fontSize: 17,padding:3}}>Importance:</Text>
-            <View style={{flexGrow:1,marginLeft:20}}>
+            {/* <Text style={{ fontSize: 17,padding:3}}>Importance:</Text> */}
+            <Text h1 h1Style = {styles.label}>  Importance</Text>
+            <View style={{marginTop:10, marginLeft:7}}>
               <View style={{flexDirection:'row',justifyContent:'space-between'}}>
               <Text style={{ fontSize: 13}}>Least</Text>
               <Text style={{ fontSize: 13}}>Most</Text>
-              </View>
+            </View>
             <Slider
               thumbStyle={{width:25,height:25}}
               trackStyle={{width:'100%'}}
@@ -300,21 +301,21 @@ export default class AddTaskScreen extends React.Component {
             />
           </View>
           <View style={styles.section}>
-            <Text style={{ fontSize: 17,padding:3}}>Due Date:</Text>
-            <View style={{flexDirection: 'row',pading:3}}>
+            <Text h1 h1Style={styles.label}>  Due Date:</Text>
+            <View style={{flexDirection: 'row',marginLeft:5, marginTop:10}}>
               <View style={{padding:3}}>
-              <TouchableOpacity
+              <Button
+                title={this.displayDate(this.state.date)}
+                buttonStyle={{backgroundColor: '#6a99e6'}}
                 onPress={() => this.showDatepicker()}
-                style={styles.button}>
-                <Text style={{ fontSize: 18, color: '#fff' }}>{this.displayDate(this.state.date)}</Text>
-              </TouchableOpacity>
+              />
               </View>
               <View style={{padding:3}}>
-              <TouchableOpacity
+              <Button
+                title = {this.displayTime(this.state.date)}
+                buttonStyle={{backgroundColor: '#6a99e6'}}
                 onPress={() => this.showTimepicker()}
-                style={styles.button}>
-                <Text style={{ fontSize: 18, color: '#fff' }}>{this.displayTime(this.state.date)}</Text>
-              </TouchableOpacity>
+              />
               </View>
             </View>
             
@@ -330,15 +331,16 @@ export default class AddTaskScreen extends React.Component {
             />
             )}
           <View style={styles.section}>
-            <Text style={{ fontSize: 17,padding:3}}>Due Date{'\n'}Importance:</Text>
-            <View style={{flexGrow:1,marginLeft:20}}>
+            <Text h1 h1Style={styles.label}>  Due Date's Importance:</Text>
+            <View style={{marginTop:10, marginLeft:7}}>
               <View style={{flexDirection:'row',justifyContent:'space-between'}}>
               <Text style={{ fontSize: 13}}>Least</Text>
               <Text style={{ fontSize: 13}}>Most</Text>
               </View>
             <Slider
-              style={{flexGrow:1}}
+              // style={{}}
               thumbStyle={{width:25,height:25}}
+              trackStyle={{width:'100%'}}
               value={this.state.dueImportance}
               onValueChange={(dueImportance) => this.setState({ dueImportance })}
               minimumValue={1}
@@ -350,16 +352,16 @@ export default class AddTaskScreen extends React.Component {
                   <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff' }}>{this.state.dueImportance}</Text>
                 ),
               }}
-              trackStyle={{width:'100%'}}
               
               step={1}
             />
             </View>
           </View>
-          <View style={{flexDirection:'row'}}>
-            {this.state.editMode?this.edit?<Text style={{ fontSize: 17, padding:3 }}>Edit for:</Text>:<Text style={{ fontSize: 17, padding:3 }}>Use for:</Text>:<Text style={{ fontSize: 17, padding:3 }}>Remove for:</Text>}
+          <View style={[styles.section,{flexDirection: 'row',alignItems: 'center'}]}>
+            {this.state.editMode?this.edit?<Text h1 h1Style={styles.label}> Edit for:</Text>:<Text h1 h1Style={styles.label}> Use for:</Text>:<Text style={{ fontSize: 17, padding:3 }}>Remove for:</Text>}
             {this.edit?
               <Switch
+                style={{height:10}}
                 value={this.state.editMode}
                 onValueChange={(value) => this.setState({editMode: value})}
               />
@@ -405,15 +407,14 @@ export default class AddTaskScreen extends React.Component {
             </View>
           </View>
           :null}
-
-          <TouchableOpacity
-            onPress={() => this.handleSave()}
-            style={[styles.button,{bottom:0,right:0,alignSelf:'flex-end',position:'absolute',paddingVertical:0}]}>
-            <Text style={{ fontSize: 18, color: '#fff', padding:3 }}>Save</Text>
-          </TouchableOpacity>
+            <Button
+              title = 'Save'
+              buttonStyle={{backgroundColor: '#6a99e6',alignSelf:'flex-end'}}
+              onPress={() => this.handleSave()}
+            />
+          
           </View>
         </ScrollView>
-        </View>
       
     );
   }
@@ -421,10 +422,11 @@ export default class AddTaskScreen extends React.Component {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 4,
+    // flex: 4,
     backgroundColor: '#fff',
     alignItems: 'stretch',
-    justifyContent: 'center',
+    padding:5
+    // justifyContent: 'center',
   },
   button: {
     backgroundColor: "#152075",
@@ -435,9 +437,14 @@ const styles = StyleSheet.create({
   },
   section:{
     // backgroundColor:'blue',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: '3%'
+    flexDirection: 'column',
+    // justifyContent: 'space-between',
+    // alignItems: 'center',
+    margin: '2%',
   },
+  label:{
+    fontSize:16, 
+    color:'#8a939c'
+  },
+  
 });
