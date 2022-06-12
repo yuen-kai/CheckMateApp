@@ -88,6 +88,19 @@ export default class AddTaskScreen extends React.Component {
     this.setState({ready:true})
  }
 
+ newInfo(){
+    let task = savedTasks[0][new Date().getDay()].find((task) =>task.name == this.editName)
+    //check if state props are the same as task props
+    return task!=undefined
+          &&this.edit
+          &&!(this.state.name == task.name 
+          && this.state.importance == task.importance 
+          && this.state.length == task.length
+          && this.state.dueImportance == task.dueImportance
+          && this.state.overridable == task.overridable
+          && new Date(this.state.date).getTime() == new Date(task.date).getTime())
+ }
+
  //Date picker
   showDatepicker() {
     this.showMode('date');
@@ -104,7 +117,7 @@ export default class AddTaskScreen extends React.Component {
   };
 
   onChange = (event, selectedDate) => {
-    const currentDate = selectedDate;
+    const currentDate = selectedDate || this.state.date;
     this.setState({show: false});
     this.setState({date:currentDate});
   };
@@ -167,7 +180,7 @@ export default class AddTaskScreen extends React.Component {
     }
     var dueIncrease  = new Date(this.state.date).getTime()-new Date(d).getTime();
     this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance,repeating:this.state.repeating,dueIncrease:dueIncrease,overridable:this.state.overridable}
-    console.log(this.selectedTask.length)
+    // console.log(this.selectedTask.length)
     //Same name
     for (let i = 0; i < this.state.daysUsed.length; i++) {
       if(this.state.daysUsed[i])
@@ -195,17 +208,22 @@ export default class AddTaskScreen extends React.Component {
           if(this.edit==true){
             savedTasks[0][i].splice(savedTasks[0][i].findIndex((task) =>task.name == this.editName),1)
           }
-          if(this.state.editMode==true){
-            savedTasks[0][i].push(this.selectedTask)
-          }
+          savedTasks[0][i].push(this.selectedTask)
+
           if(this.state.weekly==true){
             if(this.edit==true){
               savedTasks[1][i].splice(savedTasks[1][i].findIndex((task) =>task.name == this.editName),1)
             }
-            if(this.state.editMode==true)
-            {
-              savedTasks[1][i].push(this.selectedTask)
-            }
+            
+            savedTasks[1][i].push(this.selectedTask)
+          }
+        }
+        else if(!this.newInfo()){
+          if(savedTasks[0][i].some((task) => task.name == this.selectedTask.name)){
+            savedTasks[0][i].splice(savedTasks[0][i].findIndex((task) => task.name == this.selectedTask.name),1)
+          }
+          if(this.state.weekly==true&&savedTasks[1][i].some((task) => task.name == this.selectedTask.name)){
+            savedTasks[1][i].splice(savedTasks[1][i].findIndex((task) => task.name == this.selectedTask.name),1)
           }
         }
       };
@@ -277,7 +295,7 @@ export default class AddTaskScreen extends React.Component {
               minimumValue={1}
               maximumValue={10}
               
-              thumbTintColor='#152075'
+              thumbTintColor='#6a99e6'
               thumbProps={{
                 children: (
                   <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff'}}>{this.state.importance}</Text>
@@ -346,7 +364,7 @@ export default class AddTaskScreen extends React.Component {
               minimumValue={1}
               maximumValue={5}
               allowTouchTrack={true}
-              thumbTintColor='#152075'
+              thumbTintColor='#6a99e6'
               thumbProps={{
                 children: (
                   <Text style={{ fontSize: 15,padding:3,alignSelf:'center',color: '#fff' }}>{this.state.dueImportance}</Text>
@@ -358,14 +376,14 @@ export default class AddTaskScreen extends React.Component {
             </View>
           </View>
           <View style={[styles.section,{flexDirection: 'row',alignItems: 'center'}]}>
-            {this.state.editMode?this.edit?<Text h1 h1Style={styles.label}> Edit for:</Text>:<Text h1 h1Style={styles.label}> Use for:</Text>:<Text style={{ fontSize: 17, padding:3 }}>Remove for:</Text>}
-            {this.edit?
+            {this.newInfo()?<Text h1 h1Style={styles.label}> Edit on:</Text>:<Text h1 h1Style={styles.label}> Repeat on:</Text>}
+            {/* {this.edit?
               <Switch
                 style={{height:10}}
                 value={this.state.editMode}
                 onValueChange={(value) => this.setState({editMode: value})}
               />
-            :null}
+            :null} */}
           </View>
           <CheckBox
             title='Weekly'
@@ -379,7 +397,7 @@ export default class AddTaskScreen extends React.Component {
             this.state.daysUsed.map((day, i) => {
               return (
                 <Avatar key={i}
-                containerStyle={day==true?{backgroundColor:'#152075',margin:1}:{backgroundColor:'gray',margin:1}}
+                containerStyle={day==true?{backgroundColor:'#6a99e6',margin:1}:{backgroundColor:'gray',margin:1}}
                   size="small"
                   rounded
                   title={this.days[i].slice(0, 1)}
@@ -425,7 +443,7 @@ const styles = StyleSheet.create({
     // flex: 4,
     backgroundColor: '#fff',
     alignItems: 'stretch',
-    padding:5
+    padding:10
     // justifyContent: 'center',
   },
   button: {
