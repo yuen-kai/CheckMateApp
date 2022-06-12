@@ -70,7 +70,7 @@ export default class AddWorkTimeScreen extends React.Component {
         if(workTimes[1][new Date().getDay()].findIndex((task) =>task.name == this.editName)!=-1){
           this.setState({weekly:true})
         }
-        this.setState({daysUsed:change})
+        await this.setState({daysUsed:change})
       }
     } catch(e) {
       Alert.alert('Failed to get edit info!','Failed to get edit info! Please try again.')
@@ -150,7 +150,7 @@ export default class AddWorkTimeScreen extends React.Component {
     var sameTime = false
     const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
     var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
-    this.isRepeating();
+    await this.isRepeating();
 
     this.selectedTask = {name:this.state.name,pStart:this.roundTime(this.state.start), pEnd:this.roundTime(this.state.end),start:this.roundTime(this.state.start), end:this.roundTime(this.state.end),length:(this.roundTime(this.state.end)-this.roundTime(this.state.start))/(60*1000),repeating:this.state.repeating}
     // console.log(this.selectedTask.length)
@@ -241,7 +241,7 @@ export default class AddWorkTimeScreen extends React.Component {
       }
     });
 
-    if(this.setState.weekly||count >= 2) {
+    if(this.state.weekly||count >= 2) {
       this.setState({ repeating: true, ready: true });
     }
     else{

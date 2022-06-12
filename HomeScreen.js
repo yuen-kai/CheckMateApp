@@ -207,17 +207,16 @@ export default class HomeScreen extends React.Component {
           savedTask[0]=[...savedTask[1]]
         }
 
-        //Shift due dates
+        //Shift times
         savedTask[0][new Date().getDay()].forEach(e => {
           if(e.repeating = true) 
           {
-            var d = new Date().setHours(0,0,0,0)
+            console.log("in")
             e.start = new Date().setHours(new Date(e.start).getHours(),new Date(e.start).getMinutes())
             e.end = new Date().setHours(new Date(e.end).getHours(),new Date(e.end).getMinutes())
           }
         });
-        
-        savedTask[0][new Date().getDay()] = [...setTasks]
+        setTasks=[...savedTask[0][new Date().getDay()]]
       }
       else{
         // if(this.state.taskIndex>=savedTask[0][new Date().getDay()].length){
@@ -799,7 +798,7 @@ export default class HomeScreen extends React.Component {
             {this.findavailableTime()}
           </View>
         </View>
-        <Confetti confettiCount={13} size={2} timeout={0} duration={1200} ref={(node) => this._confettiView = node}/>
+        <Confetti confettiCount={20} size={2} timeout={0} duration={1200} ref={(node) => this._confettiView = node}/>
       </SafeAreaView>
     );
     
