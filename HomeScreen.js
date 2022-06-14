@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View,TouchableOpacity, ScrollView, Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import {Icon,Divider,Overlay,Button,SpeedDial,ListItem,Tooltip,Text} from 'react
 import DraggableFlatList, {
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
+import * as Calendar from 'expo-calendar';
 import ConfettiCannon from 'react-native-confetti-cannon';
 // import Confetti from 'react-confetti'
 import Confetti from 'react-native-confetti';
@@ -31,6 +32,17 @@ export default class HomeScreen extends React.Component {
     combined: [],
     // renderConfetti: false,
   };
+  
+  // useEffect(() => {
+  //   (async () => {
+  //     const { status } = await Calendar.requestCalendarPermissionsAsync();
+  //     if (status === 'granted') {
+  //       const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+  //       console.log('Here are all your calendars:');
+  //       console.log({ calendars });
+  //     }
+  //   })();
+  // }, []);
   //get data
   componentDidMount(){
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
@@ -49,6 +61,7 @@ export default class HomeScreen extends React.Component {
   
   getData = async () => {
     try {
+    
       await this.savedTasks()
       await this.savedSetTasks()
       await this.firstTime()
@@ -72,15 +85,89 @@ export default class HomeScreen extends React.Component {
     }
   } 
 
+  async getSyncEvents(){
+    const { status } = await Calendar.requestCalendarPermissionsAsync();
+    if (status === 'granted') {
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const calendarIds = calendars.map(calendar => calendar.id);
+      const events = await Calendar.getEventsAsync(calendarIds, new Date(new Date().setHours(0,0,0,0)), new Date(new Date().setHours(23,59,59,999)))
+      this.manageSyncEvents(events)
+    }
+  }
+
+  async editSyncPrefernces(){
+    var syncEvents = ""
+    Alert.alert(
+      'Sync Events?',
+      'How do you want to sync your events with your calendar?',
+      [
+        { text: 'Never', onPress: () => syncEvents = "never" },
+        { text: 'Review First', onPress: () => syncEvents = "review" },
+        { text: 'Always', onPress: () => syncEvents = "always" }
+      ]
+    )
+    const jsonValue = JSON.stringify(syncEvents)
+    await AsyncStorage.setItem('syncEvents', jsonValue)
+  }
+
+  async manageSyncEvents(events){
+    const JsonValue = await AsyncStorage.getItem('syncEvents')
+    var syncEvents = JsonValue != null ? JSON.parse(JsonValue):null
+    if(syncEvents==null){
+      await this.editSyncPrefernces()
+    }
+    if(syncEvents=="always"){
+      this.syncEvents(events)
+    }
+    else if(syncEvents=="review"){
+      this.reviewEvents(events)
+    }
+  }
+
+  reviewEvents(events){
+
+  }
+  
+  checkEvents(events){
+    return events.filter(function(event){
+      var a = workTimes[0][i].findIndex((event)=>event.name == this.editName)
+      var i = new Date().getDay()
+      return !(workTimes[0][i].some((element) => element.name==event.name))
+          && !(workTimes[0][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>this.roundTime(this.selectedTask.start)&&workTimes[0][i].indexOf(element)!=a))
+          ||workTimes[0][i].some((element) => (this.roundTime(element.start)<this.roundTime(this.selectedTask.end)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end)&&workTimes[0][i].indexOf(element)!=a))
+          ||workTimes[0][i].some((element) => (this.roundTime(element.start)>=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)<=this.roundTime(this.selectedTask.end)&&workTimes[0][i].indexOf(element)!=a))
+          ||workTimes[0][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end)&&workTimes[0][i].indexOf(element)!=a)))
+    })
+  }
+
+  syncEvents(events){
+    events = this.checkEvents(events)
+    events.forEach(function(event){
+      if(this.time(event.endDate.getTime())>this.time(new Date()).getTime()){
+        setTasks.push({
+          name: event.title,
+          pStart: this.time(event.startDate),
+          pEnd: this.time(event.endDate),
+          start: this.time(event.startDate),
+          end: this.time(event.endDate),
+          length: (this.time(event.endDate).getTime() - this.time(event.startDate).getTime())/(1000*60),
+        })
+      }
+    })
+  }
+
   async firstTime(){
     try {
       const JsonValue = await AsyncStorage.getItem('firsty')
-      var first = JsonValue != null ? JSON.parse(JsonValue) :null;
+      // JsonValue != null ? JSON.parse(JsonValue):
+      var first = null;
       if(first==null){
+        this.getSyncEvents()
         this.setState({firstTime: true})
         const jsonValue = JSON.stringify(false)
         await AsyncStorage.setItem('firsty', jsonValue)
       }
+      
     }catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)

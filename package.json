@@ -20,6 +20,7 @@
     "@react-navigation/stack": "^5.14.2",
     "core-js": "^3.4.8",
     "expo": "^44.0.0",
+    "expo-calendar": "~10.1.0",
     "expo-status-bar": "~1.2.0",
     "feather-icons": "^4.28.0",
     "react": "17.0.1",

@@ -2784,6 +2784,13 @@ expo-asset@~8.4.6:
     path-browserify "^1.0.0"
     url-parse "^1.4.4"
 
+expo-calendar@~10.1.0:
+  version "10.1.1"
+  resolved "https://registry.yarnpkg.com/expo-calendar/-/expo-calendar-10.1.1.tgz#dfc854929667afa3edc6684064abe89397b3c26c"
+  integrity sha512-i6yfnzxXI1Asta0EuFaWjN7u2NpuubukCkY4X9QuJKmI49yMCL2OkjbxvD6UOUIWEth5j7Vme1seSU83a3BzGA==
+  dependencies:
+    "@expo/config-plugins" "^4.0.2"
+
 expo-constants@~13.0.2:
   version "13.0.2"
   resolved "https://registry.yarnpkg.com/expo-constants/-/expo-constants-13.0.2.tgz#b489ecd575cc82a9a0b3dfbf2385d45a44300eb1"

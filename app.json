@@ -19,7 +19,8 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.yuenkai.CheckMate",
-      "buildNumber": "1.1.0"
+      "buildNumber": "1.1.0",
+      "infoPlist": {"NSRemindersUsageDescription":"To read and write events to the calendar"}
     },
     "android": {
       "adaptiveIcon": {
