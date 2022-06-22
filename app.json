@@ -4,9 +4,9 @@
     "slug": "CheckMate",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Icon.png",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/SplashScreen.png",
       "resizeMode": "contain",
       "backgroundColor": "#6a99e6"
     },
@@ -20,19 +20,28 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.yuenkai.CheckMate",
       "buildNumber": "1.1.0",
-      "infoPlist": {"NSRemindersUsageDescription":"To read and write events to the calendar"}
+      "infoPlist": {"NSRemindersUsageDescription":"This app reads events from the calendar and adds them into the user's schedule in the app."}
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#00bfff"
+        "foregroundImage": "./assets/AdaptiveIcon.png",
+        "backgroundColor": "#6a99e6"
       },
-      "icon": "./assets/icon.png",
+      "icon": "./assets/Icon.png",
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.yuenkai.CheckMate"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/Icon.png",
+          "color": "#ffffff"
+        }
+      ]
+    ]
   }
 }

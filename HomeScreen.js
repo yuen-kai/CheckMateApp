@@ -1,8 +1,15 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View,TouchableOpacity, ScrollView, Alert} from 'react-native';
+import { StyleSheet, View,TouchableOpacity, ScrollView, Alert,Image} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Divider,Overlay,Button,SpeedDial,ListItem,Tooltip,Text,Badge} from 'react-native-elements';
+import {Icon,Divider,Overlay,Button,SpeedDial,ListItem,Tooltip,Text,Dialog,CheckBox}  from "react-native-elements";
+import logo from './assets/Icon.png';
+import controls from './assets/Controls.png'
+import eventScreen from './assets/EventScreen.png'
+import taskScreen from './assets/TaskScreen.png'
+import homeScreen from './assets/HomeScreen.png'
+import syncScreen from './assets/SyncScreen.png'
+import top from './assets/Top.png'
 // import { SpeedDial } from "@rneui/themed";
 import DraggableFlatList, {
   ScaleDecorator,
@@ -11,6 +18,7 @@ import * as Calendar from 'expo-calendar';
 import ConfettiCannon from 'react-native-confetti-cannon';
 // import Confetti from 'react-confetti'
 import Confetti from 'react-native-confetti';
+import { ConsoleSqlOutlined } from '@ant-design/icons';
 
 var tasks = [];
 var setTasks = [];
@@ -20,6 +28,13 @@ var days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 export default class HomeScreen extends React.Component {
   explosion
   intervalID
+  instructions = [{title:"Welcome to CheckMate!", content: "Hi, I'm your personal productivity assistant. Let me give you a brief guide!", image: logo, width:200, height:200},
+                  {title:"1. Adding Tasks", content: "Before I can assist you, I need to know what tasks you need to work on. Add your tasks and fill out their parameters.", image: taskScreen, width: 200, height: 422.22},
+                  {title:"2. Adding Events", content: "I also need to know your events. Add your events and fill out their parameters.", image: eventScreen, width: 200, height: 422.22 },
+                  {title:"3. Syncing With Calendar", content: "Would you like events from your calendar to be added to your schedule? You can change these preferences by holding the sync button at the top of the screen (pressing it will allow you to review and add your calendar events).", image: syncScreen, width: 200, height:198.05},
+                  {title:"4. Making the Schedule", content: "This part is taken care for you. An optimized schedule using your tasks and events will be automatically created for you.", image: homeScreen, width: 200, height: 422.22},
+                  {title:"5. Using the Schedule", content: "Work at your own pace by selecting a task and using the buttons at the bottom of the screen to start, pause, finish, or edit it. Events will automatically be started when the time is right. Your schedule will automatically adjust for you.", image: controls, width: 200, height:94.72},
+                  {title:"Be Productive!", content: "That's all! Click on the '?' icon to see this tutorial again. Now go be productive!", image: top, width:200, height:91.38}]
 
   state = {
     avalibleTime: 0,
@@ -27,22 +42,15 @@ export default class HomeScreen extends React.Component {
     ready: false,
     taskIndex: 0,
     selectable: true,
-    firstTime: false,
+    instructionIndex: -1,
     sTask: null,
     combined: [],
+    syncOptions: false,
+    error: false,
+    checked: 2,
     // renderConfetti: false,
   };
-  
-  // useEffect(() => {
-  //   (async () => {
-  //     const { status } = await Calendar.requestCalendarPermissionsAsync();
-  //     if (status === 'granted') {
-  //       const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-  //       console.log('Here are all your calendars:');
-  //       console.log({ calendars });
-  //     }
-  //   })();
-  // }, []);
+
   //get data
   componentDidMount(){
     this._unsubscribe = this.props.navigation.addListener('focus', () => {
@@ -61,23 +69,28 @@ export default class HomeScreen extends React.Component {
   
   getData = async () => {
     try {
-      await this.savedTasks()
-      await this.savedSetTasks()
-      await this.firstTime()
-      await this.changeDay()
-      var newCombined = this.makeCombined()
-      if(this.state.taskIndex>=newCombined.length){
-        this.setState({taskIndex:0})
-      }
-      else{
-        const JsonValue = await AsyncStorage.getItem('editName')
-        if(JsonValue != null){
-          this.setState({taskIndex:newCombined.findIndex((task)=>task.name==JSON.parse(JsonValue))})
+      this.setState({ready: false})
+      let promises = [];
+      promises.push(new Promise(this.savedTasks))
+      promises.push(new Promise(this.savedSetTasks))
+      promises.push(new Promise(this.changeDay))
+      promises.push(new Promise(this.firstTime))
+      if((await Promise.all(promises))!=null){
+        var newCombined = this.makeCombined()
+        if(this.state.taskIndex>=newCombined.length){
+          this.setState({taskIndex:0})
         }
-        await AsyncStorage.removeItem('editName')
+        else{
+          const JsonValue = await AsyncStorage.getItem('editName')
+          if(JsonValue != null){
+            this.setState({taskIndex:newCombined.findIndex((task)=>task.name== JSON.parse(JsonValue))})
+          }
+          await AsyncStorage.removeItem('editName')
+        }
+        
+        this.setState({ready:true})
       }
       
-      this.setState({ready:true})
     } catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
@@ -87,15 +100,12 @@ export default class HomeScreen extends React.Component {
   async getSyncEvents(edit){
     const { status } = await Calendar.requestCalendarPermissionsAsync();
     if (status === 'granted') {
-      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-      const calendarIds = calendars.map(calendar => calendar.id);
-      const events = await Calendar.getEventsAsync(calendarIds, new Date(new Date().setHours(0,0,0,0)), new Date(new Date().setHours(23,59,59,999)))
-      let newEvents = events.filter(event => this.time(event.endDate).getTime()>this.time(new Date()).getTime())
-      this.manageSyncEvents(newEvents,edit)
+      this.manageSyncEvents(edit)
     }
   }
 
-  async reviewEvents(events){
+  async reviewEvents(){
+    let events = []
     this.setState({error:false})
     const { status } = await Calendar.requestCalendarPermissionsAsync();
     if (status === 'granted') {
@@ -114,15 +124,15 @@ export default class HomeScreen extends React.Component {
     this.props.navigation.navigate('SyncEvents')
   }
 
-  async setSyncPreferences(syncEvents,events){
+  async setSyncPreferences(syncEvents){
     try {
       const jsonValue = JSON.stringify(syncEvents)
       await AsyncStorage.setItem('syncEvents5', jsonValue)
       if(syncEvents=="always"){
-        this.syncEvents(events)
+        this.syncEvents()
       }
       else if(syncEvents=="review"){
-        this.reviewEvents(events)
+        this.reviewEvents()
       }
     } catch(e) {
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
@@ -130,26 +140,27 @@ export default class HomeScreen extends React.Component {
     }
   }
 
-  editSyncPrefernces(events){
-    Alert.alert(
-      'Sync Events?',
-      'How do you want to sync your events with your calendar?',
-      [
-        { text: 'Never', onPress: () => this.setSyncPreferences("never",events) },
-        { text: 'Review First', onPress: () => this.setSyncPreferences("review",events)},
-        { text: 'Always', onPress:  () => this.setSyncPreferences("always",events)}
-      ]
-    )
+  editSyncPrefernces(){
+    this.setState({syncOptions:true})
+    // Alert.alert(
+    //   'Sync Events?',
+    //   'How do you want to sync your events with your calendar?',
+    //   [
+    //     { text: 'Never', onPress: () => this.setSyncPreferences("never",events) },
+    //     { text: 'Review First', onPress: () => this.setSyncPreferences("review",events)},
+    //     { text: 'Always', onPress:  () => this.setSyncPreferences("always",events)}
+    //   ]
+    // )
   }
 
-  async manageSyncEvents(events,edit){
+  async manageSyncEvents(edit){
     const JsonValue = await AsyncStorage.getItem('syncEvents5')
     var syncEvents = JsonValue != null ? JSON.parse(JsonValue):null
     if(syncEvents==null||edit){
-      syncEvents = this.editSyncPrefernces(events)
+      syncEvents = this.editSyncPrefernces()
     }
     else{
-      await this.setSyncPreferences(syncEvents,events)
+      await this.setSyncPreferences(syncEvents)
     }
     
   }
@@ -167,7 +178,28 @@ export default class HomeScreen extends React.Component {
     return newEvents
   }
 
-  syncEvents(events){
+  async getEvents(){
+    let events
+    const { status } = await Calendar.requestCalendarPermissionsAsync();
+    if (status === 'granted') {
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const calendarIds = calendars.map(calendar => calendar.id);
+      events = await Calendar.getEventsAsync(calendarIds, new Date(new Date().setHours(0,0,0,0)), new Date(new Date().setHours(23,59,59,999)))
+      events = events.filter(event => this.time(event.endDate).getTime()>this.time(new Date()).getTime())
+    }
+    return events
+  }
+
+  async syncEvents(){
+    let events
+    const { status } = await Calendar.requestCalendarPermissionsAsync();
+    if (status === 'granted') {
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      const calendarIds = calendars.map(calendar => calendar.id);
+      events = await Calendar.getEventsAsync(calendarIds, new Date(new Date().setHours(0,0,0,0)), new Date(new Date().setHours(23,59,59,999)))
+      events = events.filter(event => this.time(event.endDate).getTime()>this.time(new Date()).getTime())
+    }
+    console.log(events)
     var newEvents = this.checkEvents(events)
     var originalNewEvents = []
     for(let i=0;i<newEvents.length;i++){
@@ -180,7 +212,11 @@ export default class HomeScreen extends React.Component {
         start: this.time(event.startDate),
         end: this.time(event.endDate),
         length: (this.time(event.endDate).getTime() - this.time(event.startDate).getTime())/(1000*60),
+        description: event.notes
       })
+      if(event.location!=""){
+          setTasks[setTasks.length-1].description += (" At " + event.location+".")
+      }
       i--
       newEvents = this.checkEvents(events)
     }
@@ -196,23 +232,23 @@ export default class HomeScreen extends React.Component {
     this.makeCombined()
   }
 
-  async firstTime(){
+  firstTime = async(resolve, reject) => {
     try {
       const JsonValue = await AsyncStorage.getItem('firsty')
       var first = JsonValue != null ? JSON.parse(JsonValue): null;
       if(first==null){
-        await this.getSyncEvents(true)
-        this.setState({firstTime: true})
+        this.setState({instructionIndex: 0})
         const jsonValue = JSON.stringify(false)
         await AsyncStorage.setItem('firsty', jsonValue)
       }
-      
+      resolve(true)
     }catch(e) {
+      reject(e)
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
   }
-  async savedTasks(){
+  savedTasks = async(resolve, reject)=>{
     try {
       const JsonValue = await AsyncStorage.getItem('firsty')
       var first = JsonValue != null ? JSON.parse(JsonValue) :true;
@@ -266,7 +302,7 @@ export default class HomeScreen extends React.Component {
             else{
               savedTask[0][new Date().getDay()][newIndex].length=parseInt(savedTask[0][new Date().getDay()][newIndex].length)
               oldTasks[i].length = parseInt(oldTasks[i].length)
-              savedTask[0][new Date().getDay()][newIndex].length+=oldTasks[i].length
+              savedTask[0][new Date().getDay()][newIndex].length=parseInt(savedTask[0][new Date().getDay()][newIndex].length)+oldTasks[i].length
               savedTask[0][new Date().getDay()][newIndex].sortValue = this.updateSortValue(savedTask[0][new Date().getDay()][newIndex])
               oldTasks.splice(i,1)
               i--
@@ -290,16 +326,15 @@ export default class HomeScreen extends React.Component {
       }
       const jsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('tasks', jsonValue)
-      // console.log("task:")
-      // console.log(tasks)
+      resolve(true)
     }catch(e) {
-      
+      reject(e)
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
   }
 
-  async savedSetTasks(){
+  savedSetTasks = async(resolve, reject)=>{
     try {
       // await AsyncStorage.removeItem('setTasks', jsonValue)
       const JsonValue = await AsyncStorage.getItem('firsty')
@@ -361,10 +396,9 @@ export default class HomeScreen extends React.Component {
       // this.setState({ready:true})
       const jsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('setTasks', jsonValue)
-      // console.log("setTasks:")
-      // console.log(setTasks)
+      resolve(true)
     }catch(e) {
-      
+      reject(e)
       Alert.alert('Failed to get data!','Failed to get data! Please try again.')
       console.log(e)
     }
@@ -374,7 +408,7 @@ export default class HomeScreen extends React.Component {
     return parseInt(((new Date(element.date).getTime())/(1000*60*60))+(6-element.dueImportance)*2*(11-element.importance))+parseInt(element.length)/10
   }
   
-  async changeDay(){
+  changeDay = async(resolve, reject)=>{
     try {
       const dayJsonValue = await AsyncStorage.getItem('day')
       var day = dayJsonValue != null ? JSON.parse(dayJsonValue) :null;
@@ -389,7 +423,9 @@ export default class HomeScreen extends React.Component {
           await this.getSyncEvents(false)
         }
       }
+      resolve(true)
     }catch(e) {
+      reject(e)
       console.log(e)
     }
   }
@@ -455,27 +491,29 @@ export default class HomeScreen extends React.Component {
           if(this.time(time).getTime()==this.time(setTasks[setIndex].start).getTime())
           {
             //Add set task
-            // console.log("Add set task")
+            // console.log("Add set task: "+setTasks[setIndex].name)
             time=setTasks[setIndex].end;
+            // console.log(this.displayTime(time))
             tempC.push({...setTasks[setIndex]})
-            
-            setIndex++;
             tempAvaliable += setTasks[setIndex].length
+            setIndex++;
+            
             // console.log(this.displayTime(time))
           }
-          if (tasks[i].length<=Math.round((this.time(setTasks[setIndex].start).getTime()-this.time(time).getTime())/(1000*60)))
+          if (tasks[i].length<=Math.floor((this.time(setTasks[setIndex].start).getTime()-this.time(time).getTime())/(1000*60)))
           {
             //Task length <= time until set task -> add task
-            // console.log("Task length <= time until set task -> add task")
+            // console.log("Task length <= time until set task -> add task: "+tasks[i].name)
             tasks[i].start = time
             tasks[i].end = this.time(new Date(time).getTime()+tasks[i].length*1000*60)
+            time = tasks[i].end
             tempC.push({...tasks[i]})
             tempAvaliable += parseInt(tasks[i].length)
           }
-          else if(Math.round((this.time(setTasks[setIndex].start).getTime()-this.time(time).getTime())/(1000*60))>0)
+          else if(Math.floor((this.time(setTasks[setIndex].start).getTime()-this.time(time).getTime())/(1000*60))>0)
           {
             //Split Task
-            // console.log("Split Task")
+            // console.log("Split Task: "+tasks[i].name)
             tasks[i].start = time
             tasks[i].end = this.time(setTasks[setIndex].start)
             time = tasks[i].end
@@ -487,12 +525,15 @@ export default class HomeScreen extends React.Component {
             }
             tempAvaliable += (this.time(tasks[i].end)-this.time(tasks[i].start))/(1000*60)
           }
+          else{
+            i--
+          }
         }
         else if(setTasks.length>0&&setIndex==setTasks.length-1){
           if(this.time(time).getTime()!=this.time(setTasks[setIndex].start).getTime()){
             tempC.push({break:true})
           }
-          // console.log("last setTask")
+          // console.log("last setTask: "+setTasks[setIndex].name)
           time=setTasks[setIndex].end;
           tempC.push({...setTasks[setIndex]})
           tempAvaliable += parseInt(setTasks[setIndex].length)
@@ -501,13 +542,14 @@ export default class HomeScreen extends React.Component {
         }
         if(setIndex==setTasks.length){
           //no more set tasks -> Add task
-          // console.log("no more set tasks -> Add task")
+          // console.log("no more set tasks -> Add task: "+tasks[i].name)
           tasks[i].start = time
           tasks[i].end = this.time(this.time(time).getTime()+tasks[i].length*1000*60)
           tempC.push({...tasks[i]})
           tempAvaliable += parseInt(tasks[i].length)
+          time = this.time(tasks[i].end)
         }
-        time = tasks[i].end
+        
         if(i>0&&tasks[i].name.substring(tasks[i].name.length-8)==" (cont.)"){
           tasks.splice(i, 1)
           i-=1
@@ -515,11 +557,16 @@ export default class HomeScreen extends React.Component {
       }
       //Add remaining setTasks
       for(setIndex;setIndex<setTasks.length;setIndex++){
+        if(setTasks[setIndex].name=="Test 2"){
+          // console.log(this.time(time).getTime())
+          // console.log(this.time(setTasks[setIndex].start).getTime())
+        }
+        
         if(this.time(time).getTime()!=this.time(setTasks[setIndex].start).getTime()){
           tempC.push({break:true})
         }
         tempC.push({...setTasks[setIndex]})
-        time=setTasks[setIndex].end;
+        time=this.time(setTasks[setIndex].end);
         tempAvaliable += parseInt(setTasks[setIndex].length)
       }
     }
@@ -551,7 +598,7 @@ export default class HomeScreen extends React.Component {
                 <ListItem.Title style={this.state.taskIndex!=index?{fontWeight: 'bold'}:{fontWeight: 'bold',color:"white"}}>{item.name}</ListItem.Title>
                 <ListItem.Subtitle style={this.state.taskIndex==index?{color:"white"}:null}>{this.displayTime(item.start)+' - '+this.displayTime(item.end)}</ListItem.Subtitle>
                 {item.sortValue!=null?
-                  <ListItem.Subtitle style={this.state.taskIndex==index?{color:"white"}:null}>
+                  <ListItem.Subtitle style={item.sortValue<parseInt(((new Date(new Date().setHours(24,0,0,0)).getTime())/(1000*60*60))+(6-4)*2*(11-7))+60/10?{color:"red"}:(item.sortValue<=parseInt(((new Date(new Date().setHours(24,0,0,0)).getTime())/(1000*60*60))+(6-3)*2*(11-5))+60/10?{color:"orange"}:(this.state.taskIndex==index?{color:"white"}:null))}>
                     {'(Due: '+days[new Date(item.date).getDay()]+' '+this.displayDate(item.date)+' '+this.displayTime(item.date)+')'}
                   </ListItem.Subtitle>
                   :null}
@@ -792,39 +839,125 @@ export default class HomeScreen extends React.Component {
       return null
     }
     return (
-      
       <SafeAreaView style={styles.container}>
-        {/* {this.state.renderConfetti?
-          // <ConfettiCannon
-          //   count={200}
-          //   origin={{x: -20, y: 0}}
-          //   autoStart={false}
-          //   ref={ref => (this.explosion = ref)}/>
-          // <Confetti width height recycle={false} onConfettiComplete={() => this.setState({renderConfetti: false})}/>
-        :null} */}
-        <Overlay isVisible={this.state.firstTime} onBackdropPress={()=>this.setState({firstTime:false})}>
+        <Dialog
+          isVisible={this.state.syncOptions}
+          onBackdropPress={()=>this.setState({syncOptions:false})}
+          overlayStyle={{backgroundColor:'white'}}
+        >
+          <Dialog.Title title="When do you want to sync with calendar events?"/>
+          {['Never', 'After Review', 'Always'].map((l, i) => (
+            <CheckBox
+              key={i}
+              title={l}
+              containerStyle={{ backgroundColor: 'white', borderWidth: 0 }}
+              checkedIcon="dot-circle-o"
+              uncheckedIcon="circle-o"
+              checked={this.state.checked === i + 1}
+              onPress={() => this.setState({checked:i + 1})}
+            />
+          ))}
+
+          <Dialog.Actions>
+            <Dialog.Button
+              title="CONFIRM"
+              onPress={() => {
+                if(this.state.checked==1){
+                  this.setSyncPreferences("never")
+                }
+                else if(this.state.checked==2){
+                  this.setSyncPreferences("review")
+                }
+                else{
+                  this.setSyncPreferences("always")
+                }
+                this.setState({syncOptions:false})
+              }}
+            />
+          </Dialog.Actions>
+        </Dialog>
+        {/* <Overlay isVisible={this.state.firstTime} onBackdropPress={()=>this.setState({firstTime:false})} overlayStyle={{backgroundColor:'white'}}>
           <SafeAreaView style = {styles.container}>
         
             <ScrollView style={{height:'100%'}}>
-              {/* <View style={{flex:1,justifyContent:'center'}}> */}
-            <Text style={{ fontSize: 28, alignSelf: 'center' }}>Welcome to CheckMate!</Text>
-            <Text style={{fontSize:23, alignSelf: 'center'}}>Instructions:{"\n"}</Text>
-            <Text style={{fontSize:17,padding:5}}>
-  1. Add tasks and events. Tasks can be done at any time. Events can only be done at a preset time.{"\n\n"}
-  2. Fill in the parameters for your task or event. {"\n\n"}
-  3. Repeat steps 1 and 2.{"\n\n"}
-  4. Start, pause, finish, or edit the selected task or event using the buttons on the bottom of the page.{"\n\n"}
-  5. Be productive!{"\n\n"}</Text>
-            <Button
-              containerStyle = {{justifyContent:"flex-end"}}
-              title = "Close"
-              raised = {true}
-              onPress={()=>this.setState({firstTime:false,ready:true})}
-            />
-            {/* </View> */}
+              <View style={{flex:1,justifyContent:'center'}}>
+                <Text style={{ fontSize: 28, alignSelf: 'center' }}>Welcome to CheckMate!</Text>
+                <Text style={{fontSize:23, alignSelf: 'center'}}>Instructions:{"\n"}</Text>
+                <Text style={{fontSize:17,padding:5}}>
+      1. Add tasks and events. Tasks can be done at any time. Events can only be done at a preset time.{"\n\n"}
+      2. Fill in the parameters for your task or event. {"\n\n"}
+      3. Repeat steps 1 and 2.{"\n\n"}
+      4. Start, pause, finish, or edit the selected task or event using the buttons on the bottom of the page.{"\n\n"}
+      5. Be productive!{"\n\n"}</Text>
+                <Button
+                  containerStyle = {{justifyContent:"flex-end"}}
+                  title = "Close"
+                  raised = {true}
+                  onPress={()=>this.setState({firstTime:false,ready:true})}
+                />
+              </View>
             </ScrollView>
           </SafeAreaView>
-        </Overlay>
+        </Overlay> */}
+
+        {this.instructions.map((l, i) => (
+          <Dialog
+            isVisible={this.state.instructionIndex==i}
+            overlayStyle={{backgroundColor:'white'}}
+          >
+            <Dialog.Title title={l.title} style={{textAlign:'center'}}/>
+            <Image
+              style={{width:l.width, height:l.height, alignSelf:'center',marginBottom:10}}
+              source={l.image}
+            />
+            <Text style={{alignSelf:'center'}}>{l.content}</Text>
+            {i==3?
+              ['Never', 'After Review', 'Always'].map((t, k) => (
+                <CheckBox
+                  key={k}
+                  title={t}
+                  containerStyle={{ backgroundColor: 'white', borderWidth: 0 }}
+                  checkedIcon="dot-circle-o"
+                  uncheckedIcon="circle-o"
+                  checked={this.state.checked === k + 1}
+                  onPress={() => this.setState({checked:k + 1})}
+                />
+              ))
+              :null}
+
+            <Dialog.Actions>
+            {i==3?
+                <Dialog.Button title="NEXT" 
+                  onPress={()=>{
+                    if(this.state.checked==1){
+                      async ()=> {
+                        const jsonValue = JSON.stringify('never')
+                        await AsyncStorage.setItem('syncEvents5', jsonValue)
+                      }
+                    }
+                    else if(this.state.checked==2){
+                      async ()=> {
+                        const jsonValue = JSON.stringify('review')
+                        await AsyncStorage.setItem('syncEvents5', jsonValue)
+                      }
+                    }
+                    else{
+                      async ()=> {
+                        const jsonValue = JSON.stringify('always')
+                        await AsyncStorage.setItem('syncEvents5', jsonValue)
+                      }
+                    }
+                    this.setState({instructionIndex:i+1})}}/>
+              :(i<=this.instructions.length-1?
+                <Dialog.Button title={i==this.instructions.length-1?"CLOSE":"NEXT"} onPress={()=>this.setState({instructionIndex:i+1})}/>
+              :null)}
+              {i>0?
+                <Dialog.Button title="PREVIOUS" onPress={()=>this.setState({instructionIndex:i-1})}/>
+              :null}
+              
+            </Dialog.Actions>
+          </Dialog>
+        ))}
 
         <View style={{flex:9}}>
         <View style={styles.top}> 
@@ -834,7 +967,7 @@ export default class HomeScreen extends React.Component {
               name="question-circle" 
               type='font-awesome-5' 
               size = {25}
-              onPress={()=>this.setState({firstTime:true})}
+              onPress={()=>this.setState({instructionIndex:0})}
               solid={true}
             />
           </View>
@@ -864,12 +997,21 @@ export default class HomeScreen extends React.Component {
           </View>
         </View>
         {/* <View style={{flex:10, marginHorizontal:20}}> */}
+        {this.state.combined.length==0?
+          <View style={{margin:20, alignSelf:'center', justifyContent:'center', alignItems:'center',}}>
+            <Image
+              style={{width:200, height:200}}
+              source={logo}
+            />
+            <Text h3 h3Style={{fontWeight:'normal',textAlign:'center'}}>No tasks or events currently.</Text>
+          </View>
+        :null}
           <DraggableFlatList
             containerStyle = {{flex:10, marginHorizontal:20}}
             // debug={true}
             data={this.state.combined}
             onDragEnd={(data) => this.setData(data)}
-            keyExtractor={(item,index) => {item.name!=null?item.name+index:index}}
+            keyExtractor={(item,index) => {item.name!=null?(item.name+index.toString()):index}}
             renderItem={(item)=>this.renderItem(item)}
           /> 
         {/* </View> */}
@@ -882,6 +1024,7 @@ export default class HomeScreen extends React.Component {
                   <Text style={{ fontSize: 20, color: '#fff' }}>Reset Order</Text>
                 </TouchableOpacity> */}
                 <Button
+                  // raised={true}
                   title='Optimize Order'
                   buttonStyle={{backgroundColor: '#1c247a'}}
                   onPress={() => this.sortTask()}
@@ -902,8 +1045,7 @@ export default class HomeScreen extends React.Component {
 
         >
           <Tooltip  
-            toggleAction="onLongPress" 
-            onOpen = {()=>console.log("opened")} 
+            // toggleAction="onLongPress"  
             height = {60}
             popover={<Text>Tasks can be done at any time</Text>}
           >
@@ -915,8 +1057,7 @@ export default class HomeScreen extends React.Component {
             />
           </Tooltip>
           <Tooltip  
-            toggleAction="onLongPress" 
-            onOpen = {()=>console.log("opened")} 
+            // toggleAction="onLongPress" 
             height = {60}
             popover={<Text>Events are done at a preset time</Text>}
           >
@@ -976,15 +1117,15 @@ const styles = StyleSheet.create({
     flex: 1,
     // backgroundColor: '#3A3B3C',
     alignItems: 'stretch',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     flexDirection: 'column'
   },
   top: {
     alignItems: 'center',
     justifyContent: 'flex-start',
     flexDirection: 'row',
-    flex: 0.5,
-    padding: 8
+    // flex: 0.5,
+    padding: 8,
   },
   button: {
     backgroundColor: "#3C00BB",

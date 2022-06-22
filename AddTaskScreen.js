@@ -6,7 +6,7 @@ import RNPickerSelect from 'react-native-picker-select';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Slider,Input,CheckBox,Avatar,Switch,Tooltip,Icon,Text,Button} from 'react-native-elements'
+import {Slider,Input,CheckBox,Avatar,Switch,Tooltip,Icon,Text,Button}  from "react-native-elements"
 
 var savedTasks
 
@@ -33,6 +33,9 @@ export default class AddTaskScreen extends React.Component {
     repeating: false,
     editMode: true,
     overridable: false,
+    description: "",
+    empty: false,
+    usedName: false
   }
 
   //Get data
@@ -66,7 +69,7 @@ export default class AddTaskScreen extends React.Component {
         let change = [...this.state.daysUsed]
         this.selectedTask = savedTasks[0][new Date().getDay()][savedTasks[0][new Date().getDay()].findIndex((task) =>task.name == this.editName)]
         this.edit = true
-        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,dueImportance:this.selectedTask.dueImportance,repeating:this.selectedTask.repeating,overridable:this.selectedTask.overridable})
+        this.setState({date:new Date(new Date(this.selectedTask.date).getTime()),name:this.selectedTask.name,importance:this.selectedTask.importance,length:this.selectedTask.length,dueImportance:this.selectedTask.dueImportance,repeating:this.selectedTask.repeating,overridable:this.selectedTask.overridable,description:this.selectedTask.description})
         // await AsyncStorage.removeItem('editName')
         for(var i=0;i<=this.state.daysUsed.length-1;i++){
           if(savedTasks[0][i].findIndex((task) =>task.name == this.editName)!=-1)
@@ -179,26 +182,19 @@ export default class AddTaskScreen extends React.Component {
       d = new Date(d).setHours(0,0,0,0)
     }
     var dueIncrease  = new Date(this.state.date).getTime()-new Date(d).getTime();
-    this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance,repeating:this.state.repeating,dueIncrease:dueIncrease,overridable:this.state.overridable}
+    this.selectedTask = {name:this.state.name, sortValue:this.state.sortValue, length: this.state.length, date: this.state.date, start:this.state.start, end:this.state.end, importance:this.state.importance,dueImportance:this.state.dueImportance,repeating:this.state.repeating,dueIncrease:dueIncrease,overridable:this.state.overridable, description:this.state.description}
     // console.log(this.selectedTask.length)
     //Same name
-    for (let i = 0; i < this.state.daysUsed.length; i++) {
-      if(this.state.daysUsed[i])
-      {
-        if((this.edit == true&&this.selectedTask.name != this.editName)||this.edit == false){
-          sameName = ((workTimes[0][i].some((element) => element.name==this.selectedTask.name))
-                  ||(this.state.weekly&&workTimes[1][i].some((element) => element.name == this.selectedTask.name))
-                  ||(savedTasks[0][i].some((element) => element.name == this.selectedTask.name))
-                  ||(this.state.weekly&&savedTasks[1][i].some((element) => element.name == this.selectedTask.name)))
-        }
-      }
-    }
+    sameName = await this.sameName();
     
     //Check if valid
     if(this.state.name==""||this.state.importance==0||this.state.length==0){
+      this.setState({empty:true})
       Alert.alert('Invalid Task','Not all fields have been filled out!')
+      
     }
     else if(sameName==true){
+      this.setState({usedName:true})
       Alert.alert('Name Used','Name already used. Please select a new name.')
     }
     else{
@@ -227,7 +223,7 @@ export default class AddTaskScreen extends React.Component {
           }
         }
       };
-
+      this.setState({empty:false,usedName:false})
       //save data
       try {
         const jsonValue = JSON.stringify(savedTasks)
@@ -240,6 +236,28 @@ export default class AddTaskScreen extends React.Component {
       this.props.navigation.navigate('Home');
     }
   };
+
+  async sameName() {
+    const savedTaskJsonValue = await AsyncStorage.getItem('setTasks')
+    let workTimes = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
+      for (let i = 0; i < this.state.daysUsed.length; i++) {
+        if (this.state.daysUsed[i]) {
+          if ((this.edit == true && this.state.name != this.editName) || this.edit == false) {
+            if((workTimes[0][i].some((element) => element.name == this.state.name))
+              || (this.state.weekly && workTimes[1][i].some((element) => element.name == this.state.name))
+              || (savedTasks[0][i].some((element) => element.name == this.state.name))
+              || (this.state.weekly && savedTasks[1][i].some((element) => element.name == this.state.name)))
+            {
+              this.setState({usedName:true})
+              return true
+            }
+          }
+        }
+      }
+    
+    this.setState({usedName:false})
+    return false;
+  }
 
   //Set repeating
   isRepeating() {
@@ -270,10 +288,21 @@ export default class AddTaskScreen extends React.Component {
               {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
               <Input
                 label = 'Name'
-                placeholder='Practice Piano'
-                renderErrorMessage={false}
-                onChangeText={name => this.setState({name})}
+                placeholder='Add Name'
+                renderErrorMessage={this.state.empty||this.state.usedName}
+                errorMessage={this.state.empty&&this.state.name==""?"Please enter a name":(this.state.usedName==true?"Another task or event already has this name":null)}
+                onChangeText={name => {this.setState({name});this.sameName()}}
                 value = {this.state.name}
+              />
+            </View>
+            <View style={styles.section}>
+              <Input
+                multiline
+                label = 'Description'
+                placeholder='Add Description'
+                renderErrorMessage={false}
+                onChangeText={description => this.setState({description:description})}
+                value = {this.state.description}
               />
             </View>
           <View style={styles.section}>        
@@ -288,7 +317,7 @@ export default class AddTaskScreen extends React.Component {
               thumbStyle={{width:25,height:25}}
               trackStyle={{width:'100%'}}
               value={this.state.importance}
-              animateTransitions={true}
+              // animateTransitions={true}
               allowTouchTrack={true}
               onValueChange={(importance) => this.setState({ importance })}
               
@@ -311,8 +340,9 @@ export default class AddTaskScreen extends React.Component {
             {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
             <Input
               label = 'Length (min)'
-              placeholder='30'
-              renderErrorMessage={false}
+              placeholder='Add Length'
+              renderErrorMessage={this.state.empty&&this.state.length==0}
+              errorMessage={this.state.empty&&this.state.length==0?"Enter a non-zero task length":null}
               keyboardType = "numeric"
               onChangeText={length => this.setState({length})}
               value = {this.state.length!=0?this.state.length.toString():null}
@@ -386,6 +416,7 @@ export default class AddTaskScreen extends React.Component {
             :null} */}
           </View>
           <CheckBox
+            containerStyle={{backgroundColor:'rgba(0,0,0,0)',borderWidth:0}}
             title='Weekly'
             checked={this.state.weekly}
             onPress={() => this.setState({weekly: !this.state.weekly})}
@@ -412,6 +443,7 @@ export default class AddTaskScreen extends React.Component {
           <View style={{flexDirection: 'row'}}>
             <View style={{flexGrow:1}}>
               <CheckBox
+                containerStyle={{backgroundColor:'rgba(0,0,0,0)',borderWidth:0}}
                 title='Override'
                 checked={this.state.overridable}
                 onPress={() => this.setState({overridable: !this.state.overridable})}

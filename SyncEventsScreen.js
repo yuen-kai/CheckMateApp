@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Icon, Divider, Overlay, Button, SpeedDial, ListItem, Tooltip, Text, CheckBox } from 'react-native-elements';
+import { Icon, Divider, Overlay, Button, SpeedDial, ListItem, Tooltip, Text, CheckBox }  from "@rneui/base"
 
 export default class SyncEventsScreen extends React.Component {
     state = {
@@ -84,7 +84,11 @@ export default class SyncEventsScreen extends React.Component {
                 start: this.time(event.startDate),
                 end: this.time(event.endDate),
                 length: (this.time(event.endDate).getTime() - this.time(event.startDate).getTime()) / (1000 * 60),
+                description: event.notes
             })
+            if(event.location!=""){
+                setTasks[0][new Date().getDay()][setTasks[0][new Date().getDay()].length-1].description += (" At " + event.location+".")
+            }
         })
         setTasks.sort(function(a, b){return new Date(a.start).getTime() - new Date(b.start).getTime()});
         await AsyncStorage.setItem('setTasks', JSON.stringify(setTasks))
@@ -103,6 +107,7 @@ export default class SyncEventsScreen extends React.Component {
         }
         return (
             <SafeAreaView style={styles.container}>
+                {this.events.length==0?<Text h4 style={{alignSelf:'center'}}>No Calendar Events</Text>:null}
                 <ScrollView contentContainerStyle={{ flex: 1 }}>
                     {this.events.map((event, index) => {
                         return (
@@ -115,14 +120,14 @@ export default class SyncEventsScreen extends React.Component {
                                 />
                                 <ListItem.Content>
                                     <ListItem.Title style={!this.checkedEvents.some((e)=>e.id==event.id)?{color:'gray'}:{color:'black'}}>{event.title}</ListItem.Title>
-                                    <ListItem.Subtitle>{this.displayTime(event.startDate)} - {this.displayTime(event.endDate)}</ListItem.Subtitle>
+                                    <ListItem.Subtitle style={!this.checkedEvents.some((e)=>e.id==event.id)?{color:'gray'}:{color:'black'}}>{this.displayTime(event.startDate)} - {this.displayTime(event.endDate)}</ListItem.Subtitle>
                                 </ListItem.Content>
                             </ListItem>
                         )
                     })}
                     <Button
                         title='Save'
-                        buttonStyle={{ backgroundColor: '#6a99e6', alignSelf: 'flex-end' }}
+                        buttonStyle={{ backgroundColor: '#6a99e6', alignSelf: 'flex-end', marginTop:10 }}
                         onPress={() => this.handleSave()}
                     />
                 </ScrollView>

@@ -5,7 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Icon,Tooltip,Avatar,CheckBox,Input, Button,Text, Switch} from 'react-native-elements'
+import {Icon,Tooltip,Avatar,CheckBox,Input, Button,Text, Switch}  from "react-native-elements"
 import ThemedListItem from 'react-native-elements/dist/list/ListItem';
 
 var workTimes
@@ -28,6 +28,10 @@ export default class AddWorkTimeScreen extends React.Component {
     repeating: false,
     editMode: true,
     name: "",
+    description: "",
+    usedName: false,
+    overlapTime: false,
+    empty: false,
   }
 
   componentDidMount(){
@@ -59,7 +63,7 @@ export default class AddWorkTimeScreen extends React.Component {
         let change = [...this.state.daysUsed]
         this.selectedTask = workTimes[0][new Date().getDay()][workTimes[0][new Date().getDay()].findIndex((task) =>task.name == this.editName)]
         this.edit = true
-        this.setState({name:this.editName,start:this.roundTime(this.selectedTask.pStart),end:this.roundTime(this.selectedTask.pEnd),repeating:this.selectedTask.repeating})
+        this.setState({name:this.editName,start:this.roundTime(this.selectedTask.pStart),end:this.roundTime(this.selectedTask.pEnd),repeating:this.selectedTask.repeating, description:this.selectedTask.description})
         await AsyncStorage.removeItem('editName')
         for(var i=0;i<=this.state.daysUsed.length-1;i++){
           if(workTimes[0][i].findIndex((task) =>task.name == this.editName)!=-1)
@@ -145,6 +149,55 @@ export default class AddWorkTimeScreen extends React.Component {
     this.setState({daysUsed:change})
   }
 
+  async sameName(){
+    const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
+    var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
+    for (let i = 0; i < this.state.daysUsed.length; i++) {
+      if(this.state.daysUsed[i])
+      {
+        if((this.edit == true&&this.state.name != this.editName)||this.edit == false){
+          if((workTimes[0][i].some((element) => element.name==this.state.name))
+              ||(this.state.weekly&&workTimes[1][i].some((element) => element.name == this.state.name))
+              ||(savedTask[0][i].some((element) => element.name == this.state.name))
+              ||(this.state.weekly&&savedTask[1][i].some((element) => element.name == this.state.name))){
+            {
+              this.setState({usedName:true})
+              return true
+            }
+          }
+        }
+      }
+      
+    }
+    this.setState({usedName:false})
+      return false;
+  }
+
+  overlapTime(){
+    for (let i = 0; i < this.state.daysUsed.length; i++) {
+      if(this.state.daysUsed[i])
+      {
+        var a = workTimes[0][i].findIndex((event)=>event.name == this.editName)
+        var b = workTimes[1][i].findIndex((event)=>event.name == this.editName)
+        if(workTimes[0][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>this.roundTime(this.selectedTask.start)&&workTimes[0][i].indexOf(element)!=a))
+          ||workTimes[0][i].some((element) => (this.roundTime(element.start)<this.roundTime(this.selectedTask.end)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end)&&workTimes[0][i].indexOf(element)!=a))
+          ||workTimes[0][i].some((element) => (this.roundTime(element.start)>=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)<=this.roundTime(this.selectedTask.end)&&workTimes[0][i].indexOf(element)!=a))
+          ||workTimes[0][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end)&&workTimes[0][i].indexOf(element)!=a))
+          ||(this.state.weekly&&workTimes[1][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>this.roundTime(this.selectedTask.start))&&workTimes[1][i].indexOf(element)!=b))
+          ||(this.state.weekly&&workTimes[1][i].some((element) => (this.roundTime(element.start)<this.roundTime(this.selectedTask.end)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end))&&workTimes[1][i].indexOf(element)!=b))
+          ||(this.state.weekly&&workTimes[1][i].some((element) => (this.roundTime(element.start)>=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)<=this.roundTime(this.selectedTask.end))&&workTimes[1][i].indexOf(element)!=b))
+          ||(this.state.weekly&&workTimes[1][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end))&&workTimes[1][i].indexOf(element)!=b)))
+        {
+          this.setState({overlapTime:true})
+          return true
+        }
+        
+      }
+      this.setState({overlapTime:false})
+      return false;
+    }
+  }
+
   handleSave = async () => {
     var sameName = false
     var sameTime = false
@@ -152,43 +205,26 @@ export default class AddWorkTimeScreen extends React.Component {
     var savedTask = savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) :null;
     await this.isRepeating();
 
-    this.selectedTask = {name:this.state.name,pStart:this.roundTime(this.state.start), pEnd:this.roundTime(this.state.end),start:this.roundTime(this.state.start), end:this.roundTime(this.state.end),length:(this.roundTime(this.state.end)-this.roundTime(this.state.start))/(60*1000),repeating:this.state.repeating}
+    this.selectedTask = {name:this.state.name,pStart:this.roundTime(this.state.start), pEnd:this.roundTime(this.state.end),start:this.roundTime(this.state.start), end:this.roundTime(this.state.end),length:(this.roundTime(this.state.end)-this.roundTime(this.state.start))/(60*1000),repeating:this.state.repeating,description:this.state.description}
     // console.log(this.selectedTask.length)
-    for (let i = 0; i < this.state.daysUsed.length; i++) {
-      if(this.state.daysUsed[i])
-      {
-        if((this.edit == true&&this.selectedTask.name != this.editName)||this.edit == false){
-          sameName = ((workTimes[0][i].some((element) => element.name==this.selectedTask.name))
-                  ||(this.state.weekly&&workTimes[1][i].some((element) => element.name == this.selectedTask.name))
-                  ||(savedTask[0][i].some((element) => element.name == this.selectedTask.name))
-                  ||(this.state.weekly&&savedTask[1][i].some((element) => element.name == this.selectedTask.name)))
-        }
+    sameName = await this.sameName()
         //set sametime to true if the times overlap
-        var a = workTimes[0][i].findIndex((event)=>event.name == this.editName)
-        var b = workTimes[1][i].findIndex((event)=>event.name == this.editName)
-        sameTime = workTimes[0][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>this.roundTime(this.selectedTask.start)&&workTimes[0][i].indexOf(element)!=a))
-                  ||workTimes[0][i].some((element) => (this.roundTime(element.start)<this.roundTime(this.selectedTask.end)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end)&&workTimes[0][i].indexOf(element)!=a))
-                  ||workTimes[0][i].some((element) => (this.roundTime(element.start)>=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)<=this.roundTime(this.selectedTask.end)&&workTimes[0][i].indexOf(element)!=a))
-                  ||workTimes[0][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end)&&workTimes[0][i].indexOf(element)!=a))
-                  ||(this.state.weekly&&workTimes[1][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>this.roundTime(this.selectedTask.start))&&workTimes[1][i].indexOf(element)!=b))
-                  ||(this.state.weekly&&workTimes[1][i].some((element) => (this.roundTime(element.start)<this.roundTime(this.selectedTask.end)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end))&&workTimes[1][i].indexOf(element)!=b))
-                  ||(this.state.weekly&&workTimes[1][i].some((element) => (this.roundTime(element.start)>=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)<=this.roundTime(this.selectedTask.end))&&workTimes[1][i].indexOf(element)!=b))
-                  ||(this.state.weekly&&workTimes[1][i].some((element) => (this.roundTime(element.start)<=this.roundTime(this.selectedTask.start)&&this.roundTime(element.end)>=this.roundTime(this.selectedTask.end))&&workTimes[1][i].indexOf(element)!=b))
-        
-      }
-    }
+    sameTime = await this.overlapTime()
     
     //Check if valid
     if(this.state.name==""){
+      this.setState({empty:true})
       Alert.alert('Empty Name','Please enter a name.')
     }
     else if(!(this.selectedTask.start!=null&&this.selectedTask.end!=null&&this.roundTime(this.selectedTask.end) - this.roundTime(this.selectedTask.start)>=1)){
       Alert.alert("Invalid Time","The times that you have set for this task are invalid.")
     }
     else if(sameName==true){
+      this.setState({usedName:true})
       Alert.alert('Name Used','Name already used. Please select a new name.')
     }
     else if(sameTime==true){
+      this.setState({overlapTime:true})
       Alert.alert('Event Times Overlap','The times that you have set for this event overlap with the times of another event.')
     }
     else{
@@ -217,7 +253,7 @@ export default class AddWorkTimeScreen extends React.Component {
             }
           }
         };
-
+        this.setState({empty:false,usedName:false,overlapTime:false})
         //save data
         try {
           const jsonValue = JSON.stringify(workTimes)
@@ -262,11 +298,21 @@ export default class AddWorkTimeScreen extends React.Component {
           <View style={styles.section}>
             {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
             <Input
-              label = "Name"
-              placeholder='Practice Piano'
-              renderErrorMessage={false}
-              onChangeText={name => this.setState({name})}
+              label = 'Name'
+              placeholder='Add Name'
+              renderErrorMessage={this.state.empty||this.state.usedName}
+              errorMessage={this.state.empty?"Please enter a name":(this.state.usedName==true?"Another task or event already has this name":null)}
+              onChangeText={name => {this.setState({name});this.sameName()}}
               value = {this.state.name}
+            />
+          </View>
+          <View style={styles.section}>
+            <Input
+              label = "Description"
+              placeholder='Add Description'
+              renderErrorMessage={false}
+              onChangeText={description => this.setState({description:description})}
+              value = {this.state.description}
             />
           </View>
           <View style={styles.section}>
@@ -289,7 +335,7 @@ export default class AddWorkTimeScreen extends React.Component {
             value={new Date(this.state.start)}
             mode={"time"}
             display="default"
-            onChange={this.onStartChange}
+            onChange={()=>{this.onStartChange;this.overlapTime()}}
           />)}
 
           {/* end picker */}
@@ -299,11 +345,11 @@ export default class AddWorkTimeScreen extends React.Component {
             value={new Date(this.state.end)}
             mode={"time"}
             display="default"
-            onChange={this.onEndChange}
+            onChange={()=>{this.onStartChange;this.overlapTime()}}
           />)}
 
           {this.state.start!=null&&this.state.end!=null&&this.roundTime(this.state.end) - this.roundTime(this.state.start)<=0?<Text style={{ fontSize: 15, color: 'red', marginBottom:15 }}>Events need to be at least 1 minute long!</Text>
-            :null
+            :(this.state.overlapTime?null:null)
           }
         </View>
 
@@ -319,6 +365,7 @@ export default class AddWorkTimeScreen extends React.Component {
           :null} */}
         </View>
         <CheckBox
+          containerStyle={{backgroundColor:'rgba(0,0,0,0)',borderWidth:0}}
           title='Weekly'
           checked={this.state.weekly}
           onPress={() => this.setState({weekly: !this.state.weekly})}
