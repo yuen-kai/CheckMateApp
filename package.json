@@ -21,6 +21,7 @@
     "@rneui/base": "^4.0.0-rc.4",
     "@rneui/themed": "^4.0.0-rc.4",
     "core-js": "^3.4.8",
+    "eslint-config-prettier": "^8.5.0",
     "expo": "^44.0.0",
     "expo-calendar": "~10.1.0",
     "expo-notifications": "~0.14.0",
@@ -43,6 +44,13 @@
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",
+    "eslint": "^8.0.1",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.25.2",
+    "eslint-plugin-n": "^15.0.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "eslint-plugin-react": "^7.30.1",
+    "prettier": "2.7.1",
     "typescript": "^4.6.2"
   },
   "private": true

@@ -13,20 +13,21 @@
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.yuenkai.CheckMate",
       "buildNumber": "1.1.0",
-      "infoPlist": {"NSRemindersUsageDescription":"This app reads events from the calendar and adds them into the user's schedule in the app."}
+      "infoPlist": {
+        "NSRemindersUsageDescription": "This app reads events from the calendar and adds them into the user's schedule in the app."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/AdaptiveIcon.png",
         "backgroundColor": "#6a99e6"
       },
+      "googleServicesFile": "./google-services.json",
       "icon": "./assets/Icon.png",
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.yuenkai.CheckMate"
