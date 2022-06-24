@@ -1,5 +1,6 @@
+/* eslint-disable no-unused-expressions */
 /* eslint-disable react/prop-types */
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   StyleSheet,
   ScrollView,
@@ -14,34 +15,28 @@ import {
   CheckBox
 } from '@rneui/base'
 
-export default class SyncEventsScreen extends React.Component {
-  state = {
-    use: [],
-    ready: false
-  }
+export default function SyncEventsScreen ({ route, navigation }) {
+  const { events, checkedEvents } = route.params
 
-  checkEvents = []
-  events
-  checkedEvents
+  const [use, setUse] = useState([])
+  const [ready, setReady] = useState(false)
 
-  componentDidMount () {
-    this._unsubscribe = this.props.navigation.addListener('focus', () => {
-      this.getData()
+  let checkEvents
+
+  useEffect(() => {
+    () => navigation.addListener('focus', () => {
+      getData()
     })
-  }
+  })
 
-  getData = async () => {
+  const getData = async () => {
     try {
-      const eventsJson = await AsyncStorage.getItem('checkEvents')
-      this.checkedEvents = eventsJson != null ? JSON.parse(eventsJson) : null
-      const JsonValue = await AsyncStorage.getItem('events')
-      this.events = JsonValue != null ? JSON.parse(JsonValue) : null
       const use = []
-      this.events.forEach((event) => {
+      events.forEach((event) => {
         use.push(false)
       })
-      //   console.log(this.events)
-      this.setState({ use, ready: true })
+      setUse(use)
+      setReady(true)
     } catch (e) {
       Alert.alert(
         'Failed to get data!',
@@ -51,7 +46,7 @@ export default class SyncEventsScreen extends React.Component {
     }
   }
 
-  displayTime (date) {
+  function displayTime (date) {
     let hours = new Date(date).getHours()
     const minutes = new Date(date).getMinutes()
     let amPm = 'am'
@@ -70,61 +65,61 @@ export default class SyncEventsScreen extends React.Component {
     return hours + ':' + minutes + ' ' + amPm
   }
 
-  time (t) {
+  function time (t) {
     return new Date(Math.floor(new Date(t) / (60 * 1000)) * 60 * 1000)
   }
 
-  reviewEvents (event) {
+  function reviewEvents (event) {
     // check if event has the same name as any events in checkEvents
-    // console.log(!this.checkedEvents.some(e => e.id === event.id))
+    // console.log(!checkedEvents.some(e => e.id === event.id))
     return (
       event != null &&
-      (!this.checkedEvents.some((e) => e.id === event.id) ||
-        this.checkEvents.some(
+      (!checkedEvents.some((e) => e.id === event.id) ||
+        checkEvents.some(
           (e) => e.title === event.title && e.id !== event.id
         ) ||
-        this.checkEvents.some(
+        checkEvents.some(
           (element) =>
-            this.time(element.startDate).getTime() <=
-              this.time(event.startDate).getTime() &&
-            this.time(element.endDate).getTime() >
-              this.time(event.startDate).getTime() &&
+            time(element.startDate).getTime() <=
+              time(event.startDate).getTime() &&
+            time(element.endDate).getTime() >
+              time(event.startDate).getTime() &&
             element.id !== event.id
         ) ||
-        this.checkEvents.some(
+        checkEvents.some(
           (element) =>
-            this.time(element.startDate) < this.time(event.endDate) &&
-            this.time(element.endDate) >= this.time(event.endDate) &&
+            time(element.startDate) < time(event.endDate) &&
+            time(element.endDate) >= time(event.endDate) &&
             element.id !== event.id
         ) ||
-        this.checkEvents.some(
+        checkEvents.some(
           (element) =>
-            this.time(element.startDate) >= this.time(event.startDate) &&
-            this.time(element.endDate) <= this.time(event.endDate) &&
+            time(element.startDate) >= time(event.startDate) &&
+            time(element.endDate) <= time(event.endDate) &&
             element.id !== event.id
         ) ||
-        this.checkEvents.some(
+        checkEvents.some(
           (element) =>
-            this.time(element.startDate) <= this.time(event.startDate) &&
-            this.time(element.endDate) >= this.time(event.endDate) &&
+            time(element.startDate) <= time(event.startDate) &&
+            time(element.endDate) >= time(event.endDate) &&
             element.id !== event.id
         ))
     )
   }
 
-  async handleSave () {
+  async function handleSave () {
     const JsonValue = await AsyncStorage.getItem('setTasks')
     const setTasks = JsonValue != null ? JSON.parse(JsonValue) : null
-    this.checkEvents.forEach((event) => {
+    checkEvents.forEach((event) => {
       setTasks[0][new Date().getDay()].push({
         name: event.title,
-        pStart: this.time(event.startDate),
-        pEnd: this.time(event.endDate),
-        start: this.time(event.startDate),
-        end: this.time(event.endDate),
+        pStart: time(event.startDate),
+        pEnd: time(event.endDate),
+        start: time(event.startDate),
+        end: time(event.endDate),
         length:
-          (this.time(event.endDate).getTime() -
-            this.time(event.startDate).getTime()) /
+          (time(event.endDate).getTime() -
+            time(event.startDate).getTime()) /
           (1000 * 60),
         description: event.notes
       })
@@ -138,22 +133,21 @@ export default class SyncEventsScreen extends React.Component {
       return new Date(a.start).getTime() - new Date(b.start).getTime()
     })
     await AsyncStorage.setItem('setTasks', JSON.stringify(setTasks))
-    this.props.navigation.navigate('Home')
+    navigation.navigate('Home')
   }
 
-  setUse (index) {
-    const use = this.state.use
-    use[index] = !use[index]
-    this.setState({ use })
+  function setUseArr (index) {
+    const tempUse = use
+    tempUse[index] = !tempUse[index]
+    setUse(use)
   }
 
-  render () {
-    if (!this.state.ready) {
-      return null
-    }
-    return (
+  if (!ready) {
+    return null
+  }
+  return (
       <SafeAreaView style={styles.container}>
-        {this.events.length === 0
+        {events.length === 0
           ? (
           <Text h4 style={{ alignSelf: 'center' }}>
             No Calendar Events
@@ -161,27 +155,27 @@ export default class SyncEventsScreen extends React.Component {
             )
           : null}
         <ScrollView contentContainerStyle={{ flex: 1 }}>
-          {this.events.map((event, index) => {
+          {events.map((event, index) => {
             return (
               <ListItem key={index} bottomDivider>
                 <CheckBox
-                  checked={this.state.use[index]}
+                  checked={use[index]}
                   onPress={() => {
-                    !this.state.use[index]
-                      ? this.checkEvents.push(event)
-                      : this.checkEvents.splice(
-                        this.checkEvents.indexOf(event),
+                    !use[index]
+                      ? checkEvents.push(event)
+                      : checkEvents.splice(
+                        checkEvents.indexOf(event),
                         1
                       )
-                    this.setUse(index)
+                    setUseArr(index)
                   }}
-                  disabled={this.reviewEvents(event)}
-                  uncheckedColor={this.reviewEvents(event) ? 'gray' : 'black'}
+                  disabled={reviewEvents(event)}
+                  uncheckedColor={reviewEvents(event) ? 'gray' : 'black'}
                 />
                 <ListItem.Content>
                   <ListItem.Title
                     style={
-                      !this.checkedEvents.some((e) => e.id === event.id)
+                      !checkedEvents.some((e) => e.id === event.id)
                         ? { color: 'gray' }
                         : { color: 'black' }
                     }
@@ -190,13 +184,13 @@ export default class SyncEventsScreen extends React.Component {
                   </ListItem.Title>
                   <ListItem.Subtitle
                     style={
-                      !this.checkedEvents.some((e) => e.id === event.id)
+                      !checkedEvents.some((e) => e.id === event.id)
                         ? { color: 'gray' }
                         : { color: 'black' }
                     }
                   >
-                    {this.displayTime(event.startDate)} -{' '}
-                    {this.displayTime(event.endDate)}
+                    {displayTime(event.startDate)} -{' '}
+                    {displayTime(event.endDate)}
                   </ListItem.Subtitle>
                 </ListItem.Content>
               </ListItem>
@@ -209,12 +203,11 @@ export default class SyncEventsScreen extends React.Component {
               alignSelf: 'flex-end',
               marginTop: 10
             }}
-            onPress={() => this.handleSave()}
+            onPress={() => handleSave()}
           />
         </ScrollView>
       </SafeAreaView>
-    )
-  }
+  )
 }
 
 const styles = StyleSheet.create({

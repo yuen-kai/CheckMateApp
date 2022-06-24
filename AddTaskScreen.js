@@ -1,5 +1,6 @@
+/* eslint-disable no-unused-expressions */
 /* eslint-disable react/prop-types */
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { StyleSheet, View, ScrollView, Alert } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -16,11 +17,11 @@ import {
 
 let savedTasks
 
-export default class AddTaskScreen extends React.Component {
-  editName
-  selectedTask
-  edit = false
-  days = [
+export default function AddTaskScreen ({ route, navigation }) {
+  let selectedTask
+  let edit = false
+  const { editName } = route.params
+  const days = [
     'Sunday',
     'Monday',
     'Tuesday',
@@ -30,43 +31,38 @@ export default class AddTaskScreen extends React.Component {
     'Saturday'
   ]
 
-  state = {
-    daysUsed: [false, false, false, false, false, false, false],
-    date: new Date().setHours(24, 0, 0, 0),
-    mode: 'date',
-    show: false,
-    ready: false,
-    name: '',
-    importance: 5,
-    dueImportance: 3,
-    length: 0,
-    sortValue: 0,
-    start: new Date(),
-    end: new Date(),
-    weekly: false,
-    repeating: false,
-    editMode: true,
-    overridable: false,
-    description: '',
-    empty: false,
-    usedName: false
-  }
+  const [daysUsed, setDaysUsed] = useState([false, false, false, false, false, false, false])
+  const [date, setDate] = useState(new Date().setHours(24, 0, 0, 0))
+  const [mode, setMode] = useState('date')
+  const [show, setShow] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [name, setName] = useState('')
+  const [importance, setImportance] = useState(5)
+  const [dueImportance, setDueImportance] = useState(3)
+  const [length, setLength] = useState(0)
+  const [sortValue, setSortValue] = useState(0)
+  const [weekly, setWeekly] = useState(false)
+  const [repeating, setRepeating] = useState(false)
+  const [overridable, setOverridable] = useState(false)
+  const [description, setDescription] = useState('')
+  const [empty, setEmpty] = useState(false)
+  const [usedName, setUsedName] = useState(false)
 
   // Get data
-  componentDidMount () {
-    this._unsubscribe = this.props.navigation.addListener('focus', () => {
-      this.getData()
+  useEffect(() => {
+    () => navigation.addListener('focus', () => {
+      getData()
     })
-  }
+  })
 
-  getData = async () => {
-    const change = [...this.state.daysUsed]
+  const getData = async () => {
+    const change = [...daysUsed]
     change.splice(new Date().getDay(), 1, true)
-    this.setState({ daysUsed: change })
+    setDaysUsed(change)
     try {
       const jsonValue = await AsyncStorage.getItem('tasks')
       savedTasks = jsonValue != null ? JSON.parse(jsonValue) : null
-      this.editInfo()
+      editInfo()
     } catch (e) {
       Alert.alert(
         'Failed to get data!',
@@ -76,47 +72,43 @@ export default class AddTaskScreen extends React.Component {
     }
   }
 
-  editInfo = async () => {
+  const editInfo = async () => {
     try {
-      const jsonValue = await AsyncStorage.getItem('editName')
-      this.editName = jsonValue != null ? JSON.parse(jsonValue) : null
-      if (this.editName != null) {
-        const change = [...this.state.daysUsed]
-        this.selectedTask =
+      if (editName != null) {
+        const change = [...daysUsed]
+        selectedTask =
           savedTasks[0][new Date().getDay()][
             savedTasks[0][new Date().getDay()].findIndex(
-              (task) => task.name === this.editName
+              (task) => task.name === editName
             )
           ]
-        this.edit = true
-        this.setState({
-          date: new Date(new Date(this.selectedTask.date).getTime()),
-          name: this.selectedTask.name,
-          importance: this.selectedTask.importance,
-          length: this.selectedTask.length,
-          dueImportance: this.selectedTask.dueImportance,
-          repeating: this.selectedTask.repeating,
-          overridable: this.selectedTask.overridable,
-          description: this.selectedTask.description
-        })
+        edit = true
+        setDate(new Date(new Date(selectedTask.date).getTime()))
+        setName(selectedTask.name)
+        setImportance(selectedTask.importance)
+        setLength(selectedTask.length)
+        setDueImportance(selectedTask.dueImportance)
+        setRepeating(selectedTask.repeating)
+        setOverridable(selectedTask.overridable)
+        setDescription(selectedTask.description)
         // await AsyncStorage.removeItem('editName')
-        for (let i = 0; i <= this.state.daysUsed.length - 1; i++) {
+        for (let i = 0; i <= daysUsed.length - 1; i++) {
           if (
             savedTasks[0][i].findIndex(
-              (task) => task.name === this.editName
+              (task) => task.name === editName
             ) !== -1
           ) {
             change.splice(i, 1, true)
           }
         }
-        await this.setState({ daysUsed: change })
-        this.isRepeating()
+        await setDaysUsed(change)
+        isRepeating()
         if (
           savedTasks[1][new Date().getDay()].findIndex(
-            (task) => task.name === this.editName
+            (task) => task.name === editName
           ) !== -1
         ) {
-          this.setState({ weekly: true })
+          setWeekly(true)
         }
       }
     } catch (e) {
@@ -127,50 +119,50 @@ export default class AddTaskScreen extends React.Component {
       )
       console.log(e)
     }
-    this.setState({ ready: true })
+    setReady(true)
   }
 
-  newInfo () {
+  function newInfo () {
     const task = savedTasks[0][new Date().getDay()].find(
-      (task) => task.name === this.editName
+      (task) => task.name === editName
     )
     // check if state props are the same as task props
     return (
       task !== undefined &&
-      this.edit &&
+      edit &&
       !(
-        this.state.name === task.name &&
-        this.state.importance === task.importance &&
-        this.state.length === task.length &&
-        this.state.dueImportance === task.dueImportance &&
-        this.state.overridable === task.overridable &&
-        new Date(this.state.date).getTime() === new Date(task.date).getTime()
+        name === task.name &&
+        importance === task.importance &&
+        length === task.length &&
+        dueImportance === task.dueImportance &&
+        overridable === task.overridable &&
+        new Date(date).getTime() === new Date(task.date).getTime()
       )
     )
   }
 
   // Date picker
-  showDatepicker () {
-    this.showMode('date')
+  function showDatepicker () {
+    showMode('date')
   }
 
-  showTimepicker () {
-    this.showMode('time')
+  function showTimepicker () {
+    showMode('time')
   }
 
-  showMode (currentMode) {
-    this.setState({ show: true })
-    this.setState({ mode: currentMode })
+  function showMode (currentMode) {
+    setShow(true)
+    setMode(currentMode)
   }
 
-  onChange = (event, selectedDate) => {
-    const currentDate = selectedDate || this.state.date
-    this.setState({ show: false })
-    this.setState({ date: currentDate })
+  const onChange = (event, selectedDate) => {
+    const currentDate = selectedDate || date
+    setShow(false)
+    setDate(currentDate)
   }
 
   // Display Time/Date
-  displayTime (date) {
+  function displayTime (date) {
     let hours = new Date(date).getHours()
     const minutes = new Date(date).getMinutes()
     let amPm = 'am'
@@ -189,48 +181,47 @@ export default class AddTaskScreen extends React.Component {
     return hours + ':' + minutes + ' ' + amPm
   }
 
-  displayDate (date) {
+  function displayDate (date) {
     const month = new Date(date).getMonth() + 1
     const day = new Date(date).getDate()
     return month + '/' + day
   }
 
   // Update days used
-  async changeDay (i) {
-    const change = [...this.state.daysUsed]
-    change.splice(i, 1, !this.state.daysUsed[i])
-    await this.setState({ daysUsed: change })
-    this.isRepeating()
+  async function changeDay (i) {
+    const change = [...daysUsed]
+    change.splice(i, 1, !daysUsed[i])
+    await setDaysUsed(change)
+    isRepeating()
   }
 
   // Saving/Processing
-  handleSave = async () => {
+  const handleSave = async () => {
     let sameName = false
-    this.isRepeating()
+    isRepeating()
     let d
     // Set parameters
-    await this.setState({
-      sortValue:
-        parseInt(
-          new Date(this.state.date).getTime() / (1000 * 60 * 60) +
-            (6 - this.state.dueImportance) * 2 * (11 - this.state.importance)
-        ) +
-        parseInt(this.state.length) / 10
-    })
-    // ((((this.state.importance*8)/100)*(this.state.length))/((6-this.state.dueImportance)*30))*24*60*60*1000
-    if (this.state.daysUsed[new Date().getDay()]) {
+    setSortValue(
+      parseInt(
+        new Date(date).getTime() / (1000 * 60 * 60) +
+            (6 - dueImportance) * 2 * (11 - importance)
+      ) +
+        parseInt(length) / 10
+    )
+    // ((((importance*8)/100)*(length))/((6-dueImportance)*30))*24*60*60*1000
+    if (daysUsed[new Date().getDay()]) {
       d = new Date().setHours(0, 0, 0, 0)
     } else {
-      if (this.state.daysUsed.indexOf(true) - new Date().getDay() > 0) {
+      if (daysUsed.indexOf(true) - new Date().getDay() > 0) {
         d = new Date().setDate(
           new Date().getDate() +
-            this.state.daysUsed.indexOf(true) -
+            daysUsed.indexOf(true) -
             new Date().getDay()
         )
       } else {
         d = new Date().setDate(
           new Date().getDate() +
-            this.state.daysUsed.indexOf(true) -
+            daysUsed.indexOf(true) -
             new Date().getDay() +
             7
         )
@@ -238,89 +229,90 @@ export default class AddTaskScreen extends React.Component {
       d = new Date(d).setHours(0, 0, 0, 0)
     }
     const dueIncrease =
-      new Date(this.state.date).getTime() - new Date(d).getTime()
-    this.selectedTask = {
-      name: this.state.name,
-      sortValue: this.state.sortValue,
-      length: this.state.length,
-      date: this.state.date,
-      start: this.state.start,
-      end: this.state.end,
-      importance: this.state.importance,
-      dueImportance: this.state.dueImportance,
-      repeating: this.state.repeating,
+      new Date(date).getTime() - new Date(d).getTime()
+    selectedTask = {
+      name,
+      sortValue,
+      length,
+      date,
+      start: new Date(),
+      end: new Date(),
+      importance,
+      dueImportance,
+      repeating,
       dueIncrease,
-      overridable: this.state.overridable,
-      description: this.state.description
+      overridable,
+      description
     }
-    // console.log(this.selectedTask.length)
+    // console.log(selectedTask.length)
     // Same name
-    sameName = await this.sameName()
+    sameName = await sameName()
 
     // Check if valid
     if (
-      this.state.name === '' ||
-      this.state.importance === 0 ||
-      this.state.length === 0
+      name === '' ||
+      importance === 0 ||
+      length === 0
     ) {
-      this.setState({ empty: true })
+      setEmpty(true)
       Alert.alert('Invalid Task', 'Not all fields have been filled out!')
     } else if (sameName === true) {
-      this.setState({ usedName: true })
+      setUsedName(true)
       Alert.alert('Name Used', 'Name already used. Please select a new name.')
     } else {
       // Put in task for all the days used
-      for (let i = 0; i <= this.state.daysUsed.length - 1; i++) {
-        if (this.state.daysUsed[i] === true) {
-          if (this.edit === true) {
+      for (let i = 0; i <= daysUsed.length - 1; i++) {
+        if (daysUsed[i] === true) {
+          if (edit === true) {
             savedTasks[0][i].splice(
-              savedTasks[0][i].findIndex((task) => task.name === this.editName),
+              savedTasks[0][i].findIndex((task) => task.name === editName),
               1
             )
           }
-          savedTasks[0][i].push(this.selectedTask)
+          savedTasks[0][i].push(selectedTask)
 
-          if (this.state.weekly === true) {
-            if (this.edit === true) {
+          if (weekly === true) {
+            if (edit === true) {
               savedTasks[1][i].splice(
                 savedTasks[1][i].findIndex(
-                  (task) => task.name === this.editName
+                  (task) => task.name === editName
                 ),
                 1
               )
             }
 
-            savedTasks[1][i].push(this.selectedTask)
+            savedTasks[1][i].push(selectedTask)
           }
-        } else if (!this.newInfo()) {
+        } else if (!newInfo()) {
           if (
             savedTasks[0][i].some(
-              (task) => task.name === this.selectedTask.name
+              (task) => task.name === selectedTask.name
             )
           ) {
             savedTasks[0][i].splice(
               savedTasks[0][i].findIndex(
-                (task) => task.name === this.selectedTask.name
+                (task) => task.name === selectedTask.name
               ),
               1
             )
           }
           if (
-            this.state.weekly === true &&
+            weekly === true &&
             savedTasks[1][i].some(
-              (task) => task.name === this.selectedTask.name
+              (task) => task.name === selectedTask.name
             )
           ) {
             savedTasks[1][i].splice(
               savedTasks[1][i].findIndex(
-                (task) => task.name === this.selectedTask.name
+                (task) => task.name === selectedTask.name
               ),
               1
             )
           }
         }
       }
-      this.setState({ empty: false, usedName: false })
+      setEmpty(false)
+      setUsedName(false)
       // save data
       try {
         const jsonValue = JSON.stringify(savedTasks)
@@ -330,69 +322,70 @@ export default class AddTaskScreen extends React.Component {
       }
 
       // Go back to home page
-      this.props.navigation.navigate('Home')
+      navigation.navigate('Home', { editName: selectedTask.name })
     }
   }
 
-  async sameName () {
+  async function sameName () {
     const savedTaskJsonValue = await AsyncStorage.getItem('setTasks')
     const workTimes =
       savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) : null
-    for (let i = 0; i < this.state.daysUsed.length; i++) {
-      if (this.state.daysUsed[i]) {
+    for (let i = 0; i < daysUsed.length; i++) {
+      if (daysUsed[i]) {
         if (
-          (this.edit === true && this.state.name !== this.editName) ||
-          this.edit === false
+          (edit === true && name !== editName) ||
+          edit === false
         ) {
           if (
             workTimes[0][i].some(
-              (element) => element.name === this.state.name
+              (element) => element.name === name
             ) ||
-            (this.state.weekly &&
+            (weekly &&
               workTimes[1][i].some(
-                (element) => element.name === this.state.name
+                (element) => element.name === name
               )) ||
             savedTasks[0][i].some(
-              (element) => element.name === this.state.name
+              (element) => element.name === name
             ) ||
-            (this.state.weekly &&
+            (weekly &&
               savedTasks[1][i].some(
-                (element) => element.name === this.state.name
+                (element) => element.name === name
               ))
           ) {
-            this.setState({ usedName: true })
+            setUsedName(true)
             return true
           }
         }
       }
     }
 
-    this.setState({ usedName: false })
+    setUsedName(false)
     return false
   }
 
   // Set repeating
-  isRepeating () {
+  function isRepeating () {
     let count = 0
 
-    this.state.daysUsed.forEach((element) => {
+    daysUsed.forEach((element) => {
       if (element) {
         count++
       }
     })
 
-    if (this.setState.weekly || count >= 2) {
-      this.setState({ repeating: true, ready: true })
+    if (weekly || count >= 2) {
+      setRepeating(true)
+      setReady(true)
     } else {
-      this.setState({ repeating: false, ready: true })
+      setRepeating(false)
+      setReady(true)
     }
   }
 
-  render () {
-    if (!this.state.ready) {
-      return null
-    }
-    return (
+  if (!ready) {
+    return null
+  }
+  return (
       <ScrollView contentContainerStyle={styles.container}>
         <View style={{ flex: 1 }}>
           <View style={styles.section}>
@@ -400,19 +393,19 @@ export default class AddTaskScreen extends React.Component {
             <Input
               label="Name"
               placeholder="Add Name"
-              renderErrorMessage={this.state.empty || this.state.usedName}
+              renderErrorMessage={empty || usedName}
               errorMessage={
-                this.state.empty && this.state.name === ''
+                empty && name === ''
                   ? 'Please enter a name'
-                  : this.state.usedName === true
+                  : usedName === true
                     ? 'Another task or event already has this name'
                     : null
               }
               onChangeText={(name) => {
-                this.setState({ name })
-                this.sameName()
+                setName(name)
+                sameName()
               }}
-              value={this.state.name}
+              value={name}
             />
           </View>
           <View style={styles.section}>
@@ -421,8 +414,8 @@ export default class AddTaskScreen extends React.Component {
               label="Description"
               placeholder="Add Description"
               renderErrorMessage={false}
-              onChangeText={(description) => this.setState({ description })}
-              value={this.state.description}
+              onChangeText={(description) => setDescription(description)}
+              value={description}
             />
           </View>
           <View style={styles.section}>
@@ -444,10 +437,10 @@ export default class AddTaskScreen extends React.Component {
               <Slider
                 thumbStyle={{ width: 25, height: 25 }}
                 trackStyle={{ width: '100%' }}
-                value={this.state.importance}
+                value={importance}
                 // animateTransitions={true}
                 allowTouchTrack={true}
-                onValueChange={(importance) => this.setState({ importance })}
+                onValueChange={(importance) => setImportance(importance)}
                 minimumValue={1}
                 maximumValue={10}
                 thumbTintColor="#6a99e6"
@@ -461,7 +454,7 @@ export default class AddTaskScreen extends React.Component {
                         color: '#fff'
                       }}
                     >
-                      {this.state.importance}
+                      {importance}
                     </Text>
                   )
                 }}
@@ -474,16 +467,16 @@ export default class AddTaskScreen extends React.Component {
             <Input
               label="Length (min)"
               placeholder="Add Length"
-              renderErrorMessage={this.state.empty && this.state.length === 0}
+              renderErrorMessage={empty && length === 0}
               errorMessage={
-                this.state.empty && this.state.length === 0
+                empty && length === 0
                   ? 'Enter a non-zero task length'
                   : null
               }
               keyboardType="numeric"
-              onChangeText={(length) => this.setState({ length })}
+              onChangeText={(length) => setLength(length)}
               value={
-                this.state.length !== 0 ? this.state.length.toString() : null
+                length !== 0 ? length.toString() : null
               }
             />
           </View>
@@ -497,27 +490,27 @@ export default class AddTaskScreen extends React.Component {
             >
               <View style={{ padding: 3 }}>
                 <Button
-                  title={this.displayDate(this.state.date)}
+                  title={displayDate(date)}
                   buttonStyle={{ backgroundColor: '#6a99e6' }}
-                  onPress={() => this.showDatepicker()}
+                  onPress={() => showDatepicker()}
                 />
               </View>
               <View style={{ padding: 3 }}>
                 <Button
-                  title={this.displayTime(this.state.date)}
+                  title={displayTime(date)}
                   buttonStyle={{ backgroundColor: '#6a99e6' }}
-                  onPress={() => this.showTimepicker()}
+                  onPress={() => showTimepicker()}
                 />
               </View>
             </View>
           </View>
-          {this.state.show && (
+          {show && (
             <DateTimePicker
               testID="dateTimePicker"
-              value={new Date(this.state.date)}
-              mode={this.state.mode}
+              value={new Date(date)}
+              mode={mode}
               // display="default"
-              onChange={this.onChange}
+              onChange={onChange}
               style={{ width: '100%' }}
             />
           )}
@@ -540,9 +533,9 @@ export default class AddTaskScreen extends React.Component {
                 // style={{}}
                 thumbStyle={{ width: 25, height: 25 }}
                 trackStyle={{ width: '100%' }}
-                value={this.state.dueImportance}
+                value={dueImportance}
                 onValueChange={(dueImportance) =>
-                  this.setState({ dueImportance })
+                  setDueImportance(dueImportance)
                 }
                 minimumValue={1}
                 maximumValue={5}
@@ -558,7 +551,7 @@ export default class AddTaskScreen extends React.Component {
                         color: '#fff'
                       }}
                     >
-                      {this.state.dueImportance}
+                      {dueImportance}
                     </Text>
                   )
                 }}
@@ -572,7 +565,7 @@ export default class AddTaskScreen extends React.Component {
               { flexDirection: 'row', alignItems: 'center' }
             ]}
           >
-            {this.newInfo()
+            {newInfo()
               ? (
               <Text h1 h1Style={styles.label}>
                 {' '}
@@ -585,13 +578,6 @@ export default class AddTaskScreen extends React.Component {
                 Repeat on:
               </Text>
                 )}
-            {/* {this.edit?
-              <Switch
-                style={{height:10}}
-                value={this.state.editMode}
-                onValueChange={(value) => this.setState({editMode: value})}
-              />
-            :null} */}
           </View>
           <CheckBox
             containerStyle={{
@@ -599,8 +585,8 @@ export default class AddTaskScreen extends React.Component {
               borderWidth: 0
             }}
             title="Weekly"
-            checked={this.state.weekly}
-            onPress={() => this.setState({ weekly: !this.state.weekly })}
+            checked={weekly}
+            onPress={() => setWeekly(!weekly)}
           />
 
           <View
@@ -611,7 +597,7 @@ export default class AddTaskScreen extends React.Component {
               alignItems: 'center'
             }}
           >
-            {this.state.daysUsed.map((day, i) => {
+            {daysUsed.map((day, i) => {
               return (
                 <Avatar
                   key={i}
@@ -622,20 +608,20 @@ export default class AddTaskScreen extends React.Component {
                   }
                   size="small"
                   rounded
-                  title={this.days[i].slice(0, 1)}
-                  onPress={() => this.changeDay(i)}
+                  title={days[i].slice(0, 1)}
+                  onPress={() => changeDay(i)}
                 />
               )
             })}
           </View>
-          {this.state.daysUsed.includes(true) === false
+          {daysUsed.includes(true) === false
             ? (
             <Text style={{ fontSize: 15, color: 'red', alignSelf: 'center' }}>
               Nothing is selected!
             </Text>
               )
             : null}
-          {this.state.repeating || this.state.weekly
+          {repeating || weekly
             ? <View style={{ flexDirection: 'row' }}>
                 <View style={{ flexGrow: 1 }}>
                   <CheckBox
@@ -644,9 +630,9 @@ export default class AddTaskScreen extends React.Component {
                       borderWidth: 0
                     }}
                     title="Override"
-                    checked={this.state.overridable}
+                    checked={overridable}
                     onPress={() =>
-                      this.setState({ overridable: !this.state.overridable })
+                      setOverridable(!overridable)
                     }
                   />
                 </View>
@@ -671,12 +657,11 @@ export default class AddTaskScreen extends React.Component {
           <Button
             title="Save"
             buttonStyle={{ backgroundColor: '#6a99e6', alignSelf: 'flex-end' }}
-            onPress={() => this.handleSave()}
+            onPress={() => handleSave()}
           />
         </View>
       </ScrollView>
-    )
-  }
+  )
 }
 
 const styles = StyleSheet.create({
