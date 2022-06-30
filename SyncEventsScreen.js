@@ -287,7 +287,7 @@ export default function SyncEventsScreen ({ route, navigation }) {
                     ? 'Notify ' +
                       event.alarms[0].relativeOffset * -1 +
                       ' minutes before.'
-                    : "doesn't notify"}
+                    : "Doesn't notify"}
                 </ListItem.Subtitle>
               </ListItem.Content>
             </ListItem>

@@ -293,13 +293,13 @@ export default function HomeScreen ({ route, navigation }) {
     })
   }
 
-  async function setSyncPreferences (syncEvents) {
+  async function setSyncPreferences (syncedEvents) {
     try {
-      const jsonValue = JSON.stringify(syncEvents)
+      const jsonValue = JSON.stringify(syncedEvents)
       await AsyncStorage.setItem('syncEvents5', jsonValue)
-      if (syncEvents === 'always') {
+      if (syncedEvents === 'always') {
         syncEvents()
-      } else if (syncEvents === 'review') {
+      } else if (syncedEvents === 'review') {
         reviewEvents()
       }
     } catch (e) {
@@ -440,8 +440,6 @@ export default function HomeScreen ({ route, navigation }) {
         setInstructionIndex(0)
         const jsonValue = JSON.stringify(false)
         await AsyncStorage.setItem('firsty', jsonValue)
-      } else {
-        await getSyncEvents(false)
       }
 
       resolve(true)
@@ -658,6 +656,11 @@ export default function HomeScreen ({ route, navigation }) {
         day = new Date().setHours(0, 0, 0, 0)
         const jsonValue = JSON.stringify(day)
         await AsyncStorage.setItem('day', jsonValue)
+        const JsonValue = await AsyncStorage.getItem('firsty')
+        const first = JsonValue != null ? JSON.parse(JsonValue) : null
+        if (first != null) {
+          await getSyncEvents(false)
+        }
       }
       resolve(true)
     } catch (e) {
@@ -1398,15 +1401,13 @@ export default function HomeScreen ({ route, navigation }) {
 
       <View style={{ flex: 9 }}>
         <View style={styles.top}>
-          <View>
-            <Icon
-              name="question-circle"
-              type="font-awesome-5"
-              size={25}
-              onPress={() => setInstructionIndex(0)}
-              solid={true}
-            />
-          </View>
+          <Icon
+            name="question-circle"
+            type="font-awesome-5"
+            size={25}
+            onPress={() => setInstructionIndex(0)}
+            solid={true}
+          />
           <View>
             {!error ? (
               <Icon
@@ -1430,6 +1431,13 @@ export default function HomeScreen ({ route, navigation }) {
               />
             )}
           </View>
+          <Icon
+            name="settings"
+            type="material"
+            size={25}
+            onPress={() => navigation.navigate('Settings')}
+            solid={true}
+          />
         </View>
         <View style={{ flex: 10, marginHorizontal: 20 }}>
           {combined.length === 0

@@ -5,6 +5,7 @@ import HomeScreen from './HomeScreen'
 import AddTaskScreen from './AddTaskScreen'
 import AddWorkTimeScreen from './AddWorkTimeScreen'
 import SyncEventsScreen from './SyncEventsScreen'
+import SettingsScreen from './SettingsScreen'
 import 'react-native-gesture-handler'
 
 const Stack = createNativeStackNavigator()
@@ -33,6 +34,11 @@ export default function App () {
           name="SyncEvents"
           component={SyncEventsScreen}
           options={{ title: 'Review Calendar Events' }}
+        />
+        <Stack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: 'Settings' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

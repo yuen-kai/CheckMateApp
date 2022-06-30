@@ -3,11 +3,18 @@
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, ScrollView, Alert, View, Platform } from 'react-native'
+import { StyleSheet, ScrollView, Alert, View, Platform, TouchableOpacity } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Button, ListItem, Text, CheckBox, Dialog, Icon, Avatar } from '@rneui/base'
-import { TouchableOpacity } from 'react-native-gesture-handler'
+import {
+  Button,
+  ListItem,
+  Text,
+  CheckBox,
+  Dialog,
+  Icon,
+  Avatar
+} from '@rneui/base'
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -45,17 +52,17 @@ export default function SettingsScreen ({ navigation }) {
     {
       name: 'Sync w/ Calendar Preferences',
       icon: <Icon name="sync" type="material" />,
-      onPress: setSyncView(true)
+      onPress: () => setSyncView(true)
     },
     {
       name: 'Notification Preferences',
       icon: <Icon name="notifications" type="material" />,
-      onPress: setNotiView(true)
+      onPress: () => setNotiView(true)
     },
     {
       name: 'Theme',
       icon: <Icon name="color-lens" type="material" />,
-      onPress: setThemeView(true)
+      onPress: () => setThemeView(true)
     }
   ]
 
@@ -287,7 +294,7 @@ export default function SettingsScreen ({ navigation }) {
       >
         <Dialog.Title title="When do you want reminder notifications?" />
         {notiPref.map((l, i) => (
-          <View key={i} style={{ borderWidth: 10, borderRadius: 10 }}>
+          <View key={i} style={{ borderWidth: 1, borderRadius: 10 }}>
             <View
               style={[
                 styles.section,
@@ -326,12 +333,12 @@ export default function SettingsScreen ({ navigation }) {
                 alignItems: 'center'
               }}
             >
-              {l.map((day, j) => {
+              {l.days.map((day, j) => {
                 return (
                   <Avatar
                     key={j}
                     containerStyle={
-                      day === true
+                      day.use === true
                         ? { backgroundColor: '#6a99e6', margin: 1 }
                         : { backgroundColor: 'gray', margin: 1 }
                     }
@@ -375,8 +382,11 @@ export default function SettingsScreen ({ navigation }) {
       </Dialog>
 
       {list.map((l, i) => (
-        <TouchableOpacity key={i} onPress={() => l.onPress}>
-          <ListItem bottomDivider>
+        <TouchableOpacity
+          key={i}
+          onPress={() => l.onPress()}
+        >
+          <ListItem>
             {l.icon}
             <ListItem.Content>
               <ListItem.Title>{l.name}</ListItem.Title>
