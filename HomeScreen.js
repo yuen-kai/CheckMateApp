@@ -1,3 +1,4 @@
+/* eslint-disable multiline-ternary */
 /* eslint-disable no-use-before-define */
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
@@ -26,7 +27,8 @@ import {
   Tooltip,
   Text,
   Dialog,
-  CheckBox
+  CheckBox,
+  LinearProgress
 } from 'react-native-elements'
 import logo from './assets/Icon.png'
 import controls from './assets/Controls.png'
@@ -43,10 +45,12 @@ import * as Calendar from 'expo-calendar'
 import ConfettiCannon from 'react-native-confetti-cannon'
 // import Confetti from 'react-confetti'
 import Confetti from 'react-native-confetti'
+import { ConsoleSqlOutlined } from '@ant-design/icons'
 
 let tasks = []
 let setTasks = []
 const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+let confettiView
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -57,6 +61,7 @@ Notifications.setNotificationHandler({
 })
 
 export default function HomeScreen ({ route, navigation }) {
+  // eslint-disable-next-line prefer-const
   const { editName } = route.params
 
   const instructions = [
@@ -122,64 +127,73 @@ export default function HomeScreen ({ route, navigation }) {
   const [open, setOpen] = useState(false)
   const [ready, setReady] = useState(false)
   const [taskIndex, setTaskIndex] = useState(0)
-  const [selectable, setSelectable] = useState(false)
+  const [selectable, setSelectable] = useState(true)
   const [instructionIndex, setInstructionIndex] = useState(-1)
   const [combined, setCombined] = useState([])
   const [syncOptions, setSyncOptions] = useState(false)
   const [error, setError] = useState(false)
-  const [checked, setChecked] = useState(false)
-  const [pushToken, setPushToken] = useState('')
-  const [notification, setNotification] = useState(false)
-  const notificationListener = useRef()
-  const responseListener = useRef()
+  const [checked, setChecked] = useState(2)
+  const [progress, setProgress] = useState(0)
+  const [taskLength, setTaskLength] = useState(0)
 
   // get data
   useEffect(() => {
-    () => navigation.addListener('focus', () => {
+    const unsubscribe = navigation.addListener('focus', () => {
       getData()
     })
-    getData()
+    // getData()
     getSelectable()
-    const timeToMinute =
-      new Date(
-        new Date().setMinutes(new Date().getMinutes() + 1, 0, 0)
-      ).getTime() - new Date().getTime()
 
-    setInterval(() => {
-      makeCombined()
-    }, timeToMinute)
-
-    registerForPushNotificationsAsync().then(token => setPushToken(token))
-
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      setNotification(notification)
-    })
-
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log(response)
-    })
+    registerForPushNotificationsAsync().then()
 
     return () => {
-      Notifications.removeNotificationSubscription(notificationListener.current)
-      Notifications.removeNotificationSubscription(responseListener.current)
+      unsubscribe
     }
-  })
+  }, [editName])
 
-  async function schedulePushNotification () {
-    await Notifications.scheduleNotificationAsync({
+  useEffect(() => {
+    const timer = setInterval(() => {
+      makeCombined()
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [selectable, progress])
+
+  useEffect(() => {
+    if (tasks.length > 0) {
+      setProgress(1 - tasks[0].length / taskLength)
+    }
+  }, [taskLength])
+
+  async function schedulePushNotification (event, i) {
+    return await Notifications.scheduleNotificationAsync({
       content: {
-        title: "You've got mail! 📬",
-        body: 'Here is the notification body',
-        data: { data: 'goes here' }
+        title: event.name,
+        body:
+          displayTime(event.start) +
+          ' - ' +
+          displayTime(event.end) +
+          '.\n' +
+          event.description
       },
-      trigger: { seconds: 2 }
+      trigger: new Date(
+        new Date(
+          new Date(
+            new Date().setDate(new Date().getDate() + (i - new Date().getDay()))
+          ).setHours(
+            new Date(event.start).getHours(),
+            new Date(event.start).getMinutes()
+          )
+        ).getTime() -
+          event.notification * 60 * 1000
+      )
     })
   }
 
   async function registerForPushNotificationsAsync () {
     let token
     if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync()
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync()
       let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync()
@@ -189,8 +203,8 @@ export default function HomeScreen ({ route, navigation }) {
         alert('Failed to get push token for push notification!')
         return
       }
-      token = (await Notifications.getPushTokenAsync()).data
-      console.log(token)
+      token = (await Notifications.getExpoPushTokenAsync()).data
+      // console.log(token)
     } else {
       alert('Must use physical device for Push Notifications')
     }
@@ -215,20 +229,29 @@ export default function HomeScreen ({ route, navigation }) {
       promises.push(new Promise(savedSetTasks))
       promises.push(new Promise(changeDay))
       promises.push(new Promise(firstTime))
-      if ((await Promise.all(promises)) != null) {
-        const newCombined = makeCombined()
-        if (taskIndex >= newCombined.length) {
-          setTaskIndex(0)
-        } else {
-          if (editName !== null) {
-            setTaskIndex(newCombined.findIndex(
-              (task) => task.name === editName
-            ))
+      await Promise.all(promises).then(
+        () => {
+          // fulfillment
+          const newCombined = [...makeCombined()]
+          if (editName !== '') {
+            if (newCombined.some((task) => task.name === editName)) {
+              setTaskIndex(
+                newCombined.findIndex((task) => task.name === editName)
+              )
+            } else {
+              setTaskIndex(0)
+            }
+          } else {
+            setTaskIndex(0)
           }
-        }
 
-        setReady(true)
-      }
+          setReady(true)
+        },
+        () => {
+          // rejection
+          console.log('uh oh')
+        }
+      )
     } catch (e) {
       Alert.alert(
         'Failed to get data!',
@@ -260,12 +283,14 @@ export default function HomeScreen ({ route, navigation }) {
         new Date(new Date().setHours(23, 59, 59, 999))
       )
       events = events.filter(
-        (event) =>
-          time(event.endDate).getTime() > time(new Date()).getTime()
+        (event) => time(event.endDate).getTime() > time(new Date()).getTime()
       )
     }
 
-    navigation.navigate('SyncEvents', { events, checkedEvents: checkEvents(events) })
+    navigation.navigate('SyncEvents', {
+      events,
+      checkedEvents: checkEvents(events)
+    })
   }
 
   async function setSyncPreferences (syncEvents) {
@@ -347,8 +372,7 @@ export default function HomeScreen ({ route, navigation }) {
         new Date(new Date().setHours(23, 59, 59, 999))
       )
       events = events.filter(
-        (event) =>
-          time(event.endDate).getTime() > time(new Date()).getTime()
+        (event) => time(event.endDate).getTime() > time(new Date()).getTime()
       )
     }
     return events
@@ -368,8 +392,7 @@ export default function HomeScreen ({ route, navigation }) {
         new Date(new Date().setHours(23, 59, 59, 999))
       )
       events = events.filter(
-        (event) =>
-          time(event.endDate).getTime() > time(new Date()).getTime()
+        (event) => time(event.endDate).getTime() > time(new Date()).getTime()
       )
     }
     let newEvents = checkEvents(events)
@@ -384,8 +407,7 @@ export default function HomeScreen ({ route, navigation }) {
         start: time(event.startDate),
         end: time(event.endDate),
         length:
-          (time(event.endDate).getTime() -
-            time(event.startDate).getTime()) /
+          (time(event.endDate).getTime() - time(event.startDate).getTime()) /
           (1000 * 60),
         description: event.notes
       })
@@ -418,7 +440,10 @@ export default function HomeScreen ({ route, navigation }) {
         setInstructionIndex(0)
         const jsonValue = JSON.stringify(false)
         await AsyncStorage.setItem('firsty', jsonValue)
+      } else {
+        await getSyncEvents(false)
       }
+
       resolve(true)
     } catch (e) {
       reject(e)
@@ -499,9 +524,7 @@ export default function HomeScreen ({ route, navigation }) {
                 parseInt(savedTask[0][new Date().getDay()][newIndex].length) +
                 oldTasks[i].length
               savedTask[0][new Date().getDay()][newIndex].sortValue =
-                updateSortValue(
-                  savedTask[0][new Date().getDay()][newIndex]
-                )
+                updateSortValue(savedTask[0][new Date().getDay()][newIndex])
               oldTasks.splice(i, 1)
               i--
               savedTask[0][new Date().getDay()][newIndex].repeating = false
@@ -635,11 +658,6 @@ export default function HomeScreen ({ route, navigation }) {
         day = new Date().setHours(0, 0, 0, 0)
         const jsonValue = JSON.stringify(day)
         await AsyncStorage.setItem('day', jsonValue)
-        const JsonValue = await AsyncStorage.getItem('firsty')
-        const first = JsonValue != null ? JSON.parse(JsonValue) : null
-        if (first != null) {
-          await getSyncEvents(false)
-        }
       }
       resolve(true)
     } catch (e) {
@@ -651,12 +669,12 @@ export default function HomeScreen ({ route, navigation }) {
   async function getSelectable () {
     const JsonValue = await AsyncStorage.getItem('selectable')
     const JsonValueT = await AsyncStorage.getItem('sTask')
-    const selectable = JsonValue != null ? JSON.parse(JsonValue) : true
+    const selectable1 = JsonValue != null ? JSON.parse(JsonValue) : true
     let test
-    if (!selectable) {
+    if (!selectable1) {
       test = JsonValueT != null ? JSON.parse(JsonValueT) : null
     }
-    setSelectable(selectable)
+    setSelectable(selectable1)
   }
 
   // Find day and time
@@ -674,103 +692,102 @@ export default function HomeScreen ({ route, navigation }) {
   // Update setTasks based on current time
   function sortSetTasks () {
     for (let i = 0; i <= setTasks.length - 1; i++) {
-      if (
-        time(new Date(setTasks[i].end).getTime()) <= time(Date.now())
-      ) {
+      if (time(new Date(setTasks[i].end).getTime()) <= time(new Date())) {
         setTasks.splice(i, 1)
         i--
       } else if (
-        time(new Date(setTasks[i].start).getTime()) < time(Date.now())
+        time(new Date(setTasks[i].start).getTime()) < time(new Date())
       ) {
-        setTasks[i].start = time(Date.now())
+        setTasks[i].start = time(new Date())
       }
     }
   }
 
   // Combine tasks and setTasks
   function makeCombined () {
-    // console.log("start")
-    // console.log(tasks)
     let setIndex = 0
     let tempAvaliable = 0
     // var splitTask = false
     const tempC = []
     sortSetTasks()
     if (tasks.length > 0 || setTasks.length > 0) {
-      let time = time(Date.now())
+      let tempTime = time(new Date())
       if (
         combined.length > 0 &&
         combined[0].sortValue == null &&
         setTasks.length > 0
       ) {
         setTasks[0].length =
-          (time(setTasks[0].end) - time(setTasks[0].start)) /
+          (time(setTasks[0].end).getTime() -
+            time(setTasks[0].start).getTime()) /
           (1000 * 60)
       }
       if (selectable === false && tasks.length > 0) {
+        // console.log('in')
         tasks[0].length -=
-          (time(new Date()) - time(tasks[0].start)) / (1000 * 60)
+          (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
+          (1000 * 60)
         if (tasks[0].length <= 0) {
           tasks[0].length = 10
+          setTaskLength(tasks[0].length)
         }
+        setProgress(1 - tasks[0].length / taskLength)
+
+        // console.log(tasks[0].length + ' ' + taskLength)
       }
       for (let i = 0; i <= tasks.length - 1; i++) {
-        // console.log(displayTime(time))
-        // console.log(setIndex)
         if (
           setIndex < setTasks.length - 1 ||
           (setIndex < setTasks.length &&
-            time(time).getTime() <
-              time(setTasks[setIndex].start).getTime())
+            time(tempTime).getTime() < time(setTasks[setIndex].start).getTime())
         ) {
           if (
-            time(time).getTime() ===
+            time(tempTime).getTime() ===
             time(setTasks[setIndex].start).getTime()
           ) {
             // Add set task
             // console.log("Add set task: "+setTasks[setIndex].name)
-            time = setTasks[setIndex].end
-            // console.log(displayTime(time))
+            tempTime = setTasks[setIndex].end
             tempC.push({ ...setTasks[setIndex] })
-            tempAvaliable += setTasks[setIndex].length
+            tempAvaliable +=
+              (time(setTasks[setIndex].end).getTime() -
+                time(setTasks[setIndex].start).getTime()) /
+              (1000 * 60)
             setIndex++
-
-            // console.log(displayTime(time))
           }
           if (
             tasks[i].length <=
             Math.floor(
               (time(setTasks[setIndex].start).getTime() -
-                time(time).getTime()) /
+                time(tempTime).getTime()) /
                 (1000 * 60)
             )
           ) {
             // Task length <= time until set task -> add task
             // console.log("Task length <= time until set task -> add task: "+tasks[i].name)
-            tasks[i].start = time
+            tasks[i].start = tempTime
             tasks[i].end = time(
-              new Date(time).getTime() + tasks[i].length * 1000 * 60
+              new Date(tempTime).getTime() + tasks[i].length * 1000 * 60
             )
-            time = tasks[i].end
+            tempTime = new Date(tasks[i].end)
             tempC.push({ ...tasks[i] })
             tempAvaliable += parseInt(tasks[i].length)
           } else if (
             Math.floor(
               (time(setTasks[setIndex].start).getTime() -
-                time(time).getTime()) /
+                time(tempTime).getTime()) /
                 (1000 * 60)
             ) > 0
           ) {
             // Split Task
             // console.log("Split Task: "+tasks[i].name)
-            tasks[i].start = time
+            tasks[i].start = tempTime
             tasks[i].end = time(setTasks[setIndex].start)
-            time = tasks[i].end
+            tempTime = tasks[i].end
             tempC.push({ ...tasks[i] })
             tasks.splice(i + 1, 0, { ...tasks[i] })
             tasks[i + 1].length -=
-              (time(tasks[i].end) - time(tasks[i].start)) /
-              (1000 * 60)
+              (time(tasks[i].end) - time(tasks[i].start)) / (1000 * 60)
             if (
               !(
                 tasks[i].name.substring(tasks[i].name.length - 8) === ' (cont.)'
@@ -779,34 +796,44 @@ export default function HomeScreen ({ route, navigation }) {
               tasks[i + 1].name = tasks[i].name + ' (cont.)'
             }
             tempAvaliable +=
-              (time(tasks[i].end) - time(tasks[i].start)) /
-              (1000 * 60)
+              (time(tasks[i].end) - time(tasks[i].start)) / (1000 * 60)
           } else {
             i--
           }
         } else if (setTasks.length > 0 && setIndex === setTasks.length - 1) {
           if (
-            time(time).getTime() !==
+            time(tempTime).getTime() !==
             time(setTasks[setIndex].start).getTime()
           ) {
-            tempC.push({ break: true })
+            tempC.push({
+              break: true,
+              end: time(setTasks[setIndex].start),
+              length:
+                (time(setTasks[setIndex].start).getTime() -
+                  time(tempTime).getTime()) /
+                (1000 * 60),
+              name: 'Break'
+            })
           }
           // console.log("last setTask: "+setTasks[setIndex].name)
-          time = setTasks[setIndex].end
+          tempTime = setTasks[setIndex].end
           tempC.push({ ...setTasks[setIndex] })
-          tempAvaliable += parseInt(setTasks[setIndex].length)
+          tempAvaliable +=
+            (time(setTasks[setIndex].end).getTime() -
+              time(setTasks[setIndex].start).getTime()) /
+            (1000 * 60)
           setIndex++
         }
         if (setIndex === setTasks.length) {
           // no more set tasks -> Add task
           // console.log("no more set tasks -> Add task: "+tasks[i].name)
-          tasks[i].start = time
-          tasks[i].end = time(
-            time(time).getTime() + tasks[i].length * 1000 * 60
+          tasks[i].start = tempTime
+          tasks[i].end = new Date(
+            time(time(tempTime).getTime() + tasks[i].length * 1000 * 60)
           )
           tempC.push({ ...tasks[i] })
-          tempAvaliable += parseInt(tasks[i].length)
-          time = time(tasks[i].end)
+          tempAvaliable += tasks[i].length
+          tempTime = tasks[i].end
         }
 
         if (
@@ -819,29 +846,53 @@ export default function HomeScreen ({ route, navigation }) {
       }
       // Add remaining setTasks
       for (setIndex; setIndex < setTasks.length; setIndex++) {
-        if (setTasks[setIndex].name === 'Test 2') {
-          // console.log(time(time).getTime())
-          // console.log(time(setTasks[setIndex].start).getTime())
-        }
-
         if (
-          time(time).getTime() !==
-          time(setTasks[setIndex].start).getTime()
+          time(tempTime).getTime() !== time(setTasks[setIndex].start).getTime()
         ) {
-          tempC.push({ break: true })
+          tempC.push({
+            break: true,
+            end: time(setTasks[setIndex].start),
+            length:
+              (time(setTasks[setIndex].start).getTime() -
+                time(tempTime).getTime()) /
+              (1000 * 60),
+            name: 'Break'
+          })
         }
         tempC.push({ ...setTasks[setIndex] })
-        time = time(setTasks[setIndex].end)
-        tempAvaliable += parseInt(setTasks[setIndex].length)
+        tempTime = time(setTasks[setIndex].end)
+        tempAvaliable +=
+          (time(setTasks[setIndex].end).getTime() -
+            time(setTasks[setIndex].start).getTime()) /
+          (1000 * 60)
       }
     }
     // Round avaliable time to the nearest whole number
     setAvaliableTime(Math.round(tempAvaliable))
-    // console.log(avaliableTime)
-
     setCombined(tempC)
 
     return tempC
+  }
+
+  function displayTimeLeft (time) {
+    let hours = ''
+    let minutes = ''
+    const inbetween = ''
+    if (Math.floor(time / 60) > 0) {
+      if (Math.floor(time / 60) === 1) {
+        hours = '1 hour'
+      } else {
+        hours = Math.floor(time / 60) + ' hours'
+      }
+    }
+    if (time % 60 > 0) {
+      if (Math.floor(time % 60) === 1) {
+        minutes = '1 minute'
+      } else {
+        minutes = Math.floor(time % 60) + ' minutes'
+      }
+    }
+    return hours + ' ' + minutes
   }
 
   function renderItem (item) {
@@ -850,98 +901,126 @@ export default function HomeScreen ({ route, navigation }) {
     const isActive = item.isActive
     item = item.item
 
-    if (item.break == null) {
-      return (
-        <ScaleDecorator>
+    // if (item.break == null) {
+    return (
+      <ScaleDecorator>
+        {index === 0
+          ? (
+          <Text style={{ alignSelf: 'flex-start', marginLeft: 3 }}>
+            {displayTime(combined[0].start)}
+          </Text>
+            )
+          : null}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+          <Text style={{ alignSelf: 'flex-end' }}>{displayTime(item.end)}</Text>
           <TouchableOpacity
+            style={{ flexGrow: 1, marginBottom: 15, marginLeft: 15 }}
             onLongPress={
               item.sortValue != null &&
               item.name.substring(item.name.length - 8) !== ' (cont.)'
                 ? drag
                 : null
             }
-            disabled={isActive}
+            disabled={isActive || item.break != null}
             onPress={() =>
               item.name.substring(item.name.length - 8) !== ' (cont.)'
                 ? setTaskIndex(index)
-                : setTaskIndex(combined.findIndex(
-                  (task) =>
-                    task.name ===
+                : setTaskIndex(
+                  combined.findIndex(
+                    (task) =>
+                      task.name ===
                         item.name.substring(0, item.name.length - 8)
-                ))
+                  )
+                )
             }
           >
             <ListItem
               bottomDivider
               containerStyle={
                 taskIndex === index
-                  ? { backgroundColor: '#6a99e6' }
-                  : null
+                  ? {
+                      backgroundColor: '#6a99e6',
+                      borderRadius: 10,
+                      height: item.length * 2 < 60 ? 60 : item.length * 2
+                    }
+                  : item.break == null
+                    ? {
+                        borderRadius: 10,
+                        height: item.length * 2 < 60 ? 60 : item.length * 2
+                      }
+                    : {
+                        backgroundColor: '#cacccb',
+                        borderRadius: 10,
+                        height: item.length * 2 < 60 ? 60 : item.length * 2
+                      }
               }
             >
-              <ListItem.Content>
+              {item.sortValue <
+              new Date(new Date().setHours(24, 0, 0, 0)).getTime() /
+                (1000 * 60 * 60) +
+                (6 - 4) * 2 * (11 - 7) +
+                60 / 10
+                ? (
+                <Icon
+                  name="exclamation"
+                  type="font-awesome"
+                  color="red"
+                  size={20}
+                />
+                  )
+                : null}
+              <ListItem.Content
+                style={item.break != null ? { alignItems: 'center' } : null}
+              >
                 <ListItem.Title
                   style={
                     taskIndex !== index
-                      ? { fontWeight: 'bold' }
+                      ? item.break == null
+                        ? { fontWeight: 'bold', color: 'gray' }
+                        : { fontWeight: 'bold', color: 'white', fontSize: 20 }
                       : { fontWeight: 'bold', color: 'white' }
                   }
                 >
                   {item.name}
                 </ListItem.Title>
-                <ListItem.Subtitle
-                  style={
-                    taskIndex === index ? { color: 'white' } : null
-                  }
-                >
-                  {displayTime(item.start) +
-                    ' - ' +
-                    displayTime(item.end)}
-                </ListItem.Subtitle>
+                {/* <ListItem.Subtitle
+                    style={
+                      taskIndex === index ? { color: 'white' } : null
+                    }
+                  >
+                    {displayTime(item.start) +
+                      ' - ' +
+                      displayTime(item.end)}
+                  </ListItem.Subtitle> */}
                 {item.sortValue != null
                   ? (
                   <ListItem.Subtitle
-                    style={
-                      item.sortValue <
-                      parseInt(
-                        new Date(new Date().setHours(24, 0, 0, 0)).getTime() /
-                          (1000 * 60 * 60) +
-                          (6 - 4) * 2 * (11 - 7)
-                      ) +
-                        60 / 10
-                        ? { color: 'red' }
-                        : item.sortValue <=
-                          parseInt(
-                            new Date(
-                              new Date().setHours(24, 0, 0, 0)
-                            ).getTime() /
-                              (1000 * 60 * 60) +
-                              (6 - 3) * 2 * (11 - 5)
-                          ) +
-                            60 / 10
-                          ? { color: 'orange' }
-                          : taskIndex === index
-                            ? { color: 'white' }
-                            : null
-                    }
+                    style={taskIndex === index ? { color: 'white' } : null}
                   >
-                    {'(Due: ' +
+                    {'Due: ' +
                       days[new Date(item.date).getDay()] +
                       ' ' +
                       displayDate(item.date) +
                       ' ' +
-                      displayTime(item.date) +
-                      ')'}
+                      displayTime(item.date)}
+                  </ListItem.Subtitle>
+                    )
+                  : null}
+                {item.length > 45
+                  ? (
+                  <ListItem.Subtitle
+                    style={taskIndex === index ? { color: 'white' } : null}
+                  >
+                    {displayTimeLeft(item.length)}
                   </ListItem.Subtitle>
                     )
                   : null}
               </ListItem.Content>
             </ListItem>
           </TouchableOpacity>
-        </ScaleDecorator>
-      )
-    }
-    return <View style={{ backgroundColor: '#b5b3b3', height: 30 }} />
+        </View>
+      </ScaleDecorator>
+    )
   }
 
   function setData (data) {
@@ -981,10 +1060,10 @@ export default function HomeScreen ({ route, navigation }) {
       setTaskIndex(0)
       tasks.splice(0, 0, selectedTask)
       tasks[0].start = Date.now()
+      setTaskLength(tasks[0].length)
       saveTasks()
       saveSelectable()
       setReady(true)
-      setSelectable(false)
       // console.log("start"+ tasks[0].name)
       makeCombined()
     }
@@ -1012,34 +1091,43 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   function remove () {
-    if (this._confettiView) {
-      this._confettiView.startConfetti()
-    }
-    removeSelectable()
-    // console.log(combined[taskIndex])
-    if (combined[taskIndex].sortValue != null) {
-      // remove combined[taskIndex] from tasks
-      tasks.splice(
-        tasks.findIndex(
-          (task) => task.name === combined[taskIndex].name
-        ),
-        1
-      )
-    } else {
-      // remove combined[taskIndex] from setTasks
-      setTasks.splice(
-        setTasks.findIndex(
-          (task) => task.name === combined[taskIndex].name
-        ),
-        1
-      )
-    }
-    saveTasks()
-    // explosion && explosion.start()
-    setTaskIndex(0)
-    setSelectable(true)
-    setReady(true)
-    makeCombined()
+    setProgress(1)
+    setTimeout(
+      async function () {
+        if (confettiView) {
+          confettiView.startConfetti()
+        }
+        removeSelectable()
+        // console.log(combined[taskIndex])
+        if (combined[taskIndex].sortValue != null) {
+          // remove combined[taskIndex] from tasks
+          tasks.splice(
+            tasks.findIndex((task) => task.name === combined[taskIndex].name),
+            1
+          )
+        } else {
+          // remove combined[taskIndex] from setTasks
+          if (combined[taskIndex].notificationId != null) {
+            await Notifications.cancelScheduledNotificationAsync(
+              combined[taskIndex].notificationId
+            )
+          }
+          setTasks.splice(
+            setTasks.findIndex(
+              (task) => task.name === combined[taskIndex].name
+            ),
+            1
+          )
+        }
+        saveTasks()
+        // explosion && explosion.start()
+        setTaskIndex(0)
+        setSelectable(true)
+        setReady(true)
+        makeCombined()
+      },
+      selectable === false ? 1000 : 0
+    )
   }
 
   // Store selectable(working on task) status
@@ -1095,7 +1183,7 @@ export default function HomeScreen ({ route, navigation }) {
   function sortTask () {
     // console.log("hmmmmm")
     // console.log("sortTask "+tasks[0].name)
-    const beforeTask = combined[taskIndex]
+    const beforeTask = [...combined][taskIndex]
 
     tasks.sort(function (a, b) {
       return a.sortValue - b.sortValue
@@ -1103,8 +1191,9 @@ export default function HomeScreen ({ route, navigation }) {
 
     saveTasks()
     const newCombined = makeCombined()
-
-    setTaskIndex(newCombined.findIndex((task) => task.name === beforeTask.name))
+    setTaskIndex(
+      newCombined.findIndex((task) => task.name === beforeTask.name)
+    )
   }
 
   function sortTimes () {
@@ -1129,6 +1218,9 @@ export default function HomeScreen ({ route, navigation }) {
     if (hours > 12) {
       hours -= 12
     }
+    if (hours < 10) {
+      hours = ' ' + hours
+    }
     if (minutes < 10) {
       return hours + ':' + '0' + minutes + amPm
     }
@@ -1141,12 +1233,12 @@ export default function HomeScreen ({ route, navigation }) {
     return month + '/' + day
   }
 
-  function taskName () {
-    if (combined.length > 0) {
-      return combined[taskIndex].name
-    }
-    return 'Add a Task'
-  }
+  // function taskName () {
+  //   if (combined.length > 0) {
+  //     return combined[taskIndex].name
+  //   }
+  //   return 'Add a Task'
+  // }
 
   // Editing
   async function editTask () {
@@ -1159,7 +1251,9 @@ export default function HomeScreen ({ route, navigation }) {
       ) {
         navigation.navigate('AddTask', { editName: combined[taskIndex].name })
       } else {
-        navigation.navigate('AddWorkTime', { editName: combined[taskIndex].name })
+        navigation.navigate('AddWorkTime', {
+          editName: combined[taskIndex].name
+        })
       }
     } catch (e) {
       Alert.alert(
@@ -1168,16 +1262,6 @@ export default function HomeScreen ({ route, navigation }) {
       )
       console.log(e)
     }
-  }
-
-  // Find time left
-  function findavailableTime () {
-    return (
-      <Text>
-        {Math.floor(avaliableTime / 60)} hours and{' '}
-        {avaliableTime % 60} minutes of work left
-      </Text>
-    )
   }
 
   function resetOrder () {
@@ -1195,161 +1279,159 @@ export default function HomeScreen ({ route, navigation }) {
     return null
   }
   return (
-      <SafeAreaView style={styles.container}>
-        <Dialog
-          isVisible={syncOptions}
-          onBackdropPress={() => setSyncOptions(false)}
-          overlayStyle={{ backgroundColor: 'white' }}
-        >
-          <Dialog.Title title="When do you want to sync with calendar events?" />
-          {['Never', 'After Review', 'Always'].map((l, i) => (
-            <CheckBox
-              key={i}
-              title={l}
-              containerStyle={{ backgroundColor: 'white', borderWidth: 0 }}
-              checkedIcon="dot-circle-o"
-              uncheckedIcon="circle-o"
-              checked={checked === i + 1}
-              onPress={setChecked(i + 1)}
-            />
-          ))}
-
-          <Dialog.Actions>
-            <Dialog.Button
-              title="CONFIRM"
-              onPress={() => {
-                if (checked === 1) {
-                  setSyncPreferences('never')
-                } else if (checked === 2) {
-                  setSyncPreferences('review')
-                } else {
-                  setSyncPreferences('always')
-                }
-                setSyncOptions(false)
-              }}
-            />
-          </Dialog.Actions>
-        </Dialog>
-
-        {instructions.map((l, i) => (
-          <Dialog
-            isVisible={instructionIndex === i}
-            overlayStyle={{ backgroundColor: 'white' }}
+    // null
+    <SafeAreaView style={styles.container}>
+      <Dialog
+        isVisible={syncOptions}
+        onBackdropPress={() => setSyncOptions(false)}
+        overlayStyle={{ backgroundColor: 'white' }}
+      >
+        <Dialog.Title title="When do you want to sync with calendar events?" />
+        {['Never', 'After Review', 'Always'].map((l, i) => (
+          <CheckBox
             key={i}
-          >
-            <Dialog.Title title={l.title} style={{ textAlign: 'center' }} />
-            <Image
-              style={{
-                width: l.width,
-                height: l.height,
-                alignSelf: 'center',
-                marginBottom: 10
-              }}
-              source={l.image}
-            />
-            <Text style={{ alignSelf: 'center' }}>{l.content}</Text>
-            {i === 3
-              ? ['Never', 'After Review', 'Always'].map((t, k) => (
-                  <CheckBox
-                    key={k}
-                    title={t}
-                    containerStyle={{
-                      backgroundColor: 'white',
-                      borderWidth: 0
-                    }}
-                    checkedIcon="dot-circle-o"
-                    uncheckedIcon="circle-o"
-                    checked={checked === k + 1}
-                    onPress={setChecked(k + 1)}
-                  />
-                ))
-              : null}
-
-            <Dialog.Actions>
-              {i === 3
-                ? (
-                <Dialog.Button
-                  title="NEXT"
-                  onPress={() => {
-                    if (checked === 1) {
-                      async () => {
-                        const jsonValue = JSON.stringify('never')
-                        await AsyncStorage.setItem('syncEvents5', jsonValue)
-                      }
-                    } else if (checked === 2) {
-                      async () => {
-                        const jsonValue = JSON.stringify('review')
-                        await AsyncStorage.setItem('syncEvents5', jsonValue)
-                      }
-                    } else {
-                      async () => {
-                        const jsonValue = JSON.stringify('always')
-                        await AsyncStorage.setItem('syncEvents5', jsonValue)
-                      }
-                    }
-                    setInstructionIndex(i + 1)
-                  }}
-                />
-                  )
-                : i <= instructions.length - 1
-                  ? (
-                <Dialog.Button
-                  title={i === instructions.length - 1 ? 'CLOSE' : 'NEXT'}
-                  onPress={setInstructionIndex(i + 1)}
-                />
-                    )
-                  : null}
-              {i > 0
-                ? (
-                <Dialog.Button
-                  title="PREVIOUS"
-                  onPress={setInstructionIndex(i - 1)}
-                />
-                  )
-                : null}
-            </Dialog.Actions>
-          </Dialog>
+            title={l}
+            containerStyle={{ backgroundColor: 'white', borderWidth: 0 }}
+            checkedIcon="dot-circle-o"
+            uncheckedIcon="circle-o"
+            checked={checked === i + 1}
+            onPress={() => setChecked(i + 1)}
+          />
         ))}
 
-        <View style={{ flex: 9 }}>
-          <View style={styles.top}>
-            {/* Adding Display */}
-            <View>
-              <Icon
-                name="question-circle"
-                type="font-awesome-5"
-                size={25}
-                onPress={setInstructionIndex(0)}
-                solid={true}
-              />
-            </View>
-            <View>
-              {!error
-                ? <Icon
-                  name="sync"
-                  type="material"
-                  size={30}
-                  // color='red'
-                  onPress={() => reviewEvents()}
-                  onLongPress={() => getSyncEvents(true)}
-                />
-                : <Icon
-                  name="sync-problem"
-                  type="material"
-                  size={30}
-                  // color='red'
-                  onPress={() => {
-                    reviewEvents()
+        <Dialog.Actions>
+          <Dialog.Button
+            title="CONFIRM"
+            onPress={() => {
+              if (checked === 1) {
+                setSyncPreferences('never')
+              } else if (checked === 2) {
+                setSyncPreferences('review')
+              } else {
+                setSyncPreferences('always')
+              }
+              setSyncOptions(false)
+            }}
+          />
+        </Dialog.Actions>
+      </Dialog>
+
+      {instructions.map((l, i) => (
+        <Dialog
+          isVisible={instructionIndex === i}
+          overlayStyle={{ backgroundColor: 'white' }}
+          key={i}
+        >
+          <Dialog.Title title={l.title} style={{ textAlign: 'center' }} />
+          <Image
+            style={{
+              width: l.width,
+              height: l.height,
+              alignSelf: 'center',
+              marginBottom: 10
+            }}
+            source={l.image}
+          />
+          <Text style={{ alignSelf: 'center' }}>{l.content}</Text>
+          {i === 3
+            ? ['Never', 'After Review', 'Always'].map((t, k) => (
+                <CheckBox
+                  key={k}
+                  title={t}
+                  containerStyle={{
+                    backgroundColor: 'white',
+                    borderWidth: 0
                   }}
-                  onLongPress={() => getSyncEvents(true)}
-                />}
-              {/* <Badge
-              status="warning"
-              containerStyle={{ position: 'absolute', top: 0, right: 0 }}
-            /> */}
-            </View>
+                  checkedIcon="dot-circle-o"
+                  uncheckedIcon="circle-o"
+                  checked={checked === k + 1}
+                  onPress={() => setChecked(k + 1)}
+                />
+              ))
+            : null}
+
+          <Dialog.Actions>
+            {i === 3
+              ? (
+              <Dialog.Button
+                title="NEXT"
+                onPress={() => {
+                  if (checked === 1) {
+                    async () => {
+                      const jsonValue = JSON.stringify('never')
+                      await AsyncStorage.setItem('syncEvents5', jsonValue)
+                    }
+                  } else if (checked === 2) {
+                    async () => {
+                      const jsonValue = JSON.stringify('review')
+                      await AsyncStorage.setItem('syncEvents5', jsonValue)
+                    }
+                  } else {
+                    async () => {
+                      const jsonValue = JSON.stringify('always')
+                      await AsyncStorage.setItem('syncEvents5', jsonValue)
+                    }
+                  }
+                  setInstructionIndex(i + 1)
+                }}
+              />
+                )
+              : i <= instructions.length - 1
+                ? (
+              <Dialog.Button
+                title={i === instructions.length - 1 ? 'CLOSE' : 'NEXT'}
+                onPress={() => setInstructionIndex(i + 1)}
+              />
+                  )
+                : null}
+            {i > 0
+              ? (
+              <Dialog.Button
+                title="PREVIOUS"
+                onPress={() => setInstructionIndex(i - 1)}
+              />
+                )
+              : null}
+          </Dialog.Actions>
+        </Dialog>
+      ))}
+
+      <View style={{ flex: 9 }}>
+        <View style={styles.top}>
+          <View>
+            <Icon
+              name="question-circle"
+              type="font-awesome-5"
+              size={25}
+              onPress={() => setInstructionIndex(0)}
+              solid={true}
+            />
           </View>
-          {/* <View style={{flex:10, marginHorizontal:20}}> */}
+          <View>
+            {!error ? (
+              <Icon
+                name="sync"
+                type="material"
+                size={30}
+                // color='red'
+                onPress={() => reviewEvents()}
+                onLongPress={() => getSyncEvents(true)}
+              />
+            ) : (
+              <Icon
+                name="sync-problem"
+                type="material"
+                size={30}
+                // color='red'
+                onPress={() => {
+                  reviewEvents()
+                }}
+                onLongPress={() => getSyncEvents(true)}
+              />
+            )}
+          </View>
+        </View>
+        <View style={{ flex: 10, marginHorizontal: 20 }}>
           {combined.length === 0
             ? (
             <View
@@ -1368,151 +1450,200 @@ export default function HomeScreen ({ route, navigation }) {
               )
             : null}
           <DraggableFlatList
-            containerStyle={{ flex: 10, marginHorizontal: 20 }}
+            containerStyle={{ flex: 10, marginHorizontal: 3 }}
             // debug={true}
             data={combined}
             onDragEnd={(data) => setData(data)}
             keyExtractor={(item, index) => {
-              item.name != null ? item.name + index.toString() : index
+              item.name != null ? item.name + '' + index : index
             }}
             renderItem={(item) => renderItem(item)}
           />
-          {/* </View> */}
-          {resetOrder()
-            ? <View style={{ marginHorizontal: 20 }}>
-                {/* Reset order display */}
-
-                <View style={{ padding: 8 }}>
-                  <Button
-                    // raised={true}
-                    title="Optimize Order"
-                    buttonStyle={{ backgroundColor: '#1c247a' }}
-                    onPress={() => sortTask()}
-                  />
-                </View>
-              </View>
-            : <Button
-            title="Press to schedule a notification"
-            onPress={async () => {
-              await schedulePushNotification()
-            }}
-          />}
-          <SpeedDial
-            isOpen={open}
-            icon={{ name: 'add', color: '#fff' }}
-            openIcon={{ name: 'close', color: '#fff' }}
-            onOpen={setOpen(!open)}
-            onClose={setOpen(!open)}
-            color="#6a99e6"
-            // make overlay transparent
-            overlayColor="rgba(0,0,0,0)"
-            transitionDuration={40}
-          >
-            <Tooltip
-              // toggleAction="onLongPress"
-              height={60}
-              popover={<Text>Tasks can be done at any time</Text>}
-            >
-              <SpeedDial.Action
-                icon={{ name: 'check-square', color: '#fff', type: 'feather' }}
-                title="Task"
-                onPress={() => {
-                  setOpen(false)
-                  navigation.navigate('AddTask')
-                }}
-                color="#6a99e6"
-              />
-            </Tooltip>
-            <Tooltip
-              // toggleAction="onLongPress"
-              height={60}
-              popover={<Text>Events are done at a preset time</Text>}
-            >
-              <SpeedDial.Action
-                icon={{ name: 'clock', color: '#fff', type: 'feather' }}
-                title="Event"
-                onPress={() => {
-                  setOpen(false)
-                  navigation.navigate('AddWorkTime')
-                }}
-                color="#6a99e6"
-              />
-            </Tooltip>
-          </SpeedDial>
-
-          {/* Task in progress overlay */}
-          {selectable === false
-            ? (
-            <View style={styles.grayOverlay} />
-              )
-            : null}
         </View>
-        <Divider style={{ backgroundColor: 'gray' }} />
-
-        {/* Task controls display */}
-        <View style={styles.selectView}>
-          {/* <View style={styles.inSelection}>
-            <Text style={{ fontSize: 20}}>{taskName()}</Text>
-            <Icon color={selectable==false||combined.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={selectable==false||combined.length==0?null:() => editTask()}/>
-          </View> */}
-          <View style={styles.inSelection}>
-            {selectable === true
-              ? <Icon
-                name="play-circle"
-                type="font-awesome"
-                size={30}
-                // color={'white'}
-                onPress={() => start()}
-                disabled={combined.length < 0}
+        {resetOrder() ? (
+          <View style={{ marginHorizontal: 20 }}>
+            <View style={{ padding: 8 }}>
+              <Button
+                // raised={true}
+                title="Optimize Order"
+                buttonStyle={{ backgroundColor: '#1c247a' }}
+                onPress={() => sortTask()}
               />
-              : <Icon
+            </View>
+          </View>
+        ) : null}
+        <SpeedDial
+          isOpen={open}
+          icon={{ name: 'add', color: '#fff' }}
+          openIcon={{ name: 'close', color: '#fff' }}
+          onOpen={() => setOpen(!open)}
+          onClose={() => setOpen(!open)}
+          color="#6a99e6"
+          // make overlay transparent
+          overlayColor="rgba(0,0,0,0)"
+          transitionDuration={40}
+        >
+          <Tooltip
+            // toggleAction="onLongPress"
+            height={60}
+            popover={<Text>Tasks can be done at any time</Text>}
+          >
+            <SpeedDial.Action
+              icon={{ name: 'check-square', color: '#fff', type: 'feather' }}
+              title="Task"
+              onPress={() => {
+                setOpen(false)
+                navigation.navigate('AddTask', { editName: '' })
+              }}
+              color="#6a99e6"
+            />
+          </Tooltip>
+          <Tooltip
+            // toggleAction="onLongPress"
+            height={60}
+            popover={<Text>Events are done at a preset time</Text>}
+          >
+            <SpeedDial.Action
+              icon={{ name: 'clock', color: '#fff', type: 'feather' }}
+              title="Event"
+              onPress={() => {
+                setOpen(false)
+                navigation.navigate('AddWorkTime', { editName: '' })
+              }}
+              color="#6a99e6"
+            />
+          </Tooltip>
+        </SpeedDial>
+        {selectable === false ? (
+          <Overlay onBackdropPress={() => setSelectable(true)}>
+            <Text h2 style={{ margin: 10 }}>
+              {combined[taskIndex].name}
+            </Text>
+            {combined[taskIndex].description !== ''
+              ? (
+              <Text h3 h3Style={{ margin: 10, fontWeight: 'normal' }}>
+                {combined[taskIndex].description}
+              </Text>
+                )
+              : null}
+            <View>
+              <LinearProgress
+                style={{ marginVertical: 10 }}
+                value={progress}
+                variant="determinate"
+                color="blue"
+              />
+            </View>
+            <Text h4 h4Style={{ margin: 10, fontWeight: 'normal' }}>
+              {combined[taskIndex].length + ' minutes left'}
+            </Text>
+            <View
+              style={{
+                justifyContent: 'space-between',
+                flexDirection: 'row',
+                alignSelf: 'stretch'
+              }}
+            >
+              <Icon
                 name="pause-circle"
                 size={30}
                 type="font-awesome"
                 // color={"white"}
                 onPress={() => pause()}
+                style={{ margin: 10 }}
               />
-            }
+              <Icon
+                name="stop-circle"
+                type="font-awesome"
+                size={30}
+                onPress={combined.length > 0 ? () => stop() : null}
+                style={{ margin: 10 }}
+              />
+              <Icon
+                name="pencil-circle"
+                type="material-community"
+                size={30}
+                onPress={() => {
+                  pause()
+                  editTask()
+                }}
+                style={{ margin: 10 }}
+              />
+            </View>
+          </Overlay>
+        ) : null}
+      </View>
+      <Divider style={{ backgroundColor: 'gray' }} />
+
+      {/* Task controls display */}
+      <View style={styles.selectView}>
+        {/* <View style={styles.inSelection}>
+        <Text style={{ fontSize: 20}}>{taskName()}</Text>
+        <Icon color={selectable==false||combined.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={selectable==false||combined.length==0?null:() => editTask()}/>
+      </View> */}
+        <View style={styles.inSelection}>
+          {selectable === true ? (
             <Icon
-              name="stop-circle"
+              name="play-circle"
               type="font-awesome"
               size={30}
-              onPress={
-                combined.length > 0 ? () => stop() : null
-              }
+              // color={'white'}
+              onPress={() => start()}
+              disabled={combined.length < 0}
             />
+          ) : (
             <Icon
-              name="pencil-circle"
-              type="material-community"
+              name="pause-circle"
               size={30}
-              onPress={
-                selectable === false ||
-                combined.length === 0
-                  ? null
-                  : () => editTask()
-              }
+              type="font-awesome"
+              // color={"white"}
+              onPress={() => pause()}
             />
-          </View>
-          <View
+          )}
+          <Icon
+            name="stop-circle"
+            type="font-awesome"
+            size={30}
+            onPress={combined.length > 0 ? () => stop() : null}
+          />
+          <Icon
+            name="pencil-circle"
+            type="material-community"
+            size={30}
+            onPress={
+              selectable === false || combined.length === 0
+                ? null
+                : () => editTask()
+            }
+          />
+        </View>
+        {avaliableTime > 0
+          ? (
+          <Text
             style={{
               flex: 1,
-              alignItems: 'center',
+              textAlign: 'center',
               flexDirection: 'row',
               justifyContent: 'space-around',
-              padding: 3
+              padding: 3,
+              marginTop: 5
             }}
           >
-            {findavailableTime()}
-          </View>
-        </View>
-        <Confetti
-          confettiCount={20}
-          size={2}
-          timeout={0}
-          duration={1200}
-          ref={(node) => this._confettiView ? this._confettiView === node : null}
-        />
-      </SafeAreaView>
+            {displayTimeLeft(avaliableTime)} left
+          </Text>
+            )
+          : null}
+      </View>
+      <Confetti
+        confettiCount={20}
+        size={2}
+        timeout={0}
+        duration={1200}
+        ref={(node) => {
+          confettiView = node
+        }}
+      />
+    </SafeAreaView>
   )
 }
 
@@ -1567,7 +1698,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   inSelection: {
-    flex: 2,
+    // flex: 2,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-around'

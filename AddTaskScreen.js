@@ -1,3 +1,4 @@
+/* eslint-disable multiline-ternary */
 /* eslint-disable no-unused-expressions */
 /* eslint-disable react/prop-types */
 import React, { useEffect, useState } from 'react'
@@ -19,7 +20,6 @@ let savedTasks
 
 export default function AddTaskScreen ({ route, navigation }) {
   let selectedTask
-  let edit = false
   const { editName } = route.params
   const days = [
     'Sunday',
@@ -31,7 +31,15 @@ export default function AddTaskScreen ({ route, navigation }) {
     'Saturday'
   ]
 
-  const [daysUsed, setDaysUsed] = useState([false, false, false, false, false, false, false])
+  const [daysUsed, setDaysUsed] = useState([
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ])
   const [date, setDate] = useState(new Date().setHours(24, 0, 0, 0))
   const [mode, setMode] = useState('date')
   const [show, setShow] = useState(false)
@@ -40,29 +48,37 @@ export default function AddTaskScreen ({ route, navigation }) {
   const [importance, setImportance] = useState(5)
   const [dueImportance, setDueImportance] = useState(3)
   const [length, setLength] = useState(0)
-  const [sortValue, setSortValue] = useState(0)
   const [weekly, setWeekly] = useState(false)
   const [repeating, setRepeating] = useState(false)
   const [overridable, setOverridable] = useState(false)
   const [description, setDescription] = useState('')
   const [empty, setEmpty] = useState(false)
-  const [usedName, setUsedName] = useState(false)
+  const [edit, setEdit] = useState(false)
+  const [same, setSame] = useState(false)
 
   // Get data
   useEffect(() => {
-    () => navigation.addListener('focus', () => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // console.log('hello')
       getData()
     })
-  })
+    // console.log('hello')
+    // getData()
+
+    return () => {
+      unsubscribe
+    }
+  }, [])
 
   const getData = async () => {
+    // console.log('hello')
     const change = [...daysUsed]
     change.splice(new Date().getDay(), 1, true)
     setDaysUsed(change)
     try {
       const jsonValue = await AsyncStorage.getItem('tasks')
       savedTasks = jsonValue != null ? JSON.parse(jsonValue) : null
-      editInfo()
+      await editInfo()
     } catch (e) {
       Alert.alert(
         'Failed to get data!',
@@ -74,7 +90,7 @@ export default function AddTaskScreen ({ route, navigation }) {
 
   const editInfo = async () => {
     try {
-      if (editName != null) {
+      if (editName !== '') {
         const change = [...daysUsed]
         selectedTask =
           savedTasks[0][new Date().getDay()][
@@ -82,8 +98,8 @@ export default function AddTaskScreen ({ route, navigation }) {
               (task) => task.name === editName
             )
           ]
-        edit = true
-        setDate(new Date(new Date(selectedTask.date).getTime()))
+        setEdit(true)
+        setDate(new Date(selectedTask.date))
         setName(selectedTask.name)
         setImportance(selectedTask.importance)
         setLength(selectedTask.length)
@@ -94,9 +110,7 @@ export default function AddTaskScreen ({ route, navigation }) {
         // await AsyncStorage.removeItem('editName')
         for (let i = 0; i <= daysUsed.length - 1; i++) {
           if (
-            savedTasks[0][i].findIndex(
-              (task) => task.name === editName
-            ) !== -1
+            savedTasks[0][i].findIndex((task) => task.name === editName) !== -1
           ) {
             change.splice(i, 1, true)
           }
@@ -197,26 +211,17 @@ export default function AddTaskScreen ({ route, navigation }) {
 
   // Saving/Processing
   const handleSave = async () => {
-    let sameName = false
+    // await editInfo()
+    // console.log(edit)
     isRepeating()
     let d
-    // Set parameters
-    setSortValue(
-      parseInt(
-        new Date(date).getTime() / (1000 * 60 * 60) +
-            (6 - dueImportance) * 2 * (11 - importance)
-      ) +
-        parseInt(length) / 10
-    )
     // ((((importance*8)/100)*(length))/((6-dueImportance)*30))*24*60*60*1000
     if (daysUsed[new Date().getDay()]) {
       d = new Date().setHours(0, 0, 0, 0)
     } else {
       if (daysUsed.indexOf(true) - new Date().getDay() > 0) {
         d = new Date().setDate(
-          new Date().getDate() +
-            daysUsed.indexOf(true) -
-            new Date().getDay()
+          new Date().getDate() + daysUsed.indexOf(true) - new Date().getDay()
         )
       } else {
         d = new Date().setDate(
@@ -228,12 +233,16 @@ export default function AddTaskScreen ({ route, navigation }) {
       }
       d = new Date(d).setHours(0, 0, 0, 0)
     }
-    const dueIncrease =
-      new Date(date).getTime() - new Date(d).getTime()
+    const dueIncrease = new Date(date).getTime() - new Date(d).getTime()
     selectedTask = {
       name,
-      sortValue,
-      length,
+      sortValue:
+        parseInt(
+          new Date(date).getTime() / (1000 * 60 * 60) +
+            (6 - dueImportance) * 2 * (11 - importance)
+        ) +
+        parseInt(length) / 10,
+      length: parseInt(length),
       date,
       start: new Date(),
       end: new Date(),
@@ -246,18 +255,13 @@ export default function AddTaskScreen ({ route, navigation }) {
     }
     // console.log(selectedTask.length)
     // Same name
-    sameName = await sameName()
 
     // Check if valid
-    if (
-      name === '' ||
-      importance === 0 ||
-      length === 0
-    ) {
+    if (name === '' || importance === 0 || length === 0) {
       setEmpty(true)
       Alert.alert('Invalid Task', 'Not all fields have been filled out!')
-    } else if (sameName === true) {
-      setUsedName(true)
+    } else if ((await sameName()) === true) {
+      // setSame(true)
       Alert.alert('Name Used', 'Name already used. Please select a new name.')
     } else {
       // Put in task for all the days used
@@ -274,9 +278,7 @@ export default function AddTaskScreen ({ route, navigation }) {
           if (weekly === true) {
             if (edit === true) {
               savedTasks[1][i].splice(
-                savedTasks[1][i].findIndex(
-                  (task) => task.name === editName
-                ),
+                savedTasks[1][i].findIndex((task) => task.name === editName),
                 1
               )
             }
@@ -285,9 +287,7 @@ export default function AddTaskScreen ({ route, navigation }) {
           }
         } else if (!newInfo()) {
           if (
-            savedTasks[0][i].some(
-              (task) => task.name === selectedTask.name
-            )
+            savedTasks[0][i].some((task) => task.name === selectedTask.name)
           ) {
             savedTasks[0][i].splice(
               savedTasks[0][i].findIndex(
@@ -298,9 +298,7 @@ export default function AddTaskScreen ({ route, navigation }) {
           }
           if (
             weekly === true &&
-            savedTasks[1][i].some(
-              (task) => task.name === selectedTask.name
-            )
+            savedTasks[1][i].some((task) => task.name === selectedTask.name)
           ) {
             savedTasks[1][i].splice(
               savedTasks[1][i].findIndex(
@@ -312,7 +310,6 @@ export default function AddTaskScreen ({ route, navigation }) {
         }
       }
       setEmpty(false)
-      setUsedName(false)
       // save data
       try {
         const jsonValue = JSON.stringify(savedTasks)
@@ -332,34 +329,23 @@ export default function AddTaskScreen ({ route, navigation }) {
       savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) : null
     for (let i = 0; i < daysUsed.length; i++) {
       if (daysUsed[i]) {
-        if (
-          (edit === true && name !== editName) ||
-          edit === false
-        ) {
+        if ((edit === true && name !== editName) || edit === false) {
+          // console.log(edit)
           if (
-            workTimes[0][i].some(
-              (element) => element.name === name
-            ) ||
+            workTimes[0][i].some((element) => element.name === name) ||
             (weekly &&
-              workTimes[1][i].some(
-                (element) => element.name === name
-              )) ||
-            savedTasks[0][i].some(
-              (element) => element.name === name
-            ) ||
+              workTimes[1][i].some((element) => element.name === name)) ||
+            savedTasks[0][i].some((element) => element.name === name) ||
             (weekly &&
-              savedTasks[1][i].some(
-                (element) => element.name === name
-              ))
+              savedTasks[1][i].some((element) => element.name === name))
           ) {
-            setUsedName(true)
+            setSame(true)
             return true
           }
         }
       }
     }
-
-    setUsedName(false)
+    setSame(false)
     return false
   }
 
@@ -386,281 +372,271 @@ export default function AddTaskScreen ({ route, navigation }) {
     return null
   }
   return (
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={{ flex: 1 }}>
-          <View style={styles.section}>
-            {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
-            <Input
-              label="Name"
-              placeholder="Add Name"
-              renderErrorMessage={empty || usedName}
-              errorMessage={
-                empty && name === ''
-                  ? 'Please enter a name'
-                  : usedName === true
-                    ? 'Another task or event already has this name'
-                    : null
-              }
-              onChangeText={(name) => {
-                setName(name)
-                sameName()
-              }}
-              value={name}
-            />
-          </View>
-          <View style={styles.section}>
-            <Input
-              multiline
-              label="Description"
-              placeholder="Add Description"
-              renderErrorMessage={false}
-              onChangeText={(description) => setDescription(description)}
-              value={description}
-            />
-          </View>
-          <View style={styles.section}>
-            {/* <Text style={{ fontSize: 17,padding:3}}>Importance:</Text> */}
-            <Text h1 h1Style={styles.label}>
-              {' '}
-              Importance
-            </Text>
-            <View style={{ marginTop: 10, marginLeft: 7 }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <Text style={{ fontSize: 13 }}>Least</Text>
-                <Text style={{ fontSize: 13 }}>Most</Text>
-              </View>
-              <Slider
-                thumbStyle={{ width: 25, height: 25 }}
-                trackStyle={{ width: '100%' }}
-                value={importance}
-                // animateTransitions={true}
-                allowTouchTrack={true}
-                onValueChange={(importance) => setImportance(importance)}
-                minimumValue={1}
-                maximumValue={10}
-                thumbTintColor="#6a99e6"
-                thumbProps={{
-                  children: (
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        padding: 3,
-                        alignSelf: 'center',
-                        color: '#fff'
-                      }}
-                    >
-                      {importance}
-                    </Text>
-                  )
-                }}
-                step={1}
-              />
-            </View>
-          </View>
-          <View style={styles.section}>
-            {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
-            <Input
-              label="Length (min)"
-              placeholder="Add Length"
-              renderErrorMessage={empty && length === 0}
-              errorMessage={
-                empty && length === 0
-                  ? 'Enter a non-zero task length'
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={{ flex: 1 }}>
+        <View style={styles.section}>
+          {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
+          <Input
+            multiline
+            label="Name"
+            placeholder="Add Name"
+            renderErrorMessage={(empty && name === '') || same}
+            errorMessage={
+              empty && name === ''
+                ? 'Please enter a name'
+                : same
+                  ? 'Another task or event already has this name'
                   : null
-              }
-              keyboardType="numeric"
-              onChangeText={(length) => setLength(length)}
-              value={
-                length !== 0 ? length.toString() : null
-              }
-            />
-          </View>
-          <View style={styles.section}>
-            <Text h1 h1Style={styles.label}>
-              {' '}
-              Due Date:
-            </Text>
-            <View
-              style={{ flexDirection: 'row', marginLeft: 5, marginTop: 10 }}
-            >
-              <View style={{ padding: 3 }}>
-                <Button
-                  title={displayDate(date)}
-                  buttonStyle={{ backgroundColor: '#6a99e6' }}
-                  onPress={() => showDatepicker()}
-                />
-              </View>
-              <View style={{ padding: 3 }}>
-                <Button
-                  title={displayTime(date)}
-                  buttonStyle={{ backgroundColor: '#6a99e6' }}
-                  onPress={() => showTimepicker()}
-                />
-              </View>
-            </View>
-          </View>
-          {show && (
-            <DateTimePicker
-              testID="dateTimePicker"
-              value={new Date(date)}
-              mode={mode}
-              // display="default"
-              onChange={onChange}
-              style={{ width: '100%' }}
-            />
-          )}
-          <View style={styles.section}>
-            <Text h1 h1Style={styles.label}>
-              {' '}
-              Due Date&apos;s Importance:
-            </Text>
-            <View style={{ marginTop: 10, marginLeft: 7 }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <Text style={{ fontSize: 13 }}>Least</Text>
-                <Text style={{ fontSize: 13 }}>Most</Text>
-              </View>
-              <Slider
-                // style={{}}
-                thumbStyle={{ width: 25, height: 25 }}
-                trackStyle={{ width: '100%' }}
-                value={dueImportance}
-                onValueChange={(dueImportance) =>
-                  setDueImportance(dueImportance)
-                }
-                minimumValue={1}
-                maximumValue={5}
-                allowTouchTrack={true}
-                thumbTintColor="#6a99e6"
-                thumbProps={{
-                  children: (
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        padding: 3,
-                        alignSelf: 'center',
-                        color: '#fff'
-                      }}
-                    >
-                      {dueImportance}
-                    </Text>
-                  )
-                }}
-                step={1}
-              />
-            </View>
-          </View>
-          <View
-            style={[
-              styles.section,
-              { flexDirection: 'row', alignItems: 'center' }
-            ]}
-          >
-            {newInfo()
-              ? (
-              <Text h1 h1Style={styles.label}>
-                {' '}
-                Edit on:
-              </Text>
-                )
-              : (
-              <Text h1 h1Style={styles.label}>
-                {' '}
-                Repeat on:
-              </Text>
-                )}
-          </View>
-          <CheckBox
-            containerStyle={{
-              backgroundColor: 'rgba(0,0,0,0)',
-              borderWidth: 0
+            }
+            onChangeText={async (name) => {
+              setName(name)
+              await sameName()
+              // console.log(same)
             }}
-            title="Weekly"
-            checked={weekly}
-            onPress={() => setWeekly(!weekly)}
-          />
-
-          <View
-            style={{
-              padding: 8,
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}
-          >
-            {daysUsed.map((day, i) => {
-              return (
-                <Avatar
-                  key={i}
-                  containerStyle={
-                    day === true
-                      ? { backgroundColor: '#6a99e6', margin: 1 }
-                      : { backgroundColor: 'gray', margin: 1 }
-                  }
-                  size="small"
-                  rounded
-                  title={days[i].slice(0, 1)}
-                  onPress={() => changeDay(i)}
-                />
-              )
-            })}
-          </View>
-          {daysUsed.includes(true) === false
-            ? (
-            <Text style={{ fontSize: 15, color: 'red', alignSelf: 'center' }}>
-              Nothing is selected!
-            </Text>
-              )
-            : null}
-          {repeating || weekly
-            ? <View style={{ flexDirection: 'row' }}>
-                <View style={{ flexGrow: 1 }}>
-                  <CheckBox
-                    containerStyle={{
-                      backgroundColor: 'rgba(0,0,0,0)',
-                      borderWidth: 0
-                    }}
-                    title="Override"
-                    checked={overridable}
-                    onPress={() =>
-                      setOverridable(!overridable)
-                    }
-                  />
-                </View>
-                <View
-                  style={{ alignItems: 'flex-end', justifyContent: 'center' }}
-                >
-                  <Tooltip
-                    popover={
-                      <Text>
-                        Should the new repeated version of the task override the
-                        old one? If not, the versions will be combined into one.
-                      </Text>
-                    }
-                    height={120}
-                  >
-                    {/* <Icon name='InfoCircleOutline' type='antdesign'/> */}
-                    <Icon name="question-circle" type="font-awesome-5" />
-                  </Tooltip>
-                </View>
-              </View>
-            : null}
-          <Button
-            title="Save"
-            buttonStyle={{ backgroundColor: '#6a99e6', alignSelf: 'flex-end' }}
-            onPress={() => handleSave()}
+            value={name}
           />
         </View>
-      </ScrollView>
+        <View style={styles.section}>
+          <Input
+            multiline
+            label="Description"
+            placeholder="Add Description"
+            renderErrorMessage={false}
+            onChangeText={(description) => setDescription(description)}
+            value={description}
+          />
+        </View>
+        <View style={styles.section}>
+          {/* <Text style={{ fontSize: 17,padding:3}}>Importance:</Text> */}
+          <Text h1 h1Style={styles.label}>
+            {' '}
+            Importance
+          </Text>
+          <View style={{ marginTop: 10, marginLeft: 7 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between'
+              }}
+            >
+              <Text style={{ fontSize: 13 }}>Least</Text>
+              <Text style={{ fontSize: 13 }}>Most</Text>
+            </View>
+            <Slider
+              thumbStyle={{ width: 25, height: 25 }}
+              trackStyle={{ width: '100%' }}
+              value={importance}
+              // animateTransitions={true}
+              allowTouchTrack={true}
+              onValueChange={(importance) => setImportance(importance)}
+              minimumValue={1}
+              maximumValue={10}
+              thumbTintColor="#6a99e6"
+              thumbProps={{
+                children: (
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      padding: 3,
+                      alignSelf: 'center',
+                      color: '#fff'
+                    }}
+                  >
+                    {importance}
+                  </Text>
+                )
+              }}
+              step={1}
+            />
+          </View>
+        </View>
+        <View style={styles.section}>
+          {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
+          <Input
+            label="Length (min)"
+            placeholder="Add Length"
+            renderErrorMessage={empty && length === 0}
+            errorMessage={
+              empty && length === 0 ? 'Enter a non-zero task length' : null
+            }
+            keyboardType="numeric"
+            onChangeText={(length) => setLength(length)}
+            value={length !== 0 ? length.toString() : null}
+          />
+        </View>
+        <View style={styles.section}>
+          <Text h1 h1Style={styles.label}>
+            {' '}
+            Due Date:
+          </Text>
+          <View style={{ flexDirection: 'row', marginLeft: 5, marginTop: 10 }}>
+            <View style={{ padding: 3 }}>
+              <Button
+                title={displayDate(date)}
+                buttonStyle={{ backgroundColor: '#6a99e6' }}
+                onPress={() => showDatepicker()}
+              />
+            </View>
+            <View style={{ padding: 3 }}>
+              <Button
+                title={displayTime(date)}
+                buttonStyle={{ backgroundColor: '#6a99e6' }}
+                onPress={() => showTimepicker()}
+              />
+            </View>
+          </View>
+        </View>
+        {show && (
+          <DateTimePicker
+            testID="dateTimePicker"
+            value={new Date(date)}
+            mode={mode}
+            // display="default"
+            onChange={onChange}
+            style={{ width: '100%' }}
+          />
+        )}
+        <View style={styles.section}>
+          <Text h1 h1Style={styles.label}>
+            {' '}
+            Due Date&apos;s Importance:
+          </Text>
+          <View style={{ marginTop: 10, marginLeft: 7 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between'
+              }}
+            >
+              <Text style={{ fontSize: 13 }}>Least</Text>
+              <Text style={{ fontSize: 13 }}>Most</Text>
+            </View>
+            <Slider
+              // style={{}}
+              thumbStyle={{ width: 25, height: 25 }}
+              trackStyle={{ width: '100%' }}
+              value={dueImportance}
+              onValueChange={(dueImportance) => setDueImportance(dueImportance)}
+              minimumValue={1}
+              maximumValue={5}
+              allowTouchTrack={true}
+              thumbTintColor="#6a99e6"
+              thumbProps={{
+                children: (
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      padding: 3,
+                      alignSelf: 'center',
+                      color: '#fff'
+                    }}
+                  >
+                    {dueImportance}
+                  </Text>
+                )
+              }}
+              step={1}
+            />
+          </View>
+        </View>
+        <View
+          style={[
+            styles.section,
+            { flexDirection: 'row', alignItems: 'center' }
+          ]}
+        >
+          {newInfo()
+            ? (
+            <Text h1 h1Style={styles.label}>
+              {' '}
+              Edit on:
+            </Text>
+              )
+            : (
+            <Text h1 h1Style={styles.label}>
+              {' '}
+              Repeat on:
+            </Text>
+              )}
+        </View>
+        <CheckBox
+          containerStyle={{
+            backgroundColor: 'rgba(0,0,0,0)',
+            borderWidth: 0
+          }}
+          title="Weekly"
+          checked={weekly}
+          onPress={() => setWeekly(!weekly)}
+        />
+
+        <View
+          style={{
+            padding: 8,
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}
+        >
+          {daysUsed.map((day, i) => {
+            return (
+              <Avatar
+                key={i}
+                containerStyle={
+                  day === true
+                    ? { backgroundColor: '#6a99e6', margin: 1 }
+                    : { backgroundColor: 'gray', margin: 1 }
+                }
+                size="small"
+                rounded
+                title={days[i].slice(0, 1)}
+                onPress={() => changeDay(i)}
+              />
+            )
+          })}
+        </View>
+        {daysUsed.includes(true) === false
+          ? (
+          <Text style={{ fontSize: 15, color: 'red', alignSelf: 'center' }}>
+            Nothing is selected!
+          </Text>
+            )
+          : null}
+        {repeating || weekly ? (
+          <View style={{ flexDirection: 'row' }}>
+            <View style={{ flexGrow: 1 }}>
+              <CheckBox
+                containerStyle={{
+                  backgroundColor: 'rgba(0,0,0,0)',
+                  borderWidth: 0
+                }}
+                title="Override"
+                checked={overridable}
+                onPress={() => setOverridable(!overridable)}
+              />
+            </View>
+            <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
+              <Tooltip
+                popover={
+                  <Text>
+                    Should the new repeated version of the task override the old
+                    one? If not, the versions will be combined into one.
+                  </Text>
+                }
+                height={120}
+              >
+                {/* <Icon name='InfoCircleOutline' type='antdesign'/> */}
+                <Icon name="question-circle" type="font-awesome-5" />
+              </Tooltip>
+            </View>
+          </View>
+        ) : null}
+        <Button
+          title="Save"
+          buttonStyle={{ backgroundColor: '#6a99e6', alignSelf: 'flex-end' }}
+          onPress={() => handleSave()}
+        />
+      </View>
+    </ScrollView>
   )
 }
 

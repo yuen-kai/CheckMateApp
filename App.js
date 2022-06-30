@@ -17,6 +17,7 @@ export default function App () {
           options={{ headerShown: false }}
           name="Home"
           component={HomeScreen}
+          initialParams={{ editName: '' }}
         />
         <Stack.Screen
           name="AddTask"
