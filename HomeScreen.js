@@ -5,6 +5,7 @@
 /* eslint-disable no-unused-expressions */
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
+import { StatusBar } from 'expo-status-bar'
 import React, { useEffect, useState, useRef } from 'react'
 import {
   StyleSheet,
@@ -13,10 +14,12 @@ import {
   ScrollView,
   Alert,
   Image,
-  Platform
+  Platform,
+  useColorScheme,
+  Appearance,
+  SafeAreaView
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   Icon,
   Divider,
@@ -28,8 +31,11 @@ import {
   Text,
   Dialog,
   CheckBox,
-  LinearProgress
-} from 'react-native-elements'
+  LinearProgress,
+  ThemeProvider,
+  createTheme,
+  Header
+} from '@rneui/themed'
 import logo from './assets/Icon.png'
 import controls from './assets/Controls.png'
 import eventScreen from './assets/EventScreen.png'
@@ -45,7 +51,6 @@ import * as Calendar from 'expo-calendar'
 import ConfettiCannon from 'react-native-confetti-cannon'
 // import Confetti from 'react-confetti'
 import Confetti from 'react-native-confetti'
-import { ConsoleSqlOutlined } from '@ant-design/icons'
 
 let tasks = []
 let setTasks = []
@@ -63,12 +68,25 @@ Notifications.setNotificationHandler({
 export default function HomeScreen ({ route, navigation }) {
   // eslint-disable-next-line prefer-const
   const { editName } = route.params
+  const theme = createTheme({
+    lightColors: {
+      primary: '#6a99e6'
+      // grey1: '#f5f5f5'
+    },
+    darkColors: {
+      primary: '#c3e0f5',
+      white: '#444444',
+      // primary: '#6a99e6',
+      grey5: '#222222'
+      // grey3: ''
+    }
+  })
 
   const instructions = [
     {
       title: 'Welcome to CheckMate!',
       content:
-        "Hi, I'm your personal productivity assistant. Let me give you a brief guide!",
+        'Hi, I am your personal productivity assistant. Let me give you a brief guide!',
       image: logo,
       width: 200,
       height: 200
@@ -76,7 +94,7 @@ export default function HomeScreen ({ route, navigation }) {
     {
       title: '1. Adding Tasks',
       content:
-        'Before I can assist you, I need to know what tasks you need to work on. Add your tasks and fill out their parameters.',
+        'Before I can assist you, I need to know what tasks you need to work on. Add your tasks and fill in the parameters.',
       image: taskScreen,
       width: 200,
       height: 422.22
@@ -84,7 +102,7 @@ export default function HomeScreen ({ route, navigation }) {
     {
       title: '2. Adding Events',
       content:
-        'I also need to know your events. Add your events and fill out their parameters.',
+        'I also need to know your events. Add your events and fill in the parameters.',
       image: eventScreen,
       width: 200,
       height: 422.22
@@ -92,7 +110,7 @@ export default function HomeScreen ({ route, navigation }) {
     {
       title: '3. Syncing With Calendar',
       content:
-        'Would you like events from your calendar to be added to your schedule? You can change these preferences by holding the sync button at the top of the screen (pressing it will allow you to review and add your calendar events).',
+        'Would you like events from your calendar to be added to your schedule? You can change these preferences by clicking the settings button at the top of the screen. Pressing the sync button will allow you to review and add your calendar events.',
       image: syncScreen,
       width: 200,
       height: 198.05
@@ -135,6 +153,8 @@ export default function HomeScreen ({ route, navigation }) {
   const [checked, setChecked] = useState(2)
   const [progress, setProgress] = useState(0)
   const [taskLength, setTaskLength] = useState(0)
+  const [colors, setColors] = useState(theme.lightColors)
+  const [colorScheme, setColorScheme] = useState(useColorScheme())
 
   // get data
   useEffect(() => {
@@ -223,8 +243,8 @@ export default function HomeScreen ({ route, navigation }) {
 
   const getData = async () => {
     try {
-      setReady(false)
       const promises = []
+      promises.push(new Promise(getTheme))
       promises.push(new Promise(savedTasks))
       promises.push(new Promise(savedSetTasks))
       promises.push(new Promise(changeDay))
@@ -257,6 +277,33 @@ export default function HomeScreen ({ route, navigation }) {
         'Failed to get data!',
         'Failed to get data! Please try again.'
       )
+      console.log(e)
+    }
+  }
+
+  const getTheme = async (resolve, reject) => {
+    try {
+      const themePref = await AsyncStorage.getItem('themePref')
+      if (themePref !== null && JSON.parse(themePref) !== 'system') {
+        setColorScheme(JSON.parse(themePref))
+        if (JSON.parse(themePref) === 'light') {
+          setColors(theme.lightColors)
+        } else {
+          setColors(theme.darkColors)
+        }
+      } else if (colorScheme == null) {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      } else if (colorScheme === 'dark') {
+        setColorScheme('dark')
+        setColors(theme.darkColors)
+      } else {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      }
+      resolve(true)
+    } catch (e) {
+      reject(e)
       console.log(e)
     }
   }
@@ -510,23 +557,8 @@ export default function HomeScreen ({ route, navigation }) {
             (element) => element.name === oldTasks[i].name
           )
           if (newIndex !== -1) {
-            if (savedTask[0][new Date().getDay()][newIndex].overridable) {
-              oldTasks.splice(i, 1)
-              i--
-            } else {
-              savedTask[0][new Date().getDay()][newIndex].length = parseInt(
-                savedTask[0][new Date().getDay()][newIndex].length
-              )
-              oldTasks[i].length = parseInt(oldTasks[i].length)
-              savedTask[0][new Date().getDay()][newIndex].length =
-                parseInt(savedTask[0][new Date().getDay()][newIndex].length) +
-                oldTasks[i].length
-              savedTask[0][new Date().getDay()][newIndex].sortValue =
-                updateSortValue(savedTask[0][new Date().getDay()][newIndex])
-              oldTasks.splice(i, 1)
-              i--
-              savedTask[0][new Date().getDay()][newIndex].repeating = false
-            }
+            oldTasks.splice(i, 1)
+            i--
           }
         }
         tasks = oldTasks.concat(savedTask[0][new Date().getDay()])
@@ -671,12 +703,7 @@ export default function HomeScreen ({ route, navigation }) {
 
   async function getSelectable () {
     const JsonValue = await AsyncStorage.getItem('selectable')
-    const JsonValueT = await AsyncStorage.getItem('sTask')
     const selectable1 = JsonValue != null ? JSON.parse(JsonValue) : true
-    let test
-    if (!selectable1) {
-      test = JsonValueT != null ? JSON.parse(JsonValueT) : null
-    }
     setSelectable(selectable1)
   }
 
@@ -715,6 +742,12 @@ export default function HomeScreen ({ route, navigation }) {
     sortSetTasks()
     if (tasks.length > 0 || setTasks.length > 0) {
       let tempTime = time(new Date())
+      if (
+        setTasks.length > 0 &&
+        time(setTasks[0].start).getTime() - time(tempTime).getTime() > 1000 * 60
+      ) {
+        setTaskIndex(1)
+      }
       if (
         combined.length > 0 &&
         combined[0].sortValue == null &&
@@ -809,6 +842,7 @@ export default function HomeScreen ({ route, navigation }) {
             time(setTasks[setIndex].start).getTime()
           ) {
             tempC.push({
+              start: time(tempTime),
               break: true,
               end: time(setTasks[setIndex].start),
               length:
@@ -853,6 +887,7 @@ export default function HomeScreen ({ route, navigation }) {
           time(tempTime).getTime() !== time(setTasks[setIndex].start).getTime()
         ) {
           tempC.push({
+            start: time(tempTime),
             break: true,
             end: time(setTasks[setIndex].start),
             length:
@@ -907,23 +942,29 @@ export default function HomeScreen ({ route, navigation }) {
     // if (item.break == null) {
     return (
       <ScaleDecorator>
-        {index === 0
-          ? (
-          <Text style={{ alignSelf: 'flex-start', marginLeft: 3 }}>
+        {index === 0 ? (
+          <Text
+            style={{
+              alignSelf: 'flex-start',
+              marginLeft: 3,
+              color: colors.grey1
+            }}
+          >
             {displayTime(combined[0].start)}
           </Text>
-            )
-          : null}
+        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-          <Text style={{ alignSelf: 'flex-end' }}>{displayTime(item.end)}</Text>
+          <Text style={{ alignSelf: 'flex-end', color: colors.grey1 }}>
+            {displayTime(item.end)}
+          </Text>
           <TouchableOpacity
             style={{ flexGrow: 1, marginBottom: 15, marginLeft: 15 }}
-            onLongPress={
-              item.sortValue != null &&
-              item.name.substring(item.name.length - 8) !== ' (cont.)'
-                ? drag
-                : null
-            }
+            // onLongPress={
+            //   item.sortValue != null &&
+            //   item.name.substring(item.name.length - 8) !== ' (cont.)'
+            //     ? drag
+            //     : null
+            // }
             disabled={isActive || item.break != null}
             onPress={() =>
               item.name.substring(item.name.length - 8) !== ' (cont.)'
@@ -938,21 +979,21 @@ export default function HomeScreen ({ route, navigation }) {
             }
           >
             <ListItem
-              bottomDivider
               containerStyle={
                 taskIndex === index
                   ? {
-                      backgroundColor: '#6a99e6',
+                      backgroundColor: colors.primary,
                       borderRadius: 10,
                       height: item.length * 2 < 60 ? 60 : item.length * 2
                     }
                   : item.break == null
                     ? {
+                        backgroundColor: colors.white,
                         borderRadius: 10,
                         height: item.length * 2 < 60 ? 60 : item.length * 2
                       }
                     : {
-                        backgroundColor: '#cacccb',
+                        backgroundColor: colors.grey4,
                         borderRadius: 10,
                         height: item.length * 2 < 60 ? 60 : item.length * 2
                       }
@@ -962,16 +1003,14 @@ export default function HomeScreen ({ route, navigation }) {
               new Date(new Date().setHours(24, 0, 0, 0)).getTime() /
                 (1000 * 60 * 60) +
                 (6 - 4) * 2 * (11 - 7) +
-                60 / 10
-                ? (
+                60 / 10 ? (
                 <Icon
                   name="exclamation"
                   type="font-awesome"
-                  color="red"
+                  color={colors.error}
                   size={20}
                 />
-                  )
-                : null}
+                  ) : null}
               <ListItem.Content
                 style={item.break != null ? { alignItems: 'center' } : null}
               >
@@ -979,9 +1018,13 @@ export default function HomeScreen ({ route, navigation }) {
                   style={
                     taskIndex !== index
                       ? item.break == null
-                        ? { fontWeight: 'bold', color: 'gray' }
-                        : { fontWeight: 'bold', color: 'white', fontSize: 20 }
-                      : { fontWeight: 'bold', color: 'white' }
+                        ? { fontWeight: 'bold', color: colors.grey1 }
+                        : {
+                            fontWeight: 'bold',
+                            color: colors.grey1,
+                            fontSize: 20
+                          }
+                      : { fontWeight: 'bold', color: colors.white }
                   }
                 >
                   {item.name}
@@ -995,10 +1038,13 @@ export default function HomeScreen ({ route, navigation }) {
                       ' - ' +
                       displayTime(item.end)}
                   </ListItem.Subtitle> */}
-                {item.sortValue != null
-                  ? (
+                {item.sortValue != null ? (
                   <ListItem.Subtitle
-                    style={taskIndex === index ? { color: 'white' } : null}
+                    style={
+                      taskIndex === index
+                        ? { color: colors.white }
+                        : { color: colors.grey1 }
+                    }
                   >
                     {'Due: ' +
                       days[new Date(item.date).getDay()] +
@@ -1007,17 +1053,19 @@ export default function HomeScreen ({ route, navigation }) {
                       ' ' +
                       displayTime(item.date)}
                   </ListItem.Subtitle>
-                    )
-                  : null}
-                {item.length > 45
-                  ? (
+                ) : null}
+                {item.length > 45 ||
+                (item.sortValue == null && item.length >= 30) ? (
                   <ListItem.Subtitle
-                    style={taskIndex === index ? { color: 'white' } : null}
+                    style={
+                      taskIndex === index
+                        ? { color: colors.white }
+                        : { color: colors.grey1 }
+                    }
                   >
                     {displayTimeLeft(item.length)}
                   </ListItem.Subtitle>
-                    )
-                  : null}
+                    ) : null}
               </ListItem.Content>
             </ListItem>
           </TouchableOpacity>
@@ -1138,8 +1186,6 @@ export default function HomeScreen ({ route, navigation }) {
     try {
       const jsonValue = JSON.stringify(false)
       await AsyncStorage.setItem('selectable', jsonValue)
-      const sTjsonValue = JSON.stringify(tasks[taskIndex])
-      await AsyncStorage.setItem('sTask', sTjsonValue)
     } catch (e) {
       console.log(e)
     }
@@ -1149,8 +1195,6 @@ export default function HomeScreen ({ route, navigation }) {
     try {
       const jsonValue = JSON.stringify(true)
       await AsyncStorage.setItem('selectable', jsonValue)
-      const sTjsonValue = JSON.stringify(null)
-      await AsyncStorage.setItem('sTask', sTjsonValue)
     } catch (e) {
       console.log(e)
     }
@@ -1279,424 +1323,486 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   if (!ready) {
-    return null
+    return (
+      <View style={[styles.container, { backgroundColor: colors.grey5 }]} />
+    )
   }
   return (
     // null
-    <SafeAreaView style={styles.container}>
-      <Dialog
-        isVisible={syncOptions}
-        onBackdropPress={() => setSyncOptions(false)}
-        overlayStyle={{ backgroundColor: 'white' }}
+    <ThemeProvider theme={theme}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.grey5 }]}
       >
-        <Dialog.Title title="When do you want to sync with calendar events?" />
-        {['Never', 'After Review', 'Always'].map((l, i) => (
-          <CheckBox
-            key={i}
-            title={l}
-            containerStyle={{ backgroundColor: 'white', borderWidth: 0 }}
-            checkedIcon="dot-circle-o"
-            uncheckedIcon="circle-o"
-            checked={checked === i + 1}
-            onPress={() => setChecked(i + 1)}
-          />
-        ))}
+        <StatusBar style={colorScheme === 'light' ? 'dark' : 'light'} />
+        <Header
+          backgroundColor={colors.grey5}
+          placement="left"
+          centerComponent={{
+            text: 'Schedule',
+            style: {
+              color: colors.grey1,
+              fontSize: 19,
+              fontWeight: 'bold'
+            }
+          }}
+          rightComponent={
+            <View style={styles.top}>
+              <Icon
+                name="question-circle"
+                type="font-awesome-5"
+                size={23}
+                onPress={() => setInstructionIndex(0)}
+                // solid={true}
+                color={colors.grey1}
+                // style={{ marginLeft: 15 }}
+              />
+              <View>
+                {!error ? (
+                  <Icon
+                    name="sync"
+                    type="material"
+                    size={23}
+                    color={colors.grey1}
+                    onPress={() => reviewEvents()}
+                    onLongPress={() => getSyncEvents(true)}
+                    style={{ marginLeft: 15 }}
+                  />
+                ) : (
+                  <Icon
+                    name="sync-problem"
+                    type="material"
+                    size={23}
+                    color={colors.grey1}
+                    onPress={() => {
+                      reviewEvents()
+                    }}
+                    onLongPress={() => getSyncEvents(true)}
+                    style={{ marginLeft: 15 }}
+                  />
+                )}
+              </View>
+              <Icon
+                name="settings"
+                type="material"
+                size={23}
+                onPress={() => navigation.navigate('Settings')}
+                solid={true}
+                color={colors.grey1}
+                style={{ marginLeft: 15 }}
+              />
+            </View>
+          }
+          // centerComponent=
+        />
 
-        <Dialog.Actions>
-          <Dialog.Button
-            title="CONFIRM"
-            onPress={() => {
-              if (checked === 1) {
-                setSyncPreferences('never')
-              } else if (checked === 2) {
-                setSyncPreferences('review')
-              } else {
-                setSyncPreferences('always')
-              }
-              setSyncOptions(false)
-            }}
-          />
-        </Dialog.Actions>
-      </Dialog>
-
-      {instructions.map((l, i) => (
         <Dialog
-          isVisible={instructionIndex === i}
-          overlayStyle={{ backgroundColor: 'white' }}
-          key={i}
+          isVisible={syncOptions}
+          onBackdropPress={() => setSyncOptions(false)}
+          overlayStyle={{ backgroundColor: colors.white }}
         >
-          <Dialog.Title title={l.title} style={{ textAlign: 'center' }} />
-          <Image
-            style={{
-              width: l.width,
-              height: l.height,
-              alignSelf: 'center',
-              marginBottom: 10
-            }}
-            source={l.image}
+          <Dialog.Title
+            titleStyle={{ color: colors.grey1 }}
+            title="When do you want to sync with calendar events?"
           />
-          <Text style={{ alignSelf: 'center' }}>{l.content}</Text>
-          {i === 3
-            ? ['Never', 'After Review', 'Always'].map((t, k) => (
-                <CheckBox
-                  key={k}
-                  title={t}
-                  containerStyle={{
-                    backgroundColor: 'white',
-                    borderWidth: 0
-                  }}
-                  checkedIcon="dot-circle-o"
-                  uncheckedIcon="circle-o"
-                  checked={checked === k + 1}
-                  onPress={() => setChecked(k + 1)}
-                />
-              ))
-            : null}
+          {['Never', 'After Review', 'Always'].map((l, i) => (
+            <CheckBox
+              key={i}
+              title={l}
+              textStyle={{ color: colors.grey1 }}
+              containerStyle={{ backgroundColor: colors.white, borderWidth: 0 }}
+              checkedIcon="dot-circle-o"
+              uncheckedIcon="circle-o"
+              checked={checked === i + 1}
+              onPress={() => setChecked(i + 1)}
+            />
+          ))}
 
           <Dialog.Actions>
-            {i === 3
-              ? (
-              <Dialog.Button
-                title="NEXT"
-                onPress={() => {
-                  if (checked === 1) {
-                    async () => {
-                      const jsonValue = JSON.stringify('never')
-                      await AsyncStorage.setItem('syncEvents5', jsonValue)
-                    }
-                  } else if (checked === 2) {
-                    async () => {
-                      const jsonValue = JSON.stringify('review')
-                      await AsyncStorage.setItem('syncEvents5', jsonValue)
-                    }
-                  } else {
-                    async () => {
-                      const jsonValue = JSON.stringify('always')
-                      await AsyncStorage.setItem('syncEvents5', jsonValue)
-                    }
-                  }
-                  setInstructionIndex(i + 1)
-                }}
-              />
-                )
-              : i <= instructions.length - 1
-                ? (
-              <Dialog.Button
-                title={i === instructions.length - 1 ? 'CLOSE' : 'NEXT'}
-                onPress={() => setInstructionIndex(i + 1)}
-              />
-                  )
-                : null}
-            {i > 0
-              ? (
-              <Dialog.Button
-                title="PREVIOUS"
-                onPress={() => setInstructionIndex(i - 1)}
-              />
-                )
-              : null}
+            <Dialog.Button
+              title="CONFIRM"
+              titleStyle={{ color: colors.grey1 }}
+              onPress={() => {
+                if (checked === 1) {
+                  setSyncPreferences('never')
+                } else if (checked === 2) {
+                  setSyncPreferences('review')
+                } else {
+                  setSyncPreferences('always')
+                }
+                setSyncOptions(false)
+              }}
+            />
           </Dialog.Actions>
         </Dialog>
-      ))}
 
-      <View style={{ flex: 9 }}>
-        <View style={styles.top}>
-          <Icon
-            name="question-circle"
-            type="font-awesome-5"
-            size={25}
-            onPress={() => setInstructionIndex(0)}
-            solid={true}
-          />
-          <View>
-            {!error ? (
+        {instructions.map((l, i) => (
+          <Dialog
+            isVisible={instructionIndex === i}
+            overlayStyle={{ backgroundColor: colors.white }}
+            key={i}
+          >
+            <Dialog.Title
+              title={l.title}
+              titleStyle={{ color: colors.grey1 }}
+              style={{ textAlign: 'center' }}
+            />
+            <Image
+              style={{
+                width: l.width,
+                height: l.height,
+                alignSelf: 'center',
+                marginBottom: 10
+              }}
+              source={l.image}
+            />
+            <Text style={{ alignSelf: 'center', color: colors.grey1 }}>
+              {l.content}
+            </Text>
+            {i === 3
+              ? ['Never', 'After Review', 'Always'].map((t, k) => (
+                  <CheckBox
+                    key={k}
+                    title={t}
+                    textStyle={{ color: colors.grey1 }}
+                    containerStyle={{
+                      backgroundColor: colors.white,
+                      borderWidth: 0
+                    }}
+                    checkedIcon="dot-circle-o"
+                    uncheckedIcon="circle-o"
+                    checked={checked === k + 1}
+                    onPress={() => setChecked(k + 1)}
+                  />
+                ))
+              : null}
+
+            <Dialog.Actions>
+              {i === 3 ? (
+                <Dialog.Button
+                  title="NEXT"
+                  titleStyle={{ color: colors.grey1 }}
+                  onPress={() => {
+                    if (checked === 1) {
+                      async () => {
+                        const jsonValue = JSON.stringify('never')
+                        await AsyncStorage.setItem('syncEvents5', jsonValue)
+                      }
+                    } else if (checked === 2) {
+                      async () => {
+                        const jsonValue = JSON.stringify('review')
+                        await AsyncStorage.setItem('syncEvents5', jsonValue)
+                      }
+                    } else {
+                      async () => {
+                        const jsonValue = JSON.stringify('always')
+                        await AsyncStorage.setItem('syncEvents5', jsonValue)
+                      }
+                    }
+                    setInstructionIndex(i + 1)
+                  }}
+                />
+              ) : i <= instructions.length - 1 ? (
+                <Dialog.Button
+                  title={i === instructions.length - 1 ? 'CLOSE' : 'NEXT'}
+                  titleStyle={{ color: colors.grey1 }}
+                  onPress={() => setInstructionIndex(i + 1)}
+                />
+              ) : null}
+              {i > 0 ? (
+                <Dialog.Button
+                  title="PREVIOUS"
+                  titleStyle={{ color: colors.grey1 }}
+                  onPress={() => setInstructionIndex(i - 1)}
+                />
+              ) : null}
+            </Dialog.Actions>
+          </Dialog>
+        ))}
+
+        <View style={{ flex: 9 }}>
+          <View style={{ flex: 10, marginHorizontal: 20, marginTop: 10 }}>
+            {combined.length === 0 ? (
+              <View
+                style={{
+                  margin: 20,
+                  alignSelf: 'center',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+                }}
+              >
+                <Image style={{ width: 200, height: 200 }} source={logo} />
+                <Text
+                  h3
+                  h3Style={{
+                    fontWeight: 'normal',
+                    textAlign: 'center',
+                    color: colors.grey1
+                  }}
+                >
+                  No tasks or events currently.
+                </Text>
+              </View>
+            ) : null}
+            <DraggableFlatList
+              containerStyle={{ flex: 10, marginHorizontal: 3 }}
+              // debug={true}
+              data={combined}
+              onDragEnd={(data) => setData(data)}
+              keyExtractor={(item, index) => {
+                item.name != null ? item.name + '' + index : index
+              }}
+              renderItem={(item) => renderItem(item)}
+            />
+          </View>
+          {resetOrder() ? (
+            <View style={{ marginHorizontal: 20 }}>
+              <View style={{ padding: 8 }}>
+                <Button
+                  // raised={true}
+                  title="Optimize Order"
+                  titleStyle={{ color: colors.white }}
+                  // buttonStyle={{ backgroundColor: theme.darkColors.primary }}
+                  buttonStyle={{ backgroundColor: '#1c247a' }}
+                  onPress={() => sortTask()}
+                />
+              </View>
+            </View>
+          ) : null}
+          <SpeedDial
+            isOpen={open}
+            icon={{ name: 'add', color: colors.white }}
+            openIcon={{ name: 'close', color: colors.white }}
+            onOpen={() => setOpen(!open)}
+            onClose={() => setOpen(!open)}
+            color={colors.primary}
+            // make overlay transparent
+            overlayColor="rgba(0,0,0,0)"
+            transitionDuration={40}
+          >
+            <Tooltip
+              // toggleAction="onLongPress"
+              height={60}
+              popover={
+                <Text style={{ color: colors.grey1 }}>
+                  Tasks can be done at any time
+                </Text>
+              }
+            >
+              <SpeedDial.Action
+                icon={{
+                  name: 'check-square',
+                  color: colors.white,
+                  type: 'feather'
+                }}
+                title="Task"
+                // titleStyle={{ color: colors.grey1 }}
+                containerStyle={{ backgroundColor: colors.white }}
+                onPress={() => {
+                  setOpen(false)
+                  navigation.navigate('AddTask', { editName: '' })
+                }}
+                color={colors.primary}
+              />
+            </Tooltip>
+            <Tooltip
+              // toggleAction="onLongPress"
+              height={60}
+              popover={
+                <Text style={{ color: colors.grey1 }}>
+                  Events are done at a preset time
+                </Text>
+              }
+            >
+              <SpeedDial.Action
+                icon={{ name: 'clock', color: colors.white, type: 'feather' }}
+                title="Event"
+                // titleStyle={{ color: colors.grey1 }}
+                onPress={() => {
+                  setOpen(false)
+                  navigation.navigate('AddWorkTime', { editName: '' })
+                }}
+                color={colors.primary}
+              />
+            </Tooltip>
+          </SpeedDial>
+          {selectable === false ? (
+            <Overlay
+              onBackdropPress={() => setSelectable(true)}
+              overlayStyle={{ width: '80%', backgroundColor: colors.white }}
+            >
+              <Text
+                h3
+                style={{
+                  fontSize: 30,
+                  margin: 5,
+                  marginBottom: 0,
+                  color: colors.grey1
+                }}
+              >
+                {combined[taskIndex].name}
+              </Text>
+              {combined[taskIndex].description !== '' ? (
+                <Text
+                  h4
+                  h4Style={{
+                    fontSize: 19,
+                    margin: 5,
+                    fontWeight: 'normal',
+                    color: colors.grey1
+                  }}
+                >
+                  {combined[taskIndex].description}
+                </Text>
+              ) : null}
+              <View>
+                <LinearProgress
+                  style={{ marginVertical: 5 }}
+                  value={progress}
+                  variant="determinate"
+                  color="blue"
+                />
+              </View>
+              <Text
+                h4
+                h4Style={{
+                  fontSize: 15,
+                  margin: 5,
+                  fontWeight: 'normal',
+                  color: colors.grey1
+                }}
+              >
+                {combined[taskIndex].length + ' minutes left'}
+              </Text>
+              <View
+                style={{
+                  justifyContent: 'space-between',
+                  flexDirection: 'row',
+                  alignSelf: 'stretch'
+                }}
+              >
+                <Icon
+                  name="pause-circle"
+                  size={30}
+                  type="font-awesome"
+                  color={colors.grey1}
+                  onPress={() => pause()}
+                  style={{ margin: 10 }}
+                />
+                <Icon
+                  name="stop-circle"
+                  type="font-awesome"
+                  size={30}
+                  onPress={combined.length > 0 ? () => stop() : null}
+                  style={{ margin: 10 }}
+                  color={colors.grey1}
+                />
+                <Icon
+                  name="pencil-circle"
+                  type="material-community"
+                  size={30}
+                  onPress={() => {
+                    pause()
+                    editTask()
+                  }}
+                  style={{ margin: 10 }}
+                  color={colors.grey1}
+                />
+              </View>
+            </Overlay>
+          ) : null}
+        </View>
+        <Divider style={{ backgroundColor: colors.grey1 }} />
+
+        {/* Task controls display */}
+        <View style={styles.selectView}>
+          {/* <View style={styles.inSelection}>
+        <Text style={{ fontSize: 20}}>{taskName()}</Text>
+        <Icon color={selectable==false||combined.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={selectable==false||combined.length==0?null:() => editTask()}/>
+      </View> */}
+          <View style={styles.inSelection}>
+            {selectable === true ? (
               <Icon
-                name="sync"
-                type="material"
+                name="play-circle"
+                type="font-awesome"
                 size={30}
-                // color='red'
-                onPress={() => reviewEvents()}
-                onLongPress={() => getSyncEvents(true)}
+                // color={'white'}
+                onPress={() => start()}
+                disabled={combined.length < 0}
+                disabledStyle={{ color: colors.grey1 }}
+                color={colors.grey1}
               />
             ) : (
-              <Icon
-                name="sync-problem"
-                type="material"
-                size={30}
-                // color='red'
-                onPress={() => {
-                  reviewEvents()
-                }}
-                onLongPress={() => getSyncEvents(true)}
-              />
-            )}
-          </View>
-          <Icon
-            name="settings"
-            type="material"
-            size={25}
-            onPress={() => navigation.navigate('Settings')}
-            solid={true}
-          />
-        </View>
-        <View style={{ flex: 10, marginHorizontal: 20 }}>
-          {combined.length === 0
-            ? (
-            <View
-              style={{
-                margin: 20,
-                alignSelf: 'center',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}
-            >
-              <Image style={{ width: 200, height: 200 }} source={logo} />
-              <Text h3 h3Style={{ fontWeight: 'normal', textAlign: 'center' }}>
-                No tasks or events currently.
-              </Text>
-            </View>
-              )
-            : null}
-          <DraggableFlatList
-            containerStyle={{ flex: 10, marginHorizontal: 3 }}
-            // debug={true}
-            data={combined}
-            onDragEnd={(data) => setData(data)}
-            keyExtractor={(item, index) => {
-              item.name != null ? item.name + '' + index : index
-            }}
-            renderItem={(item) => renderItem(item)}
-          />
-        </View>
-        {resetOrder() ? (
-          <View style={{ marginHorizontal: 20 }}>
-            <View style={{ padding: 8 }}>
-              <Button
-                // raised={true}
-                title="Optimize Order"
-                buttonStyle={{ backgroundColor: '#1c247a' }}
-                onPress={() => sortTask()}
-              />
-            </View>
-          </View>
-        ) : null}
-        <SpeedDial
-          isOpen={open}
-          icon={{ name: 'add', color: '#fff' }}
-          openIcon={{ name: 'close', color: '#fff' }}
-          onOpen={() => setOpen(!open)}
-          onClose={() => setOpen(!open)}
-          color="#6a99e6"
-          // make overlay transparent
-          overlayColor="rgba(0,0,0,0)"
-          transitionDuration={40}
-        >
-          <Tooltip
-            // toggleAction="onLongPress"
-            height={60}
-            popover={<Text>Tasks can be done at any time</Text>}
-          >
-            <SpeedDial.Action
-              icon={{ name: 'check-square', color: '#fff', type: 'feather' }}
-              title="Task"
-              onPress={() => {
-                setOpen(false)
-                navigation.navigate('AddTask', { editName: '' })
-              }}
-              color="#6a99e6"
-            />
-          </Tooltip>
-          <Tooltip
-            // toggleAction="onLongPress"
-            height={60}
-            popover={<Text>Events are done at a preset time</Text>}
-          >
-            <SpeedDial.Action
-              icon={{ name: 'clock', color: '#fff', type: 'feather' }}
-              title="Event"
-              onPress={() => {
-                setOpen(false)
-                navigation.navigate('AddWorkTime', { editName: '' })
-              }}
-              color="#6a99e6"
-            />
-          </Tooltip>
-        </SpeedDial>
-        {selectable === false ? (
-          <Overlay onBackdropPress={() => setSelectable(true)}>
-            <Text h2 style={{ margin: 10 }}>
-              {combined[taskIndex].name}
-            </Text>
-            {combined[taskIndex].description !== ''
-              ? (
-              <Text h3 h3Style={{ margin: 10, fontWeight: 'normal' }}>
-                {combined[taskIndex].description}
-              </Text>
-                )
-              : null}
-            <View>
-              <LinearProgress
-                style={{ marginVertical: 10 }}
-                value={progress}
-                variant="determinate"
-                color="blue"
-              />
-            </View>
-            <Text h4 h4Style={{ margin: 10, fontWeight: 'normal' }}>
-              {combined[taskIndex].length + ' minutes left'}
-            </Text>
-            <View
-              style={{
-                justifyContent: 'space-between',
-                flexDirection: 'row',
-                alignSelf: 'stretch'
-              }}
-            >
               <Icon
                 name="pause-circle"
                 size={30}
                 type="font-awesome"
                 // color={"white"}
                 onPress={() => pause()}
-                style={{ margin: 10 }}
+                color={colors.grey1}
               />
-              <Icon
-                name="stop-circle"
-                type="font-awesome"
-                size={30}
-                onPress={combined.length > 0 ? () => stop() : null}
-                style={{ margin: 10 }}
-              />
-              <Icon
-                name="pencil-circle"
-                type="material-community"
-                size={30}
-                onPress={() => {
-                  pause()
-                  editTask()
-                }}
-                style={{ margin: 10 }}
-              />
-            </View>
-          </Overlay>
-        ) : null}
-      </View>
-      <Divider style={{ backgroundColor: 'gray' }} />
-
-      {/* Task controls display */}
-      <View style={styles.selectView}>
-        {/* <View style={styles.inSelection}>
-        <Text style={{ fontSize: 20}}>{taskName()}</Text>
-        <Icon color={selectable==false||combined.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={selectable==false||combined.length==0?null:() => editTask()}/>
-      </View> */}
-        <View style={styles.inSelection}>
-          {selectable === true ? (
+            )}
             <Icon
-              name="play-circle"
+              name="stop-circle"
               type="font-awesome"
               size={30}
-              // color={'white'}
-              onPress={() => start()}
-              disabled={combined.length < 0}
+              onPress={combined.length > 0 ? () => stop() : null}
+              color={colors.grey1}
             />
-          ) : (
             <Icon
-              name="pause-circle"
+              name="pencil-circle"
+              type="material-community"
               size={30}
-              type="font-awesome"
-              // color={"white"}
-              onPress={() => pause()}
+              onPress={
+                selectable === false || combined.length === 0
+                  ? null
+                  : () => editTask()
+              }
+              color={colors.grey1}
             />
-          )}
-          <Icon
-            name="stop-circle"
-            type="font-awesome"
-            size={30}
-            onPress={combined.length > 0 ? () => stop() : null}
-          />
-          <Icon
-            name="pencil-circle"
-            type="material-community"
-            size={30}
-            onPress={
-              selectable === false || combined.length === 0
-                ? null
-                : () => editTask()
-            }
-          />
+          </View>
+          {avaliableTime > 0 ? (
+            <Text
+              style={{
+                flex: 1,
+                textAlign: 'center',
+                flexDirection: 'row',
+                justifyContent: 'space-around',
+                padding: 3,
+                marginTop: 5,
+                color: colors.grey1
+              }}
+            >
+              {displayTimeLeft(avaliableTime)} left
+            </Text>
+          ) : null}
         </View>
-        {avaliableTime > 0
-          ? (
-          <Text
-            style={{
-              flex: 1,
-              textAlign: 'center',
-              flexDirection: 'row',
-              justifyContent: 'space-around',
-              padding: 3,
-              marginTop: 5
-            }}
-          >
-            {displayTimeLeft(avaliableTime)} left
-          </Text>
-            )
-          : null}
-      </View>
-      <Confetti
-        confettiCount={20}
-        size={2}
-        timeout={0}
-        duration={1200}
-        ref={(node) => {
-          confettiView = node
-        }}
-      />
-    </SafeAreaView>
+        <Confetti
+          confettiCount={20}
+          size={2}
+          timeout={0}
+          duration={1200}
+          ref={(node) => {
+            confettiView = node
+          }}
+        />
+      </SafeAreaView>
+    </ThemeProvider>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor: '#3A3B3C',
     alignItems: 'stretch',
     justifyContent: 'space-between',
     flexDirection: 'column'
   },
   top: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    flexDirection: 'row',
+    // alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexDirection: 'row'
     // flex: 0.5,
-    padding: 8
-  },
-  button: {
-    backgroundColor: '#3C00BB',
-    padding: 5,
-    borderRadius: 6,
-    alignItems: 'center'
-  },
-  grayOverlay: {
-    position: 'absolute',
-    zIndex: 1,
-    backgroundColor: 'gray',
-    opacity: 0.5,
-    top: 0,
-    height: '100%',
-    width: '100%'
-  },
-  topButton: {
-    backgroundColor: '#3C00BB',
-    padding: 8,
-    borderRadius: 6
-  },
-  tasks: {
-    margin: 5,
-    borderRadius: 10,
-    backgroundColor: '#152075',
-    padding: 5,
-    borderColor: '#a6a6a6',
-    borderWidth: 2
+    // padding: 8
   },
   selectView: {
     flex: 1,
@@ -1707,6 +1813,7 @@ const styles = StyleSheet.create({
   },
   inSelection: {
     // flex: 2,
+    marginTop: 5,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-around'

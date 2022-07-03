@@ -1,11 +1,23 @@
+/* eslint-disable no-use-before-define */
 /* eslint-disable no-unused-expressions */
 /* eslint-disable react/prop-types */
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
+import { StatusBar } from 'expo-status-bar'
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, ScrollView, Alert, View, Platform, TouchableOpacity } from 'react-native'
+import {
+  StyleSheet,
+  ScrollView,
+  Alert,
+  View,
+  Platform,
+  TouchableOpacity,
+  Appearance,
+  useColorScheme,
+  SafeAreaView
+} from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import {
   Button,
   ListItem,
@@ -13,8 +25,11 @@ import {
   CheckBox,
   Dialog,
   Icon,
-  Avatar
-} from '@rneui/base'
+  Avatar,
+  createTheme,
+  ThemeProvider,
+  Header
+} from '@rneui/themed'
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -46,22 +61,38 @@ export default function SettingsScreen ({ navigation }) {
   ]
   const originalNotiPref = []
 
-  const [themePref, setThemePref] = useState('dark')
+  const theme = createTheme({
+    lightColors: {
+      primary: '#6a99e6'
+    },
+    darkColors: {
+      primary: '#8fbbf7',
+      white: '#444444',
+      // primary: '#6a99e6',
+      grey5: '#222222'
+      // grey3: ''
+    }
+  })
+
+  const [colors, setColors] = useState(theme.lightColors)
+  const [colorScheme, setColorScheme] = useState(useColorScheme())
+  const [themePref, setThemePref] = useState('system')
+  const [checkedT, setCheckedT] = useState(1)
 
   const list = [
     {
       name: 'Sync w/ Calendar Preferences',
-      icon: <Icon name="sync" type="material" />,
+      icon: <Icon name="sync" type="material" color={colors.grey1} />,
       onPress: () => setSyncView(true)
     },
     {
       name: 'Notification Preferences',
-      icon: <Icon name="notifications" type="material" />,
+      icon: <Icon name="notifications" type="material" color={colors.grey1} />,
       onPress: () => setNotiView(true)
     },
     {
       name: 'Theme',
-      icon: <Icon name="color-lens" type="material" />,
+      icon: <Icon name="color-lens" type="material" color={colors.grey1} />,
       onPress: () => setThemeView(true)
     }
   ]
@@ -80,7 +111,7 @@ export default function SettingsScreen ({ navigation }) {
 
   const getData = async () => {
     try {
-      setReady(false)
+      // setReady(false)
 
       await getSyncPref()
       await getNotiPref()
@@ -120,9 +151,11 @@ export default function SettingsScreen ({ navigation }) {
       const value = await AsyncStorage.getItem('notiPref')
       if (value !== null) {
         setNotiPref(JSON.parse(value))
+        originalNotiPref.push(...JSON.parse(value))
       } else {
         notiPref.push({
           weekly: false,
+          show: false,
           days: [
             { notiID: '', use: false },
             { notiID: '', use: false },
@@ -131,7 +164,8 @@ export default function SettingsScreen ({ navigation }) {
             { notiID: '', use: false },
             { notiID: '', use: false },
             { notiID: '', use: false }
-          ]
+          ],
+          time: new Date(Math.floor(Date.now() / (60 * 1000)) * 60 * 1000)
         })
       }
     } catch (e) {
@@ -142,8 +176,29 @@ export default function SettingsScreen ({ navigation }) {
   const getThemePref = async () => {
     try {
       const value = await AsyncStorage.getItem('themePref')
-      if (value !== null) {
+      if (value !== null && JSON.parse(value) !== 'system') {
         setThemePref(JSON.parse(value))
+        if (JSON.parse(value) === 'light') {
+          setCheckedT(1)
+          setColorScheme('light')
+          setColors(theme.lightColors)
+        } else {
+          setCheckedT(2)
+          setColorScheme('dark')
+          setColors(theme.darkColors)
+        }
+      } else if (themePref == null) {
+        setCheckedT(3)
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      } else if (themePref === 'dark') {
+        setCheckedT(3)
+        setColorScheme('dark')
+        setColors(theme.darkColors)
+      } else {
+        setCheckedT(3)
+        setColorScheme('light')
+        setColors(theme.lightColors)
       }
     } catch (e) {
       console.log(e)
@@ -162,11 +217,61 @@ export default function SettingsScreen ({ navigation }) {
     await setNotiPref(change)
   }
 
+  const onChange = (event, selectedDate, i) => {
+    const change = [...notiPref]
+    change[i].time = selectedDate || change[i].time
+    setNotiPref(change)
+    setShow(false, i)
+  }
+
+  async function removeNoti (i) {
+    const notification = notiPref[i]
+    for (let j = 0; j < 7; j++) {
+      if (notification.days[j].notiID !== '') {
+        await Notifications.cancelScheduledNotificationAsync(
+          notification.days[j].notiID
+        )
+      }
+    }
+    const change = [...notiPref]
+    change.splice(i, 1)
+    setNotiPref(change)
+  }
+
+  function setShow (thing, i) {
+    const change = [...notiPref]
+    change[i].show = thing
+    setNotiPref(change)
+  }
+
+  function displayTime (date) {
+    let hours = new Date(date).getHours()
+    const minutes = new Date(date).getMinutes()
+    let amPm = 'am'
+    if (hours >= 12) {
+      amPm = 'pm'
+    }
+    if (hours === 0) {
+      hours = 12
+    }
+    if (hours > 12) {
+      hours -= 12
+    }
+    if (minutes < 10) {
+      return hours + ':' + '0' + minutes + amPm
+    }
+    return hours + ':' + minutes + ' ' + amPm
+  }
+
   function newInfo (i) {
     return (
       originalNotiPref.length > i &&
       originalNotiPref[i].weekly === notiPref[i].weekly &&
-      originalNotiPref[i].days.every((v, j) => v === notiPref[i].days[j])
+      originalNotiPref[i].days.every(
+        (v, j) =>
+          v === notiPref[i].days[j] &&
+          originalNotiPref[i].time === notiPref[i].time
+      )
     )
   }
 
@@ -218,23 +323,18 @@ export default function SettingsScreen ({ navigation }) {
   }
 
   async function handleSave () {
-    // save settings to AsyncStorage
-    await AsyncStorage.setItem('syncEvents5', JSON.stringify(syncPref))
-    await AsyncStorage.setItem('notiPref', JSON.stringify(notiPref))
-    // await AsyncStorage.setItem('themePref', JSON.stringify(themePref))
-
     // schedule push notifications
     for (let i = 0; i < notiPref.length; i++) {
       const notification = notiPref[i]
       for (let j = 0; j < 7; j++) {
-        if (notification.days[j].notiid != null) {
+        if (notification.days[j].notiID != null) {
           await Notifications.cancelScheduledNotificationAsync(
-            notification.days[j].notiId
+            notification.days[j].notiID
           )
         }
 
         if (notification.days[j].use) {
-          notiPref[i].days[j].notiId = await schedulePushNotification(
+          notiPref[i].days[j].notiID = await schedulePushNotification(
             notification.time,
             j,
             notification.weekly
@@ -243,169 +343,314 @@ export default function SettingsScreen ({ navigation }) {
       }
     }
 
+    // save settings to AsyncStorage
+    await AsyncStorage.setItem('syncEvents5', JSON.stringify(syncPref))
+    await AsyncStorage.setItem('notiPref', JSON.stringify(notiPref))
+    await AsyncStorage.setItem('themePref', JSON.stringify(themePref))
+
     // return to homescreen
     navigation.navigate('Home', { editName: '' })
   }
 
   if (!ready) {
-    return null
+    return (
+      <View style={[styles.container, { backgroundColor: colors.grey5 }]} />
+    )
   }
   return (
-    <SafeAreaView style={styles.container}>
-      <Dialog
-        isVisible={syncView}
-        onBackdropPress={() => setSyncView(false)}
-        overlayStyle={{ backgroundColor: 'white' }}
-      >
-        <Dialog.Title title="When do you want to sync with calendar events?" />
-        {['Never', 'After Review', 'Always'].map((l, i) => (
-          <CheckBox
-            key={i}
-            title={l}
-            containerStyle={{ backgroundColor: 'white', borderWidth: 0 }}
-            checkedIcon="dot-circle-o"
-            uncheckedIcon="circle-o"
-            checked={checked === i + 1}
-            onPress={() => setChecked(i + 1)}
+    <ThemeProvider theme={theme}>
+      <StatusBar style={colorScheme === 'light' ? 'dark' : 'light'} />
+      <Header
+        backgroundColor={colors.grey5}
+        placement="left"
+        centerComponent={{
+          text: 'Settings',
+          style: {
+            color: colors.grey1,
+            fontSize: 19,
+            fontWeight: 'bold'
+          }
+        }}
+        leftComponent={
+          <Icon
+            name="arrow-back"
+            type="material"
+            color={colors.grey1}
+            onPress={() => navigation.goBack()}
           />
-        ))}
-
-        <Dialog.Actions>
-          <Dialog.Button
-            title="CONFIRM"
-            onPress={() => {
-              if (checked === 1) {
-                setSyncPref('never')
-              } else if (checked === 2) {
-                setSyncPref('review')
-              } else {
-                setSyncPref('always')
-              }
-              setSyncView(false)
-            }}
-          />
-        </Dialog.Actions>
-      </Dialog>
-
-      <Dialog
-        isVisible={notiView}
-        onBackdropPress={() => setNotiView(false)}
-        overlayStyle={{ backgroundColor: 'white' }}
+        }
+        // centerComponent=
+      />
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.grey5 }]}
       >
-        <Dialog.Title title="When do you want reminder notifications?" />
-        {notiPref.map((l, i) => (
-          <View key={i} style={{ borderWidth: 1, borderRadius: 10 }}>
-            <View
-              style={[
-                styles.section,
-                { flexDirection: 'row', alignItems: 'center' }
-              ]}
-            >
-              {newInfo(i)
-                ? (
-                <Text h1 h1Style={styles.label}>
-                  {' '}
-                  Edit on:
-                </Text>
-                  )
-                : (
-                <Text h1 h1Style={styles.label}>
-                  {' '}
-                  Repeat on:
-                </Text>
-                  )}
-            </View>
+        <Dialog
+          isVisible={syncView}
+          onBackdropPress={() => setSyncView(false)}
+          overlayStyle={{ backgroundColor: colors.white }}
+        >
+          <Dialog.Title
+            title="When do you want to sync with calendar events?"
+            titleStyle={{ color: colors.grey1 }}
+          />
+          {['Never', 'After Review', 'Always'].map((l, i) => (
             <CheckBox
-              containerStyle={{
-                backgroundColor: 'rgba(0,0,0,0)',
-                borderWidth: 0
+              key={i}
+              title={l}
+              textStyle={{ color: colors.grey1 }}
+              containerStyle={{ backgroundColor: colors.white, borderWidth: 0 }}
+              checkedIcon="dot-circle-o"
+              uncheckedIcon="circle-o"
+              checked={checked === i + 1}
+              onPress={() => setChecked(i + 1)}
+            />
+          ))}
+
+          <Dialog.Actions>
+            <Dialog.Button
+              title="CONFIRM"
+              titleStyle={{ color: colors.grey1 }}
+              onPress={() => {
+                if (checked === 1) {
+                  setSyncPref('never')
+                } else if (checked === 2) {
+                  setSyncPref('review')
+                } else {
+                  setSyncPref('always')
+                }
+                setSyncView(false)
               }}
-              title="Weekly"
-              checked={l.weekly}
-              onPress={() => changeWeekly(i, !l.weekly)}
+            />
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog
+          isVisible={notiView}
+          onBackdropPress={() => setNotiView(false)}
+          overlayStyle={{ backgroundColor: colors.white }}
+        >
+          <ScrollView>
+            <Dialog.Title
+              title="When do you want reminder notifications?"
+              titleStyle={{ color: colors.grey1 }}
             />
 
-            <View
-              style={{
-                padding: 8,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}
-            >
-              {l.days.map((day, j) => {
-                return (
-                  <Avatar
-                    key={j}
-                    containerStyle={
-                      day.use === true
-                        ? { backgroundColor: '#6a99e6', margin: 1 }
-                        : { backgroundColor: 'gray', margin: 1 }
-                    }
-                    size="small"
-                    rounded
-                    title={days[j].slice(0, 1)}
-                    onPress={() => changeNoti(i, j)}
+            {notiPref.map((l, i) => (
+              <View key={i} style={{ flexDirection: 'row' }}>
+                <View style={{ borderWidth: 1, borderRadius: 10 }}>
+                  <Button
+                    title={displayTime(l.time)}
+                    buttonStyle={{ backgroundColor: colors.primary }}
+                    onPress={() => setShow(true, i)}
                   />
-                )
-              })}
-            </View>
-            {l.days.some((e) => e.use === true) === false
-              ? (
-              <Text style={{ fontSize: 15, color: 'red', alignSelf: 'center' }}>
-                Nothing is selected!
-              </Text>
-                )
-              : null}
-          </View>
+                  {l.show && (
+                    <DateTimePicker
+                      testID="dateTimePicker"
+                      value={new Date(l.time)}
+                      mode={'time'}
+                      // display="default"
+                      onChange={(event, selectedDate) =>
+                        onChange(event, selectedDate, i)
+                      }
+                      style={{ width: '100%' }}
+                    />
+                  )}
+                  <View
+                    style={[
+                      styles.section,
+                      { flexDirection: 'row', alignItems: 'center' }
+                    ]}
+                  >
+                    {newInfo(i)
+                      ? (
+                      <Text
+                        h1
+                        h1Style={[styles.label, { color: colors.grey1 }]}
+                      >
+                        {' '}
+                        Edit on:
+                      </Text>
+                        )
+                      : (
+                      <Text
+                        h1
+                        h1Style={[styles.label, { color: colors.grey1 }]}
+                      >
+                        {' '}
+                        Repeat on:
+                      </Text>
+                        )}
+                  </View>
+                  <CheckBox
+                    containerStyle={{
+                      backgroundColor: 'rgba(0,0,0,0)',
+                      borderWidth: 0
+                    }}
+                    title="Weekly"
+                    textStyle={{ color: colors.grey1 }}
+                    checked={l.weekly}
+                    onPress={() => changeWeekly(i, !l.weekly)}
+                  />
+
+                  <View
+                    style={{
+                      padding: 8,
+                      flexDirection: 'row',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {l.days.map((day, j) => {
+                      return (
+                        <Avatar
+                          key={j}
+                          containerStyle={
+                            day.use === true
+                              ? { backgroundColor: colors.primary, margin: 1 }
+                              : { backgroundColor: colors.grey3, margin: 1 }
+                          }
+                          size={25}
+                          rounded
+                          title={days[j].slice(0, 1)}
+                          onPress={() => changeNoti(i, j)}
+                        />
+                      )
+                    })}
+                  </View>
+                  {l.days.some((e) => e.use === true) === false
+                    ? (
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        color: colors.error,
+                        alignSelf: 'center'
+                      }}
+                    >
+                      Nothing is selected
+                    </Text>
+                      )
+                    : null}
+                </View>
+                <Icon
+                  name="clear"
+                  type="material"
+                  onPress={() => removeNoti(i)}
+                  color={colors.grey1}
+                />
+              </View>
+            ))}
+
+            <Dialog.Actions>
+              <Dialog.Button
+                title="New"
+                onPress={() => {
+                  const tempPref = [...notiPref]
+                  tempPref.push({
+                    weekly: false,
+                    show: false,
+                    days: [
+                      { notiID: '', use: false },
+                      { notiID: '', use: false },
+                      { notiID: '', use: false },
+                      { notiID: '', use: false },
+                      { notiID: '', use: false },
+                      { notiID: '', use: false },
+                      { notiID: '', use: false }
+                    ],
+                    time: new Date(
+                      Math.floor(Date.now() / (60 * 1000)) * 60 * 1000
+                    )
+                  })
+                  setNotiPref(tempPref)
+                }}
+              />
+              <Dialog.Button
+                title="Done"
+                onPress={() => {
+                  setNotiView(false)
+                }}
+              />
+            </Dialog.Actions>
+          </ScrollView>
+        </Dialog>
+        <Dialog
+          isVisible={themeView}
+          onBackdropPress={() => setThemeView(false)}
+          overlayStyle={{ backgroundColor: colors.white }}
+        >
+          <Dialog.Title
+            title="Set Theme"
+            titleStyle={{ color: colors.grey1 }}
+          />
+          {['Light Mode', 'Dark Mode', 'System'].map((l, i) => (
+            <CheckBox
+              key={i}
+              title={l}
+              textStyle={{ color: colors.grey1 }}
+              containerStyle={{ backgroundColor: colors.white, borderWidth: 0 }}
+              checkedIcon="dot-circle-o"
+              uncheckedIcon="circle-o"
+              checked={checkedT === i + 1}
+              onPress={() => setCheckedT(i + 1)}
+            />
+          ))}
+
+          <Dialog.Actions>
+            <Dialog.Button
+              title="CONFIRM"
+              onPress={() => {
+                if (checkedT === 1) {
+                  setColorScheme('light')
+                  setColors(theme.lightColors)
+                  setThemePref('light')
+                } else if (checkedT === 2) {
+                  setColorScheme('dark')
+                  setColors(theme.darkColors)
+                  setThemePref('dark')
+                } else {
+                  if (Appearance.getColorScheme() == null) {
+                    setColorScheme('light')
+                    setColors(theme.lightColors)
+                  } else if (Appearance.getColorScheme() === 'dark') {
+                    setColorScheme('dark')
+                    setColors(theme.darkColors)
+                  } else {
+                    setColorScheme('light')
+                    setColors(theme.lightColors)
+                  }
+                  setThemePref('system')
+                }
+                setThemeView(false)
+              }}
+            />
+          </Dialog.Actions>
+        </Dialog>
+
+        {list.map((l, i) => (
+          <TouchableOpacity key={i} onPress={() => l.onPress()}>
+            <ListItem containerStyle={{ backgroundColor: colors.white }}>
+              {l.icon}
+              <ListItem.Content>
+                <ListItem.Title style={{ color: colors.grey1 }}>
+                  {l.name}
+                </ListItem.Title>
+              </ListItem.Content>
+            </ListItem>
+          </TouchableOpacity>
         ))}
 
-        <Dialog.Actions>
-          <Dialog.Button
-            title="New"
-            onPress={() => {
-              notiPref.push({
-                weekly: false,
-                days: [
-                  { notiID: '', use: false },
-                  { notiID: '', use: false },
-                  { notiID: '', use: false },
-                  { notiID: '', use: false },
-                  { notiID: '', use: false },
-                  { notiID: '', use: false },
-                  { notiID: '', use: false }
-                ]
-              })
-            }}
-          />
-        </Dialog.Actions>
-      </Dialog>
-
-      {list.map((l, i) => (
-        <TouchableOpacity
-          key={i}
-          onPress={() => l.onPress()}
-        >
-          <ListItem>
-            {l.icon}
-            <ListItem.Content>
-              <ListItem.Title>{l.name}</ListItem.Title>
-            </ListItem.Content>
-          </ListItem>
-        </TouchableOpacity>
-      ))}
-
-      <Button
-        title="Save"
-        buttonStyle={{
-          backgroundColor: '#6a99e6',
-          alignSelf: 'flex-end',
-          bottom: 5,
-          right: 5
-        }}
-        onPress={() => handleSave()}
-      />
-    </SafeAreaView>
+        <Button
+          title="Save"
+          buttonStyle={{
+            backgroundColor: colors.primary,
+            alignSelf: 'flex-end',
+            margin: 10,
+            marginTop: 20
+          }}
+          onPress={() => handleSave()}
+        />
+      </SafeAreaView>
+    </ThemeProvider>
   )
 }
 
@@ -416,5 +661,9 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     justifyContent: 'flex-start',
     flexDirection: 'column'
+  },
+  label: {
+    fontSize: 16,
+    color: '#8a939c'
   }
 })

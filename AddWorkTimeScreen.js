@@ -4,10 +4,28 @@
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 import React, { useEffect, useState } from 'react'
-import { StyleSheet, View, Alert, ScrollView, Platform } from 'react-native'
+import {
+  StyleSheet,
+  View,
+  Alert,
+  ScrollView,
+  Platform,
+  useColorScheme,
+  SafeAreaView
+} from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Avatar, CheckBox, Input, Button, Text } from 'react-native-elements'
+import {
+  Avatar,
+  CheckBox,
+  Input,
+  Button,
+  Text,
+  ThemeProvider,
+  createTheme,
+  Header,
+  Icon
+} from '@rneui/themed'
 
 let workTimes
 
@@ -73,6 +91,21 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
   const [edit, setEdit] = useState(false)
   const [notification, setNotification] = useState('')
   const [same, setSame] = useState(false)
+  const theme = createTheme({
+    lightColors: {
+      primary: '#6a99e6'
+      // grey1: '#f5f5f5'
+    },
+    darkColors: {
+      primary: '#8fbbf7',
+      white: '#444444',
+      // primary: '#6a99e6',
+      grey5: '#222222'
+      // grey3: ''
+    }
+  })
+  const [colors, setColors] = useState(theme.lightColors)
+  const [colorScheme, setColorScheme] = useState(useColorScheme())
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -93,12 +126,39 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
     try {
       const jsonValue = await AsyncStorage.getItem('setTasks')
       workTimes = jsonValue != null ? JSON.parse(jsonValue) : null
-      editInfo()
+      await editInfo()
+      await getTheme()
+      setReady(true)
     } catch (e) {
       Alert.alert(
         'Failed to get data!',
         'Failed to get data! Please try again.'
       )
+      console.log(e)
+    }
+  }
+
+  const getTheme = async () => {
+    try {
+      const themePref = await AsyncStorage.getItem('themePref')
+      if (themePref !== null && JSON.parse(themePref) !== 'system') {
+        setColorScheme(JSON.parse(themePref))
+        if (JSON.parse(themePref) === 'light') {
+          setColors(theme.lightColors)
+        } else {
+          setColors(theme.darkColors)
+        }
+      } else if (colorScheme == null) {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      } else if (colorScheme === 'dark') {
+        setColorScheme('dark')
+        setColors(theme.darkColors)
+      } else {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      }
+    } catch (e) {
       console.log(e)
     }
   }
@@ -219,7 +279,6 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
       )
       console.log(e)
     }
-    setReady(true)
   }
 
   function newInfo () {
@@ -532,186 +591,247 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
   }
 
   if (!ready) {
-    return null
+    return (
+      <View style={[styles.container, { backgroundColor: colors.grey5 }]} />
+    )
   }
   return (
-    <View style={styles.container}>
-      <ScrollView style={{ padding: 10 }}>
-        <Text style={{ fontSize: 20, padding: 4 }}>
-          {days[new Date().getDay()]}, {monthNames[new Date().getMonth()]}{' '}
-          {new Date().getDate()}
-        </Text>
-        <View style={{ flexDirection: 'column' }}>
-          <View style={styles.section}>
-            {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
-            <Input
-              multiline
-              label="Name"
-              placeholder="Add Name"
-              renderErrorMessage={empty || same}
-              errorMessage={
-                empty
-                  ? 'Please enter a name'
-                  : same
-                    ? 'Another task or event already has this name'
-                    : null
-              }
-              onChangeText={(name) => {
-                setName(name)
-                sameName()
-              }}
-              value={name}
-            />
-          </View>
-          <View style={styles.section}>
-            <Input
-              multiline
-              label="Description"
-              placeholder="Add Description"
-              renderErrorMessage={false}
-              onChangeText={(newDescription) => setDescription(newDescription)}
-              value={description}
-            />
-          </View>
-          <View style={styles.section}>
-            <Button
-              title={start != null ? displayTime(start) : 'Start'}
-              buttonStyle={{ backgroundColor: '#6a99e6', margin: 10 }}
-              onPress={() => showTimepicker('start')}
-            />
-            <Text
-              h4
-              h4Style={{ fontWeight: 'normal', fontSize: 18, margin: 10 }}
-            >
-              to
-            </Text>
-            <Button
-              title={end != null ? displayTime(end) : 'End'}
-              buttonStyle={{ backgroundColor: '#6a99e6', margin: 10 }}
-              onPress={() => showTimepicker('end')}
-            />
-          </View>
-          {/* start picker */}
-          {startShow && (
-            <DateTimePicker
-              testID="startDateTimePicker"
-              value={new Date(start)}
-              mode={'time'}
-              display="default"
-              onChange={onStartChange}
-            />
-          )}
-
-          {/* end picker */}
-          {endShow && (
-            <DateTimePicker
-              testID="endDateTimePicker"
-              value={new Date(end)}
-              mode={'time'}
-              display="default"
-              onChange={onEndChange}
-            />
-          )}
-
-          {start != null &&
-          end != null &&
-          roundTime(end) - roundTime(start) <= 0
-            ? (
-            <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
-              Events need to be at least 1 minute long!
-            </Text>
-              )
-            : overlapingTime()
-              ? (
-            <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
-              Overlaping times!
-            </Text>
-                )
-              : null}
-
-          <Input
-            label="Notifications"
-            placeholder="None"
-            keyboardType="numeric"
-            onChangeText={(notification) => setNotification(notification)}
-            value={Notifications !== '' ? notification.toString() : null}
-          />
-        </View>
-
-        {/* <Text h1 h1Style={{ fontSize:16, color:'#8a939c'}}> Use for:</Text> */}
-        <View
-          style={[
-            styles.section,
-            { flexDirection: 'row', alignItems: 'center' }
-          ]}
-        >
-          {newInfo()
-            ? (
-            <Text h1 h1Style={{ fontSize: 16, color: '#8a939c' }}>
-              {' '}
-              Edit on:
-            </Text>
-              )
-            : (
-            <Text h1 h1Style={{ fontSize: 16, color: '#8a939c' }}>
-              {' '}
-              Repeat on:
-            </Text>
-              )}
-        </View>
-        <CheckBox
-          containerStyle={{
-            backgroundColor: 'rgba(0,0,0,0)',
-            borderWidth: 0
+    <ThemeProvider theme={theme}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.grey5 }]}
+      >
+        <Header
+          backgroundColor={colors.grey5}
+          placement="left"
+          centerComponent={{
+            text: edit === true ? 'Edit Event' : 'Add Event',
+            style: {
+              color: colors.grey1,
+              fontSize: 19,
+              fontWeight: 'bold'
+            }
           }}
-          title="Weekly"
-          checked={weekly}
-          onPress={() => setWeekly(!weekly)}
+          leftComponent={
+            <Icon
+              name="arrow-back"
+              type="material"
+              color={colors.black}
+              onPress={() => navigation.goBack()}
+            />
+          }
+          // centerComponent=
         />
-        <View
-          style={{
-            padding: 8,
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
-          {daysUsed.map((day, i) => {
-            return (
-              <Avatar
-                key={i}
-                containerStyle={
-                  day === true
-                    ? { backgroundColor: '#6a99e6', margin: 1 }
-                    : { backgroundColor: 'gray', margin: 1 }
-                }
-                size="small"
-                rounded
-                title={days[i].slice(0, 1)}
-                onPress={() => changeDay(i)}
-              />
-            )
-          })}
-        </View>
-        {daysUsed.includes(true) === false
-          ? (
-          <Text style={{ fontSize: 15, color: 'red', alignSelf: 'center' }}>
-            Nothing is selected!
+
+        <ScrollView style={{ padding: 10 }}>
+          <Text style={{ fontSize: 20, padding: 4, color: colors.grey1 }}>
+            {days[new Date().getDay()]}, {monthNames[new Date().getMonth()]}{' '}
+            {new Date().getDate()}
           </Text>
-            )
-          : null}
-      </ScrollView>
-      <Button
-        title="Save"
-        buttonStyle={{
-          backgroundColor: '#6a99e6',
-          alignSelf: 'flex-end',
-          bottom: 5,
-          right: 5
-        }}
-        onPress={() => handleSave()}
-      />
-    </View>
+          <View style={{ flexDirection: 'column' }}>
+            <View style={styles.section}>
+              {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
+              <Input
+                multiline
+                label="Name"
+                labelStyle={{ color: colors.grey3 }}
+                placeholder="Add Name"
+                placeholderTextColor={colors.grey3}
+                renderErrorMessage={empty || same}
+                errorMessage={
+                  empty
+                    ? 'Please enter a name'
+                    : same
+                      ? 'Another task or event already has this name'
+                      : null
+                }
+                errorStyle={{ color: colors.error }}
+                onChangeText={(name) => {
+                  setName(name)
+                  sameName()
+                }}
+                value={name}
+                inputStyle={{ color: colors.grey1 }}
+              />
+            </View>
+            <View style={styles.section}>
+              <Input
+                multiline
+                label="Description"
+                labelStyle={{ color: colors.grey3 }}
+                placeholder="Add Description"
+                placeholderTextColor={colors.grey3}
+                renderErrorMessage={false}
+                onChangeText={(newDescription) =>
+                  setDescription(newDescription)
+                }
+                value={description}
+                inputStyle={{ color: colors.grey1 }}
+              />
+            </View>
+            <View style={styles.section}>
+              <Button
+                title={start != null ? displayTime(start) : 'Start'}
+                titleStyle={{ color: colors.grey0 }}
+                buttonStyle={{ backgroundColor: '#6a99e6', margin: 10 }}
+                onPress={() => showTimepicker('start')}
+              />
+              <Text
+                h4
+                h4Style={{
+                  fontWeight: 'normal',
+                  fontSize: 18,
+                  margin: 10,
+                  color: colors.grey1
+                }}
+              >
+                to
+              </Text>
+              <Button
+                title={end != null ? displayTime(end) : 'End'}
+                titleStyle={{ color: colors.grey0 }}
+                buttonStyle={{ backgroundColor: '#6a99e6', margin: 10 }}
+                onPress={() => showTimepicker('end')}
+              />
+            </View>
+            {/* start picker */}
+            {startShow && (
+              <DateTimePicker
+                testID="startDateTimePicker"
+                value={new Date(start)}
+                mode={'time'}
+                display="default"
+                onChange={onStartChange}
+              />
+            )}
+
+            {/* end picker */}
+            {endShow && (
+              <DateTimePicker
+                testID="endDateTimePicker"
+                value={new Date(end)}
+                mode={'time'}
+                display="default"
+                onChange={onEndChange}
+              />
+            )}
+
+            {start != null &&
+            end != null &&
+            roundTime(end) - roundTime(start) <= 0
+              ? (
+              <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
+                Events need to be at least 1 minute long!
+              </Text>
+                )
+              : overlapingTime()
+                ? (
+              <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
+                Overlaping times!
+              </Text>
+                  )
+                : null}
+
+            <Input
+              label="Notifications"
+              labelStyle={{ color: colors.grey3 }}
+              placeholder="None"
+              placeholderTextColor={colors.grey3}
+              keyboardType="numeric"
+              onChangeText={(notification) => setNotification(notification)}
+              value={
+                notification !== '' && notification !== null
+                  ? notification.toString()
+                  : null
+              }
+              inputStyle={{ color: colors.grey1 }}
+            />
+          </View>
+
+          {/* <Text h1 h1Style={{ fontSize:16, color:'#8a939c'}}> Use for:</Text> */}
+          <View
+            style={[
+              styles.section,
+              { flexDirection: 'row', alignItems: 'center' }
+            ]}
+          >
+            {newInfo()
+              ? (
+              <Text h1 h1Style={{ fontSize: 16, color: '#8a939c' }}>
+                {' '}
+                Edit on:
+              </Text>
+                )
+              : (
+              <Text h1 h1Style={{ fontSize: 16, color: '#8a939c' }}>
+                {' '}
+                Repeat on:
+              </Text>
+                )}
+          </View>
+          <CheckBox
+            containerStyle={{
+              backgroundColor: 'rgba(0,0,0,0)',
+              borderWidth: 0
+            }}
+            title="Weekly"
+            textStyle={{ color: colors.grey1 }}
+            checked={weekly}
+            uncheckedColor={colors.grey3}
+            onPress={() => setWeekly(!weekly)}
+          />
+          <View
+            style={{
+              padding: 8,
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}
+          >
+            {daysUsed.map((day, i) => {
+              return (
+                <Avatar
+                  key={i}
+                  containerStyle={
+                    day === true
+                      ? { backgroundColor: colors.primary, margin: 1 }
+                      : { backgroundColor: colors.grey3, margin: 1 }
+                  }
+                  size="small"
+                  rounded
+                  title={days[i].slice(0, 1)}
+                  titleStyle={{ color: colors.grey0 }}
+                  onPress={() => changeDay(i)}
+                />
+              )
+            })}
+          </View>
+          {daysUsed.includes(true) === false
+            ? (
+            <Text
+              style={{
+                fontSize: 15,
+                color: colors.warning,
+                alignSelf: 'center'
+              }}
+            >
+              Nothing is selected!
+            </Text>
+              )
+            : null}
+        </ScrollView>
+        <Button
+          title="Save"
+          titleStyle={{ color: colors.grey0 }}
+          buttonStyle={{
+            backgroundColor: colors.primary,
+            alignSelf: 'flex-end',
+            bottom: 5,
+            right: 5
+          }}
+          onPress={() => handleSave()}
+        />
+      </SafeAreaView>
+    </ThemeProvider>
   )
 }
 

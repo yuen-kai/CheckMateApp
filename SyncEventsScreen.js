@@ -3,10 +3,26 @@
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, ScrollView, Alert, View, Platform } from 'react-native'
+import {
+  StyleSheet,
+  ScrollView,
+  Alert,
+  SafeAreaView,
+  Platform,
+  useColorScheme,
+  View
+} from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Button, ListItem, Text, CheckBox } from '@rneui/base'
+import {
+  Button,
+  ListItem,
+  Text,
+  CheckBox,
+  ThemeProvider,
+  createTheme,
+  Header,
+  Icon
+} from '@rneui/themed'
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -23,7 +39,23 @@ export default function SyncEventsScreen ({ route, navigation }) {
   const [ready, setReady] = useState(false)
   const [refresh, setRefresh] = useState(false)
   const [checkEvents, setCheckEvents] = useState([])
-  const [notification, setNotification] = useState('')
+
+  const theme = createTheme({
+    lightColors: {
+      primary: '#6a99e6'
+      // grey1: '#f5f5f5'
+    },
+    darkColors: {
+      primary: '#8fbbf7',
+      white: '#444444',
+      // primary: '#6a99e6',
+      grey5: '#222222'
+      // grey3: ''
+    }
+  })
+
+  const [colors, setColors] = useState(theme.lightColors)
+  const [colorScheme, setColorScheme] = useState(useColorScheme())
 
   // const checkEvents = []
 
@@ -46,12 +78,38 @@ export default function SyncEventsScreen ({ route, navigation }) {
         used.push(false)
       })
       setUse(used)
+      await getTheme()
       setReady(true)
     } catch (e) {
       Alert.alert(
         'Failed to get data!',
         'Failed to get data! Please try again.'
       )
+      console.log(e)
+    }
+  }
+
+  const getTheme = async () => {
+    try {
+      const themePref = await AsyncStorage.getItem('themePref')
+      if (themePref !== null && JSON.parse(themePref) !== 'system') {
+        setColorScheme(JSON.parse(themePref))
+        if (JSON.parse(themePref) === 'light') {
+          setColors(theme.lightColors)
+        } else {
+          setColors(theme.darkColors)
+        }
+      } else if (colorScheme == null) {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      } else if (colorScheme === 'dark') {
+        setColorScheme('dark')
+        setColors(theme.darkColors)
+      } else {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      }
+    } catch (e) {
       console.log(e)
     }
   }
@@ -213,99 +271,134 @@ export default function SyncEventsScreen ({ route, navigation }) {
   }
 
   if (!ready) {
-    return null
+    return (
+      <View style={[styles.container, { backgroundColor: colors.grey5 }]} />
+    )
   }
   return (
-    <SafeAreaView style={styles.container}>
-      {events.length === 0
-        ? (
-        <Text h4 style={{ alignSelf: 'center' }}>
-          No Calendar Events
-        </Text>
-          )
-        : null}
-      <ScrollView>
-        {events.map((event, index) => {
-          return (
-            <ListItem key={index} bottomDivider>
-              {refresh || !refresh
-                ? (
-                <CheckBox
-                  checked={use[index]}
-                  onPress={() => {
-                    if (!use[index]) {
-                      checkEvents.push(event)
-                    } else {
-                      checkEvents.splice(checkEvents.indexOf(event), 1)
-                    }
-                    setUseArr(index)
-                  }}
-                  disabled={reviewEvents(event)}
-                  uncheckedColor={reviewEvents(event) ? 'gray' : 'black'}
-                />
-                  )
-                : null}
-              <ListItem.Content>
-                <ListItem.Title
-                  style={
-                    !checkedEvents.some((e) => e.id === event.id)
-                      ? { color: 'gray' }
-                      : { color: 'black' }
-                  }
-                >
-                  {event.title}
-                </ListItem.Title>
-                <ListItem.Subtitle
-                  style={
-                    !checkedEvents.some((e) => e.id === event.id)
-                      ? { color: 'gray' }
-                      : { color: 'black' }
-                  }
-                >
-                  {displayTime(event.startDate)} - {displayTime(event.endDate)}
-                </ListItem.Subtitle>
-                <ListItem.Subtitle
-                  style={
-                    !checkedEvents.some((e) => e.id === event.id)
-                      ? { color: 'gray' }
-                      : { color: 'black' }
-                  }
-                >
-                  {event.notes +
-                    (event.location !== ''
-                      ? ' At ' + event.location + '.'
-                      : '')}
-                </ListItem.Subtitle>
-                <ListItem.Subtitle
-                  style={
-                    !checkedEvents.some((e) => e.id === event.id)
-                      ? { color: 'gray' }
-                      : { color: 'black' }
-                  }
-                >
-                  {event.alarms[0] != null
-                    ? 'Notify ' +
-                      event.alarms[0].relativeOffset * -1 +
-                      ' minutes before.'
-                    : "Doesn't notify"}
-                </ListItem.Subtitle>
-              </ListItem.Content>
-            </ListItem>
-          )
-        })}
-        <Button
-          title="Save"
-          buttonStyle={{
-            backgroundColor: '#6a99e6',
-            alignSelf: 'flex-end',
-            marginTop: 10
+    <ThemeProvider theme={theme}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.grey5 }]}
+      >
+        <Header
+          backgroundColor={colors.grey5}
+          placement="left"
+          centerComponent={{
+            text: 'Review Calendar Events',
+            style: {
+              color: colors.grey1,
+              fontSize: 19,
+              fontWeight: 'bold'
+            }
           }}
-          onPress={() => {
-            handleSave()
-          }}
+          leftComponent={
+            <Icon
+              name="arrow-back"
+              type="material"
+              color={colors.black}
+              onPress={() => navigation.goBack()}
+            />
+          }
+          // centerComponent=
         />
-      </ScrollView>
-    </SafeAreaView>
+        {events.length === 0
+          ? (
+          <Text h4 style={{ alignSelf: 'center', color: colors.grey1 }}>
+            No Calendar Events
+          </Text>
+            )
+          : null}
+        <ScrollView>
+          {events.map((event, index) => {
+            return (
+              <ListItem
+                key={index}
+                bottomDivider
+                containerStyle={{ backgroundColor: colors.white }}
+              >
+                {refresh || !refresh
+                  ? (
+                  <CheckBox
+                    containerStyle={{ backgroundColor: colors.grey4 }}
+                    checked={use[index]}
+                    onPress={() => {
+                      if (!use[index]) {
+                        checkEvents.push(event)
+                      } else {
+                        checkEvents.splice(checkEvents.indexOf(event), 1)
+                      }
+                      setUseArr(index)
+                    }}
+                    disabled={reviewEvents(event)}
+                    uncheckedColor={
+                      reviewEvents(event) ? colors.grey3 : colors.grey1
+                    }
+                  />
+                    )
+                  : null}
+                <ListItem.Content>
+                  <ListItem.Title
+                    style={
+                      !checkedEvents.some((e) => e.id === event.id)
+                        ? { color: colors.grey3 }
+                        : { color: colors.grey1 }
+                    }
+                  >
+                    {event.title}
+                  </ListItem.Title>
+                  <ListItem.Subtitle
+                    style={
+                      !checkedEvents.some((e) => e.id === event.id)
+                        ? { color: colors.grey3 }
+                        : { color: colors.grey1 }
+                    }
+                  >
+                    {displayTime(event.startDate)} -{' '}
+                    {displayTime(event.endDate)}
+                  </ListItem.Subtitle>
+                  <ListItem.Subtitle
+                    style={
+                      !checkedEvents.some((e) => e.id === event.id)
+                        ? { color: colors.grey3 }
+                        : { color: colors.grey1 }
+                    }
+                  >
+                    {event.notes +
+                      (event.location !== ''
+                        ? ' At ' + event.location + '.'
+                        : '')}
+                  </ListItem.Subtitle>
+                  <ListItem.Subtitle
+                    style={
+                      !checkedEvents.some((e) => e.id === event.id)
+                        ? { color: colors.grey3 }
+                        : { color: colors.grey1 }
+                    }
+                  >
+                    {event.alarms[0] != null
+                      ? 'Notify ' +
+                        event.alarms[0].relativeOffset * -1 +
+                        ' minutes before.'
+                      : "Doesn't notify"}
+                  </ListItem.Subtitle>
+                </ListItem.Content>
+              </ListItem>
+            )
+          })}
+          <Button
+            title="Save"
+            buttonStyle={{
+              backgroundColor: colors.primary,
+              alignSelf: 'flex-end',
+              marginTop: 10
+            }}
+            onPress={() => {
+              handleSave()
+            }}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    </ThemeProvider>
   )
 }
 

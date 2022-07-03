@@ -2,7 +2,15 @@
 /* eslint-disable no-unused-expressions */
 /* eslint-disable react/prop-types */
 import React, { useEffect, useState } from 'react'
-import { StyleSheet, View, ScrollView, Alert } from 'react-native'
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  Alert,
+  useColorScheme,
+  Appearance,
+  SafeAreaView
+} from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
@@ -10,11 +18,13 @@ import {
   Input,
   CheckBox,
   Avatar,
-  Tooltip,
   Icon,
   Text,
-  Button
-} from 'react-native-elements'
+  Button,
+  ThemeProvider,
+  createTheme,
+  Header
+} from '@rneui/themed'
 
 let savedTasks
 
@@ -50,11 +60,27 @@ export default function AddTaskScreen ({ route, navigation }) {
   const [length, setLength] = useState(0)
   const [weekly, setWeekly] = useState(false)
   const [repeating, setRepeating] = useState(false)
-  const [overridable, setOverridable] = useState(false)
   const [description, setDescription] = useState('')
   const [empty, setEmpty] = useState(false)
   const [edit, setEdit] = useState(false)
   const [same, setSame] = useState(false)
+
+  const theme = createTheme({
+    lightColors: {
+      primary: '#6a99e6',
+      grey0: '#f5f5f5'
+    },
+    darkColors: {
+      primary: '#8fbbf7',
+      white: '#444444',
+      // primary: '#6a99e6',
+      grey5: '#222222'
+      // grey3: ''
+    }
+  })
+
+  const [colors, setColors] = useState(theme.lightColors)
+  const [colorScheme, setColorScheme] = useState(useColorScheme())
 
   // Get data
   useEffect(() => {
@@ -71,7 +97,6 @@ export default function AddTaskScreen ({ route, navigation }) {
   }, [])
 
   const getData = async () => {
-    // console.log('hello')
     const change = [...daysUsed]
     change.splice(new Date().getDay(), 1, true)
     setDaysUsed(change)
@@ -79,11 +104,37 @@ export default function AddTaskScreen ({ route, navigation }) {
       const jsonValue = await AsyncStorage.getItem('tasks')
       savedTasks = jsonValue != null ? JSON.parse(jsonValue) : null
       await editInfo()
+      await getTheme()
     } catch (e) {
       Alert.alert(
         'Failed to get data!',
         'Failed to get data! Please try again.'
       )
+      console.log(e)
+    }
+  }
+
+  async function getTheme () {
+    try {
+      const themePref = await AsyncStorage.getItem('themePref')
+      if (themePref !== null && JSON.parse(themePref) !== 'system') {
+        setColorScheme(JSON.parse(themePref))
+        if (JSON.parse(themePref) === 'light') {
+          setColors(theme.lightColors)
+        } else {
+          setColors(theme.darkColors)
+        }
+      } else if (colorScheme == null) {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      } else if (colorScheme === 'dark') {
+        setColorScheme('dark')
+        setColors(theme.darkColors)
+      } else {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      }
+    } catch (e) {
       console.log(e)
     }
   }
@@ -105,7 +156,6 @@ export default function AddTaskScreen ({ route, navigation }) {
         setLength(selectedTask.length)
         setDueImportance(selectedTask.dueImportance)
         setRepeating(selectedTask.repeating)
-        setOverridable(selectedTask.overridable)
         setDescription(selectedTask.description)
         // await AsyncStorage.removeItem('editName')
         for (let i = 0; i <= daysUsed.length - 1; i++) {
@@ -149,7 +199,6 @@ export default function AddTaskScreen ({ route, navigation }) {
         importance === task.importance &&
         length === task.length &&
         dueImportance === task.dueImportance &&
-        overridable === task.overridable &&
         new Date(date).getTime() === new Date(task.date).getTime()
       )
     )
@@ -250,7 +299,6 @@ export default function AddTaskScreen ({ route, navigation }) {
       dueImportance,
       repeating,
       dueIncrease,
-      overridable,
       description
     }
     // console.log(selectedTask.length)
@@ -369,280 +417,321 @@ export default function AddTaskScreen ({ route, navigation }) {
   }
 
   if (!ready) {
-    return null
+    return (
+      <View style={[styles.container, { backgroundColor: colors.grey5 }]} />
+    )
   }
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={{ flex: 1 }}>
-        <View style={styles.section}>
-          {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
-          <Input
-            multiline
-            label="Name"
-            placeholder="Add Name"
-            renderErrorMessage={(empty && name === '') || same}
-            errorMessage={
-              empty && name === ''
-                ? 'Please enter a name'
-                : same
-                  ? 'Another task or event already has this name'
-                  : null
+    <ThemeProvider theme={theme}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.grey5 }]}
+      >
+        <Header
+          backgroundColor={colors.grey5}
+          placement="left"
+          centerComponent={{
+            text: edit === true ? 'Edit Task' : 'Add Task',
+            style: {
+              color: colors.grey1,
+              fontSize: 19,
+              fontWeight: 'bold'
             }
-            onChangeText={async (name) => {
-              setName(name)
-              await sameName()
-              // console.log(same)
-            }}
-            value={name}
-          />
-        </View>
-        <View style={styles.section}>
-          <Input
-            multiline
-            label="Description"
-            placeholder="Add Description"
-            renderErrorMessage={false}
-            onChangeText={(description) => setDescription(description)}
-            value={description}
-          />
-        </View>
-        <View style={styles.section}>
-          {/* <Text style={{ fontSize: 17,padding:3}}>Importance:</Text> */}
-          <Text h1 h1Style={styles.label}>
-            {' '}
-            Importance
-          </Text>
-          <View style={{ marginTop: 10, marginLeft: 7 }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between'
-              }}
-            >
-              <Text style={{ fontSize: 13 }}>Least</Text>
-              <Text style={{ fontSize: 13 }}>Most</Text>
-            </View>
-            <Slider
-              thumbStyle={{ width: 25, height: 25 }}
-              trackStyle={{ width: '100%' }}
-              value={importance}
-              // animateTransitions={true}
-              allowTouchTrack={true}
-              onValueChange={(importance) => setImportance(importance)}
-              minimumValue={1}
-              maximumValue={10}
-              thumbTintColor="#6a99e6"
-              thumbProps={{
-                children: (
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      padding: 3,
-                      alignSelf: 'center',
-                      color: '#fff'
-                    }}
-                  >
-                    {importance}
-                  </Text>
-                )
-              }}
-              step={1}
-            />
-          </View>
-        </View>
-        <View style={styles.section}>
-          {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
-          <Input
-            label="Length (min)"
-            placeholder="Add Length"
-            renderErrorMessage={empty && length === 0}
-            errorMessage={
-              empty && length === 0 ? 'Enter a non-zero task length' : null
-            }
-            keyboardType="numeric"
-            onChangeText={(length) => setLength(length)}
-            value={length !== 0 ? length.toString() : null}
-          />
-        </View>
-        <View style={styles.section}>
-          <Text h1 h1Style={styles.label}>
-            {' '}
-            Due Date:
-          </Text>
-          <View style={{ flexDirection: 'row', marginLeft: 5, marginTop: 10 }}>
-            <View style={{ padding: 3 }}>
-              <Button
-                title={displayDate(date)}
-                buttonStyle={{ backgroundColor: '#6a99e6' }}
-                onPress={() => showDatepicker()}
-              />
-            </View>
-            <View style={{ padding: 3 }}>
-              <Button
-                title={displayTime(date)}
-                buttonStyle={{ backgroundColor: '#6a99e6' }}
-                onPress={() => showTimepicker()}
-              />
-            </View>
-          </View>
-        </View>
-        {show && (
-          <DateTimePicker
-            testID="dateTimePicker"
-            value={new Date(date)}
-            mode={mode}
-            // display="default"
-            onChange={onChange}
-            style={{ width: '100%' }}
-          />
-        )}
-        <View style={styles.section}>
-          <Text h1 h1Style={styles.label}>
-            {' '}
-            Due Date&apos;s Importance:
-          </Text>
-          <View style={{ marginTop: 10, marginLeft: 7 }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between'
-              }}
-            >
-              <Text style={{ fontSize: 13 }}>Least</Text>
-              <Text style={{ fontSize: 13 }}>Most</Text>
-            </View>
-            <Slider
-              // style={{}}
-              thumbStyle={{ width: 25, height: 25 }}
-              trackStyle={{ width: '100%' }}
-              value={dueImportance}
-              onValueChange={(dueImportance) => setDueImportance(dueImportance)}
-              minimumValue={1}
-              maximumValue={5}
-              allowTouchTrack={true}
-              thumbTintColor="#6a99e6"
-              thumbProps={{
-                children: (
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      padding: 3,
-                      alignSelf: 'center',
-                      color: '#fff'
-                    }}
-                  >
-                    {dueImportance}
-                  </Text>
-                )
-              }}
-              step={1}
-            />
-          </View>
-        </View>
-        <View
-          style={[
-            styles.section,
-            { flexDirection: 'row', alignItems: 'center' }
-          ]}
-        >
-          {newInfo()
-            ? (
-            <Text h1 h1Style={styles.label}>
-              {' '}
-              Edit on:
-            </Text>
-              )
-            : (
-            <Text h1 h1Style={styles.label}>
-              {' '}
-              Repeat on:
-            </Text>
-              )}
-        </View>
-        <CheckBox
-          containerStyle={{
-            backgroundColor: 'rgba(0,0,0,0)',
-            borderWidth: 0
           }}
-          title="Weekly"
-          checked={weekly}
-          onPress={() => setWeekly(!weekly)}
+          leftComponent={
+            <Icon
+              name="arrow-back"
+              type="material"
+              color={colors.black}
+              onPress={() => navigation.goBack()}
+            />
+          }
+          // centerComponent=
         />
 
-        <View
-          style={{
-            padding: 8,
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
-          {daysUsed.map((day, i) => {
-            return (
-              <Avatar
-                key={i}
-                containerStyle={
-                  day === true
-                    ? { backgroundColor: '#6a99e6', margin: 1 }
-                    : { backgroundColor: 'gray', margin: 1 }
+        <ScrollView>
+          <View style={{ flex: 1 }}>
+            <View style={styles.section}>
+              {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
+              <Input
+                multiline
+                label="Name"
+                labelStyle={{ color: colors.grey3 }}
+                placeholder="Add Name"
+                placeholderTextColor={colors.grey3}
+                renderErrorMessage={(empty && name === '') || same}
+                errorMessage={
+                  empty && name === ''
+                    ? 'Please enter a name'
+                    : same
+                      ? 'Another task or event already has this name'
+                      : null
                 }
-                size="small"
-                rounded
-                title={days[i].slice(0, 1)}
-                onPress={() => changeDay(i)}
-              />
-            )
-          })}
-        </View>
-        {daysUsed.includes(true) === false
-          ? (
-          <Text style={{ fontSize: 15, color: 'red', alignSelf: 'center' }}>
-            Nothing is selected!
-          </Text>
-            )
-          : null}
-        {repeating || weekly ? (
-          <View style={{ flexDirection: 'row' }}>
-            <View style={{ flexGrow: 1 }}>
-              <CheckBox
-                containerStyle={{
-                  backgroundColor: 'rgba(0,0,0,0)',
-                  borderWidth: 0
+                errorStyle={{ color: colors.error }}
+                onChangeText={async (name) => {
+                  setName(name)
+                  await sameName()
+                  // console.log(same)
                 }}
-                title="Override"
-                checked={overridable}
-                onPress={() => setOverridable(!overridable)}
+                value={name}
+                inputStyle={{ color: colors.grey1 }}
               />
             </View>
-            <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
-              <Tooltip
-                popover={
-                  <Text>
-                    Should the new repeated version of the task override the old
-                    one? If not, the versions will be combined into one.
-                  </Text>
-                }
-                height={120}
-              >
-                {/* <Icon name='InfoCircleOutline' type='antdesign'/> */}
-                <Icon name="question-circle" type="font-awesome-5" />
-              </Tooltip>
+            <View style={styles.section}>
+              <Input
+                multiline
+                label="Description"
+                labelStyle={{ color: colors.grey3 }}
+                placeholder="Add Description"
+                placeholderTextColor={colors.grey3}
+                renderErrorMessage={false}
+                onChangeText={(description) => setDescription(description)}
+                value={description}
+                inputStyle={{ color: colors.grey1 }}
+              />
             </View>
+            <View style={styles.section}>
+              {/* <Text style={{ fontSize: 17,padding:3}}>Importance:</Text> */}
+              <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+                {' '}
+                Importance
+              </Text>
+              <View style={{ marginTop: 10, marginLeft: 7 }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <Text style={{ fontSize: 13, color: colors.grey2 }}>
+                    Least
+                  </Text>
+                  <Text style={{ fontSize: 13, color: colors.grey2 }}>
+                    Most
+                  </Text>
+                </View>
+                <Slider
+                  thumbStyle={{ width: 25, height: 25 }}
+                  trackStyle={{ width: '100%' }}
+                  minimumTrackTintColor={colors.grey3}
+                  maximumTrackTintColor={colors.grey4}
+                  value={importance}
+                  // animateTransitions={true}
+                  allowTouchTrack={true}
+                  onValueChange={(importance) => setImportance(importance)}
+                  minimumValue={1}
+                  maximumValue={10}
+                  thumbTintColor={colors.primary}
+                  thumbProps={{
+                    children: (
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          padding: 3,
+                          alignSelf: 'center',
+                          color: colors.grey0
+                        }}
+                      >
+                        {importance}
+                      </Text>
+                    )
+                  }}
+                  step={1}
+                />
+              </View>
+            </View>
+            <View style={styles.section}>
+              {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
+              <Input
+                label="Length (min)"
+                labelStyle={{ color: colors.grey3 }}
+                placeholder="Add Length"
+                placeholderTextColor={colors.grey3}
+                renderErrorMessage={empty && length === 0}
+                errorMessage={
+                  empty && length === 0 ? 'Enter a non-zero task length' : null
+                }
+                errorStyle={{ color: colors.error }}
+                keyboardType="numeric"
+                onChangeText={(length) => setLength(length)}
+                value={length !== 0 ? length.toString() : null}
+                inputStyle={{ color: colors.grey1 }}
+              />
+            </View>
+            <View style={styles.section}>
+              <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+                {' '}
+                Due Date:
+              </Text>
+              <View
+                style={{ flexDirection: 'row', marginLeft: 5, marginTop: 10 }}
+              >
+                <View style={{ padding: 3 }}>
+                  <Button
+                    title={displayDate(date)}
+                    titleStyle={{ color: colors.grey0 }}
+                    buttonStyle={{ backgroundColor: colors.primary }}
+                    onPress={() => showDatepicker()}
+                  />
+                </View>
+                <View style={{ padding: 3 }}>
+                  <Button
+                    title={displayTime(date)}
+                    titleStyle={{ color: colors.grey0 }}
+                    buttonStyle={{ backgroundColor: colors.primary }}
+                    onPress={() => showTimepicker()}
+                  />
+                </View>
+              </View>
+            </View>
+            {show && (
+              <DateTimePicker
+                testID="dateTimePicker"
+                value={new Date(date)}
+                mode={mode}
+                // display="default"
+                onChange={onChange}
+                style={{ width: '100%', backgroundColor: colors.grey5 }}
+                textColor={colors.grey0}
+                themeVariant={colorScheme}
+              />
+            )}
+            <View style={styles.section}>
+              <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+                {' '}
+                Due Date&apos;s Importance:
+              </Text>
+              <View style={{ marginTop: 10, marginLeft: 7 }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between'
+                  }}
+                >
+                  <Text style={{ fontSize: 13, color: colors.grey2 }}>
+                    Least
+                  </Text>
+                  <Text style={{ fontSize: 13, color: colors.grey2 }}>
+                    Most
+                  </Text>
+                </View>
+                <Slider
+                  // style={{}}
+                  thumbStyle={{ width: 25, height: 25 }}
+                  trackStyle={{ width: '100%' }}
+                  minimumTrackTintColor={colors.grey3}
+                  maximumTrackTintColor={colors.grey4}
+                  value={dueImportance}
+                  onValueChange={(dueImportance) =>
+                    setDueImportance(dueImportance)
+                  }
+                  minimumValue={1}
+                  maximumValue={5}
+                  allowTouchTrack={true}
+                  thumbTintColor={colors.primary}
+                  thumbProps={{
+                    children: (
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          padding: 3,
+                          alignSelf: 'center',
+                          color: colors.grey0
+                        }}
+                      >
+                        {dueImportance}
+                      </Text>
+                    )
+                  }}
+                  step={1}
+                />
+              </View>
+            </View>
+            <View
+              style={[
+                styles.section,
+                { flexDirection: 'row', alignItems: 'center' }
+              ]}
+            >
+              {newInfo() ? (
+                <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+                  {' '}
+                  Edit on:
+                </Text>
+              ) : (
+                <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+                  {' '}
+                  Repeat on:
+                </Text>
+              )}
+            </View>
+            <CheckBox
+              containerStyle={{
+                backgroundColor: 'rgba(0,0,0,0)',
+                borderWidth: 0
+              }}
+              title="Weekly"
+              textStyle={{ color: colors.grey3 }}
+              checked={weekly}
+              uncheckedColor={colors.grey3}
+              onPress={() => setWeekly(!weekly)}
+            />
+
+            <View
+              style={{
+                padding: 8,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}
+            >
+              {daysUsed.map((day, i) => {
+                return (
+                  <Avatar
+                    key={i}
+                    containerStyle={
+                      day === true
+                        ? { backgroundColor: colors.primary, margin: 1 }
+                        : { backgroundColor: colors.grey3, margin: 1 }
+                    }
+                    size="small"
+                    rounded
+                    title={days[i].slice(0, 1)}
+                    titleStyle={{ color: colors.grey0 }}
+                    onPress={() => changeDay(i)}
+                  />
+                )
+              })}
+            </View>
+            {daysUsed.includes(true) === false ? (
+              <Text
+                style={{
+                  fontSize: 15,
+                  color: colors.error,
+                  alignSelf: 'center'
+                }}
+              >
+                Nothing is selected!
+              </Text>
+            ) : null}
+            <Button
+              title="Save"
+              titleStyle={{ color: colors.grey0 }}
+              buttonStyle={{
+                backgroundColor: colors.primary,
+                alignSelf: 'flex-end'
+              }}
+              onPress={() => handleSave()}
+            />
           </View>
-        ) : null}
-        <Button
-          title="Save"
-          buttonStyle={{ backgroundColor: '#6a99e6', alignSelf: 'flex-end' }}
-          onPress={() => handleSave()}
-        />
-      </View>
-    </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
+    </ThemeProvider>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    // flex: 4,
+    flex: 1,
     backgroundColor: '#fff',
     alignItems: 'stretch',
     padding: 10
@@ -663,7 +752,6 @@ const styles = StyleSheet.create({
     margin: '2%'
   },
   label: {
-    fontSize: 16,
-    color: '#8a939c'
+    fontSize: 16
   }
 })
