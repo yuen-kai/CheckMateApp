@@ -70,12 +70,14 @@ export default function HomeScreen ({ route, navigation }) {
   const { editName } = route.params
   const theme = createTheme({
     lightColors: {
-      primary: '#6a99e6'
+      primary: '#6a99e6',
+      green: '#00b300'
       // grey1: '#f5f5f5'
     },
     darkColors: {
-      primary: '#c3e0f5',
+      primary: '#56a3db',
       white: '#444444',
+      green: '#039603',
       // primary: '#6a99e6',
       grey5: '#222222'
       // grey3: ''
@@ -152,9 +154,10 @@ export default function HomeScreen ({ route, navigation }) {
   const [error, setError] = useState(false)
   const [checked, setChecked] = useState(2)
   const [progress, setProgress] = useState(0)
-  const [taskLength, setTaskLength] = useState(0)
   const [colors, setColors] = useState(theme.lightColors)
   const [colorScheme, setColorScheme] = useState(useColorScheme())
+  const [first, setFirst] = useState(false)
+  const [removal, setRemoval] = useState(false)
 
   // get data
   useEffect(() => {
@@ -162,7 +165,6 @@ export default function HomeScreen ({ route, navigation }) {
       getData()
     })
     // getData()
-    getSelectable()
 
     registerForPushNotificationsAsync().then()
 
@@ -172,17 +174,17 @@ export default function HomeScreen ({ route, navigation }) {
   }, [editName])
 
   useEffect(() => {
+    if (!removal) {
+      makeCombined()
+    }
+  }, [progress, taskIndex, removal])
+
+  useEffect(() => {
     const timer = setInterval(() => {
       makeCombined()
     }, 5000)
     return () => clearInterval(timer)
   }, [selectable, progress])
-
-  useEffect(() => {
-    if (tasks.length > 0) {
-      setProgress(1 - tasks[0].length / taskLength)
-    }
-  }, [taskLength])
 
   async function schedulePushNotification (event, i) {
     return await Notifications.scheduleNotificationAsync({
@@ -247,10 +249,12 @@ export default function HomeScreen ({ route, navigation }) {
       promises.push(new Promise(getTheme))
       promises.push(new Promise(savedTasks))
       promises.push(new Promise(savedSetTasks))
-      promises.push(new Promise(changeDay))
+
       promises.push(new Promise(firstTime))
       await Promise.all(promises).then(
-        () => {
+        await async function () {
+          await changeDay()
+          await getSelectable()
           // fulfillment
           const newCombined = [...makeCombined()]
           if (editName !== '') {
@@ -487,6 +491,7 @@ export default function HomeScreen ({ route, navigation }) {
         setInstructionIndex(0)
         const jsonValue = JSON.stringify(false)
         await AsyncStorage.setItem('firsty', jsonValue)
+        setFirst(true)
       }
 
       resolve(true)
@@ -631,16 +636,14 @@ export default function HomeScreen ({ route, navigation }) {
 
         // Shift times
         savedTask[0][new Date().getDay()].forEach((e) => {
-          if (e.repeating === true) {
-            e.start = new Date().setHours(
-              new Date(e.start).getHours(),
-              new Date(e.start).getMinutes()
-            )
-            e.end = new Date().setHours(
-              new Date(e.end).getHours(),
-              new Date(e.end).getMinutes()
-            )
-          }
+          e.start = time(new Date().setHours(
+            new Date(e.start).getHours(),
+            new Date(e.start).getMinutes()
+          ))
+          e.end = time(new Date().setHours(
+            new Date(e.end).getHours(),
+            new Date(e.end).getMinutes()
+          ))
         })
         setTasks = [...savedTask[0][new Date().getDay()]]
       } else {
@@ -676,7 +679,7 @@ export default function HomeScreen ({ route, navigation }) {
     )
   }
 
-  const changeDay = async (resolve, reject) => {
+  const changeDay = async () => {
     try {
       const dayJsonValue = await AsyncStorage.getItem('day')
       let day = dayJsonValue != null ? JSON.parse(dayJsonValue) : null
@@ -694,17 +697,18 @@ export default function HomeScreen ({ route, navigation }) {
           await getSyncEvents(false)
         }
       }
-      resolve(true)
     } catch (e) {
-      reject(e)
       console.log(e)
     }
   }
 
   async function getSelectable () {
-    const JsonValue = await AsyncStorage.getItem('selectable')
-    const selectable1 = JsonValue != null ? JSON.parse(JsonValue) : true
-    setSelectable(selectable1)
+    if (tasks.length > 0) {
+      const JsonValue = await AsyncStorage.getItem('selectable')
+      const selectable1 = JsonValue != null ? JSON.parse(JsonValue) : true
+      setSelectable(selectable1)
+      setProgress(1 - tasks[0].length / tasks.pLength)
+    }
   }
 
   // Find day and time
@@ -744,7 +748,8 @@ export default function HomeScreen ({ route, navigation }) {
       let tempTime = time(new Date())
       if (
         setTasks.length > 0 &&
-        time(setTasks[0].start).getTime() - time(tempTime).getTime() > 1000 * 60
+        time(setTasks[0].start).getTime() - time(tempTime).getTime() > 1000 * 60 &&
+        tasks.length <= 0
       ) {
         setTaskIndex(1)
       }
@@ -763,13 +768,11 @@ export default function HomeScreen ({ route, navigation }) {
         tasks[0].length -=
           (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
           (1000 * 60)
+        saveTasks()
         if (tasks[0].length <= 0) {
           tasks[0].length = 10
-          setTaskLength(tasks[0].length)
         }
-        setProgress(1 - tasks[0].length / taskLength)
-
-        // console.log(tasks[0].length + ' ' + taskLength)
+        setProgress(1 - tasks[0].length / tasks[0].pLength)
       }
       for (let i = 0; i <= tasks.length - 1; i++) {
         if (
@@ -930,6 +933,9 @@ export default function HomeScreen ({ route, navigation }) {
         minutes = Math.floor(time % 60) + ' minutes'
       }
     }
+    if (hours === '') {
+      return minutes
+    }
     return hours + ' ' + minutes
   }
 
@@ -984,18 +990,21 @@ export default function HomeScreen ({ route, navigation }) {
                   ? {
                       backgroundColor: colors.primary,
                       borderRadius: 10,
-                      height: item.length * 2 < 60 ? 60 : item.length * 2
+                      height: item.length * 2 < 60 ? 60 : item.length * 2,
+                      alignItems: 'flex-start'
                     }
                   : item.break == null
                     ? {
                         backgroundColor: colors.white,
                         borderRadius: 10,
-                        height: item.length * 2 < 60 ? 60 : item.length * 2
+                        height: item.length * 2 < 60 ? 60 : item.length * 2,
+                        alignItems: 'flex-start'
                       }
                     : {
                         backgroundColor: colors.grey4,
                         borderRadius: 10,
-                        height: item.length * 2 < 60 ? 60 : item.length * 2
+                        height: item.length * 2 < 60 ? 60 : item.length * 2,
+                        alignItems: 'flex-start'
                       }
               }
             >
@@ -1055,8 +1064,8 @@ export default function HomeScreen ({ route, navigation }) {
                   </ListItem.Subtitle>
                 ) : null}
                 {item.length > 45 ||
-                (item.sortValue == null && item.length >= 30) ? (
-                  <ListItem.Subtitle
+                (item.sortValue == null && item.length >= 30)
+                  ? <ListItem.Subtitle
                     style={
                       taskIndex === index
                         ? { color: colors.white }
@@ -1065,7 +1074,7 @@ export default function HomeScreen ({ route, navigation }) {
                   >
                     {displayTimeLeft(item.length)}
                   </ListItem.Subtitle>
-                    ) : null}
+                  : null}
               </ListItem.Content>
             </ListItem>
           </TouchableOpacity>
@@ -1111,7 +1120,7 @@ export default function HomeScreen ({ route, navigation }) {
       setTaskIndex(0)
       tasks.splice(0, 0, selectedTask)
       tasks[0].start = Date.now()
-      setTaskLength(tasks[0].length)
+      setProgress(0)
       saveTasks()
       saveSelectable()
       setReady(true)
@@ -1142,9 +1151,11 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   function remove () {
+    setRemoval(true)
     setProgress(1)
     setTimeout(
       async function () {
+        setSelectable(true)
         if (confettiView) {
           confettiView.startConfetti()
         }
@@ -1173,11 +1184,12 @@ export default function HomeScreen ({ route, navigation }) {
         saveTasks()
         // explosion && explosion.start()
         setTaskIndex(0)
-        setSelectable(true)
+
         setReady(true)
+        setRemoval(false)
         makeCombined()
       },
-      selectable === false ? 1000 : 0
+      selectable === false ? 2000 : 0
     )
   }
 
@@ -1440,6 +1452,7 @@ export default function HomeScreen ({ route, navigation }) {
             isVisible={instructionIndex === i}
             overlayStyle={{ backgroundColor: colors.white }}
             key={i}
+            onBackdropPress={() => { !first ? setInstructionIndex(-1) : null }}
           >
             <Dialog.Title
               title={l.title}
@@ -1560,7 +1573,7 @@ export default function HomeScreen ({ route, navigation }) {
                 <Button
                   // raised={true}
                   title="Optimize Order"
-                  titleStyle={{ color: colors.white }}
+                  titleStyle={{ color: 'white' }}
                   // buttonStyle={{ backgroundColor: theme.darkColors.primary }}
                   buttonStyle={{ backgroundColor: '#1c247a' }}
                   onPress={() => sortTask()}
@@ -1659,7 +1672,7 @@ export default function HomeScreen ({ route, navigation }) {
                   style={{ marginVertical: 5 }}
                   value={progress}
                   variant="determinate"
-                  color="blue"
+                  color={colors.green}
                 />
               </View>
               <Text
@@ -1671,7 +1684,7 @@ export default function HomeScreen ({ route, navigation }) {
                   color: colors.grey1
                 }}
               >
-                {combined[taskIndex].length + ' minutes left'}
+                {tasks.length > 0 ? displayTimeLeft(tasks[0].length) + ' left' : null}
               </Text>
               <View
                 style={{
@@ -1692,7 +1705,7 @@ export default function HomeScreen ({ route, navigation }) {
                   name="stop-circle"
                   type="font-awesome"
                   size={30}
-                  onPress={combined.length > 0 ? () => stop() : null}
+                  onPress={() => stop()}
                   style={{ margin: 10 }}
                   color={colors.grey1}
                 />
@@ -1727,9 +1740,9 @@ export default function HomeScreen ({ route, navigation }) {
                 size={30}
                 // color={'white'}
                 onPress={() => start()}
-                disabled={combined.length < 0}
-                disabledStyle={{ color: colors.grey1 }}
+                disabled={combined.length <= 0}
                 color={colors.grey1}
+                disabledStyle={{ backgroundColor: null }}
               />
             ) : (
               <Icon
@@ -1739,25 +1752,27 @@ export default function HomeScreen ({ route, navigation }) {
                 // color={"white"}
                 onPress={() => pause()}
                 color={colors.grey1}
+                disabled={combined.length <= 0}
+                disabledStyle={{ backgroundColor: null }}
               />
             )}
             <Icon
               name="stop-circle"
               type="font-awesome"
               size={30}
-              onPress={combined.length > 0 ? () => stop() : null}
+              onPress={() => stop()}
               color={colors.grey1}
+              disabled={combined.length <= 0}
+              disabledStyle={{ backgroundColor: null }}
             />
             <Icon
               name="pencil-circle"
               type="material-community"
               size={30}
-              onPress={
-                selectable === false || combined.length === 0
-                  ? null
-                  : () => editTask()
-              }
+              onPress={() => editTask()}
               color={colors.grey1}
+              disabled={selectable === false || combined.length === 0}
+              disabledStyle={{ backgroundColor: null }}
             />
           </View>
           {avaliableTime > 0 ? (

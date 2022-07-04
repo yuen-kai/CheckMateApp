@@ -25,6 +25,7 @@ import {
   createTheme,
   Header
 } from '@rneui/themed'
+import Section from './Section'
 
 let savedTasks
 
@@ -59,7 +60,6 @@ export default function AddTaskScreen ({ route, navigation }) {
   const [dueImportance, setDueImportance] = useState(3)
   const [length, setLength] = useState(0)
   const [weekly, setWeekly] = useState(false)
-  const [repeating, setRepeating] = useState(false)
   const [description, setDescription] = useState('')
   const [empty, setEmpty] = useState(false)
   const [edit, setEdit] = useState(false)
@@ -67,12 +67,11 @@ export default function AddTaskScreen ({ route, navigation }) {
 
   const theme = createTheme({
     lightColors: {
-      primary: '#6a99e6',
-      grey0: '#f5f5f5'
+      primary: '#6a99e6'
     },
     darkColors: {
-      primary: '#8fbbf7',
-      white: '#444444',
+      primary: '#56a3db',
+      white: '#606060',
       // primary: '#6a99e6',
       grey5: '#222222'
       // grey3: ''
@@ -155,7 +154,6 @@ export default function AddTaskScreen ({ route, navigation }) {
         setImportance(selectedTask.importance)
         setLength(selectedTask.length)
         setDueImportance(selectedTask.dueImportance)
-        setRepeating(selectedTask.repeating)
         setDescription(selectedTask.description)
         // await AsyncStorage.removeItem('editName')
         for (let i = 0; i <= daysUsed.length - 1; i++) {
@@ -262,7 +260,6 @@ export default function AddTaskScreen ({ route, navigation }) {
   const handleSave = async () => {
     // await editInfo()
     // console.log(edit)
-    isRepeating()
     let d
     // ((((importance*8)/100)*(length))/((6-dueImportance)*30))*24*60*60*1000
     if (daysUsed[new Date().getDay()]) {
@@ -292,12 +289,13 @@ export default function AddTaskScreen ({ route, navigation }) {
         ) +
         parseInt(length) / 10,
       length: parseInt(length),
+      pLength: parseInt(length),
       date,
       start: new Date(),
       end: new Date(),
       importance,
       dueImportance,
-      repeating,
+      repeating: isRepeating(),
       dueIncrease,
       description
     }
@@ -408,11 +406,11 @@ export default function AddTaskScreen ({ route, navigation }) {
     })
 
     if (weekly || count >= 2) {
-      setRepeating(true)
       setReady(true)
+      return true
     } else {
-      setRepeating(false)
       setReady(true)
+      return false
     }
   }
 
@@ -450,51 +448,91 @@ export default function AddTaskScreen ({ route, navigation }) {
 
         <ScrollView>
           <View style={{ flex: 1 }}>
-            <View style={styles.section}>
-              {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
+            {/* <View style={styles.section}> */}
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Name"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
+            >
+                {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
+                <Input
+                  multiline
+                  // label="Name"
+                  // labelStyle={{ color: colors.grey2 }}
+                  placeholder="Add Name"
+                  placeholderTextColor={colors.grey2}
+                  renderErrorMessage={(empty && name === '') || same}
+                  errorMessage={
+                    empty && name === ''
+                      ? 'Please enter a name'
+                      : same
+                        ? 'Another task or event already has this name'
+                        : null
+                  }
+                  errorStyle={{ color: colors.error }}
+                  onChangeText={async (name) => {
+                    setName(name)
+                    await sameName()
+                    // console.log(same)
+                  }}
+                  value={name}
+                  inputStyle={{ color: colors.grey1 }}
+                />
+            </Section>
+            {/* <View style={styles.section}> */}
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Description"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
+            >
               <Input
                 multiline
-                label="Name"
-                labelStyle={{ color: colors.grey3 }}
-                placeholder="Add Name"
-                placeholderTextColor={colors.grey3}
-                renderErrorMessage={(empty && name === '') || same}
-                errorMessage={
-                  empty && name === ''
-                    ? 'Please enter a name'
-                    : same
-                      ? 'Another task or event already has this name'
-                      : null
-                }
-                errorStyle={{ color: colors.error }}
-                onChangeText={async (name) => {
-                  setName(name)
-                  await sameName()
-                  // console.log(same)
-                }}
-                value={name}
-                inputStyle={{ color: colors.grey1 }}
-              />
-            </View>
-            <View style={styles.section}>
-              <Input
-                multiline
-                label="Description"
-                labelStyle={{ color: colors.grey3 }}
+                // label="Description"
                 placeholder="Add Description"
-                placeholderTextColor={colors.grey3}
+                placeholderTextColor={colors.grey2}
                 renderErrorMessage={false}
                 onChangeText={(description) => setDescription(description)}
                 value={description}
                 inputStyle={{ color: colors.grey1 }}
               />
-            </View>
-            <View style={styles.section}>
+            </Section>
+            {/* </View> */}
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Length (min)"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
+            >
+              {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
+              <Input
+                // label="Length (min)"
+                // labelStyle={{ color: colors.grey2 }}
+                placeholder="Add Length"
+                placeholderTextColor={colors.grey2}
+                renderErrorMessage={empty && length === 0}
+                errorMessage={
+                  empty && length === 0 ? 'Enter a non-zero task length' : null
+                }
+                errorStyle={{ color: colors.error }}
+                keyboardType="numeric"
+                onChangeText={(length) => setLength(length)}
+                value={length !== 0 ? length.toString() : null}
+                inputStyle={{ color: colors.grey1 }}
+              />
+            </Section>
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Importance"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
+            >
               {/* <Text style={{ fontSize: 17,padding:3}}>Importance:</Text> */}
-              <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+              {/* <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
                 {' '}
                 Importance
-              </Text>
+              </Text> */}
               <View style={{ marginTop: 10, marginLeft: 7 }}>
                 <View
                   style={{
@@ -512,7 +550,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                 <Slider
                   thumbStyle={{ width: 25, height: 25 }}
                   trackStyle={{ width: '100%' }}
-                  minimumTrackTintColor={colors.grey3}
+                  minimumTrackTintColor={colors.grey2}
                   maximumTrackTintColor={colors.grey4}
                   value={importance}
                   // animateTransitions={true}
@@ -528,7 +566,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                           fontSize: 15,
                           padding: 3,
                           alignSelf: 'center',
-                          color: colors.grey0
+                          color: colors.white
                         }}
                       >
                         {importance}
@@ -538,51 +576,39 @@ export default function AddTaskScreen ({ route, navigation }) {
                   step={1}
                 />
               </View>
-            </View>
-            <View style={styles.section}>
-              {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
-              <Input
-                label="Length (min)"
-                labelStyle={{ color: colors.grey3 }}
-                placeholder="Add Length"
-                placeholderTextColor={colors.grey3}
-                renderErrorMessage={empty && length === 0}
-                errorMessage={
-                  empty && length === 0 ? 'Enter a non-zero task length' : null
-                }
-                errorStyle={{ color: colors.error }}
-                keyboardType="numeric"
-                onChangeText={(length) => setLength(length)}
-                value={length !== 0 ? length.toString() : null}
-                inputStyle={{ color: colors.grey1 }}
-              />
-            </View>
-            <View style={styles.section}>
-              <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+            </Section>
+
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Due Date"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
+            >
+              {/* <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
                 {' '}
                 Due Date:
-              </Text>
+              </Text> */}
               <View
                 style={{ flexDirection: 'row', marginLeft: 5, marginTop: 10 }}
               >
                 <View style={{ padding: 3 }}>
                   <Button
                     title={displayDate(date)}
-                    titleStyle={{ color: colors.grey0 }}
-                    buttonStyle={{ backgroundColor: colors.primary }}
+                    titleStyle={{ color: colors.white }}
+                    buttonStyle={{ backgroundColor: colors.primary, borderRadius: 5 }}
                     onPress={() => showDatepicker()}
                   />
                 </View>
                 <View style={{ padding: 3 }}>
                   <Button
                     title={displayTime(date)}
-                    titleStyle={{ color: colors.grey0 }}
-                    buttonStyle={{ backgroundColor: colors.primary }}
+                    titleStyle={{ color: colors.white }}
+                    buttonStyle={{ backgroundColor: colors.primary, borderRadius: 5 }}
                     onPress={() => showTimepicker()}
                   />
                 </View>
               </View>
-            </View>
+            </Section>
             {show && (
               <DateTimePicker
                 testID="dateTimePicker"
@@ -591,15 +617,20 @@ export default function AddTaskScreen ({ route, navigation }) {
                 // display="default"
                 onChange={onChange}
                 style={{ width: '100%', backgroundColor: colors.grey5 }}
-                textColor={colors.grey0}
+                textColor={colors.white}
                 themeVariant={colorScheme}
               />
             )}
-            <View style={styles.section}>
-              <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Due Date's Importance"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
+            >
+              {/* <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
                 {' '}
                 Due Date&apos;s Importance:
-              </Text>
+              </Text> */}
               <View style={{ marginTop: 10, marginLeft: 7 }}>
                 <View
                   style={{
@@ -618,7 +649,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                   // style={{}}
                   thumbStyle={{ width: 25, height: 25 }}
                   trackStyle={{ width: '100%' }}
-                  minimumTrackTintColor={colors.grey3}
+                  minimumTrackTintColor={colors.grey2}
                   maximumTrackTintColor={colors.grey4}
                   value={dueImportance}
                   onValueChange={(dueImportance) =>
@@ -635,7 +666,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                           fontSize: 15,
                           padding: 3,
                           alignSelf: 'center',
-                          color: colors.grey0
+                          color: colors.white
                         }}
                       >
                         {dueImportance}
@@ -645,80 +676,82 @@ export default function AddTaskScreen ({ route, navigation }) {
                   step={1}
                 />
               </View>
-            </View>
-            <View
-              style={[
-                styles.section,
-                { flexDirection: 'row', alignItems: 'center' }
-              ]}
+            </Section>
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label={newInfo() ? 'Edit on' : 'Repeat on'}
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
             >
-              {newInfo() ? (
-                <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+              {/* {newInfo() ? (
+                <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
                   {' '}
                   Edit on:
                 </Text>
               ) : (
-                <Text h1 h1Style={[styles.label, { color: colors.grey3 }]}>
+                <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
                   {' '}
                   Repeat on:
                 </Text>
-              )}
-            </View>
-            <CheckBox
-              containerStyle={{
-                backgroundColor: 'rgba(0,0,0,0)',
-                borderWidth: 0
-              }}
-              title="Weekly"
-              textStyle={{ color: colors.grey3 }}
-              checked={weekly}
-              uncheckedColor={colors.grey3}
-              onPress={() => setWeekly(!weekly)}
-            />
+              )} */}
 
-            <View
-              style={{
-                padding: 8,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}
-            >
-              {daysUsed.map((day, i) => {
-                return (
-                  <Avatar
-                    key={i}
-                    containerStyle={
-                      day === true
-                        ? { backgroundColor: colors.primary, margin: 1 }
-                        : { backgroundColor: colors.grey3, margin: 1 }
-                    }
-                    size="small"
-                    rounded
-                    title={days[i].slice(0, 1)}
-                    titleStyle={{ color: colors.grey0 }}
-                    onPress={() => changeDay(i)}
-                  />
-                )
-              })}
-            </View>
-            {daysUsed.includes(true) === false ? (
-              <Text
+              <CheckBox
+                containerStyle={{
+                  backgroundColor: 'rgba(0,0,0,0)',
+                  borderWidth: 0
+                }}
+                title="Weekly"
+                textStyle={{ color: colors.grey2 }}
+                checked={weekly}
+                uncheckedColor={colors.grey2}
+                onPress={() => setWeekly(!weekly)}
+              />
+
+              <View
                 style={{
-                  fontSize: 15,
-                  color: colors.error,
-                  alignSelf: 'center'
+                  padding: 8,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  alignItems: 'center'
                 }}
               >
-                Nothing is selected!
-              </Text>
-            ) : null}
+                {daysUsed.map((day, i) => {
+                  return (
+                    <Avatar
+                      key={i}
+                      containerStyle={
+                        day === true
+                          ? { backgroundColor: colors.primary, margin: 1 }
+                          : { backgroundColor: colors.grey2, margin: 1 }
+                      }
+                      size="small"
+                      rounded
+                      title={days[i].slice(0, 1)}
+                      titleStyle={day === true ? { color: colors.white } : { color: colors.grey4 }}
+                      onPress={() => changeDay(i)}
+                    />
+                  )
+                })}
+              </View>
+              {daysUsed.includes(true) === false ? (
+                <Text
+                  style={{
+                    fontSize: 15,
+                    color: colors.error,
+                    alignSelf: 'center'
+                  }}
+                >
+                  Nothing is selected!
+                </Text>
+              ) : null}
+            </Section>
             <Button
               title="Save"
-              titleStyle={{ color: colors.grey0 }}
+              titleStyle={{ color: colors.white }}
               buttonStyle={{
                 backgroundColor: colors.primary,
-                alignSelf: 'flex-end'
+                alignSelf: 'flex-end',
+                borderRadius: 5
               }}
               onPress={() => handleSave()}
             />
@@ -743,13 +776,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     alignItems: 'center',
     paddingVertical: 5
-  },
-  section: {
-    // backgroundColor:'blue',
-    flexDirection: 'column',
-    // justifyContent: 'space-between',
-    // alignItems: 'center',
-    margin: '2%'
   },
   label: {
     fontSize: 16

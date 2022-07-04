@@ -27,7 +27,7 @@
     "expo-device": "~4.1.0",
     "expo-notifications": "~0.14.0",
     "expo-status-bar": "~1.2.0",
-    "expo-system-ui": "^1.2.0",
+    "expo-system-ui": "~1.1.0",
     "feather-icons": "^4.28.0",
     "react": "17.0.1",
     "react-confetti": "^6.1.0",

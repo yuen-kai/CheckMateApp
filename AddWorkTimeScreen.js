@@ -26,6 +26,7 @@ import {
   Header,
   Icon
 } from '@rneui/themed'
+import Section from './Section'
 
 let workTimes
 
@@ -97,8 +98,8 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
       // grey1: '#f5f5f5'
     },
     darkColors: {
-      primary: '#8fbbf7',
-      white: '#444444',
+      primary: '#56a3db',
+      white: '#606060',
       // primary: '#6a99e6',
       grey5: '#222222'
       // grey3: ''
@@ -495,7 +496,11 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             if (
               workTimes[0][i].findIndex((task) => task.name === editName) !== -1
             ) {
-              if (workTimes[0][i].notificationId != null) {
+              if (
+                workTimes[0][i][
+                  workTimes[0][i].findIndex((task) => task.name === editName)
+                ].notificationId != null
+              ) {
                 await Notifications.cancelScheduledNotificationAsync(
                   workTimes[0][i][
                     workTimes[0][i].findIndex((task) => task.name === editName)
@@ -531,7 +536,11 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
           }
         } else if (remove) {
           if (workTimes[0][i].some((task) => task.name === selectedTask.name)) {
-            if (workTimes[0][i].notificationId != null) {
+            if (
+              workTimes[0][i][
+                workTimes[0][i].findIndex((task) => task.name === editName)
+              ].notificationId != null
+            ) {
               await Notifications.cancelScheduledNotificationAsync(
                 workTimes[0][i][
                   workTimes[0][i].findIndex((task) => task.name === editName)
@@ -628,14 +637,19 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             {new Date().getDate()}
           </Text>
           <View style={{ flexDirection: 'column' }}>
-            <View style={styles.section}>
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Name"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
+            >
               {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
               <Input
                 multiline
-                label="Name"
-                labelStyle={{ color: colors.grey3 }}
+                // label="Name"
+                // labelStyle={{ color: colors.grey2 }}
                 placeholder="Add Name"
-                placeholderTextColor={colors.grey3}
+                placeholderTextColor={colors.grey2}
                 renderErrorMessage={empty || same}
                 errorMessage={
                   empty
@@ -652,14 +666,19 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                 value={name}
                 inputStyle={{ color: colors.grey1 }}
               />
-            </View>
-            <View style={styles.section}>
+            </Section>
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Description"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
+            >
               <Input
                 multiline
-                label="Description"
-                labelStyle={{ color: colors.grey3 }}
+                // label="Description"
+                // labelStyle={{ color: colors.grey2 }}
                 placeholder="Add Description"
-                placeholderTextColor={colors.grey3}
+                placeholderTextColor={colors.grey2}
                 renderErrorMessage={false}
                 onChangeText={(newDescription) =>
                   setDescription(newDescription)
@@ -667,12 +686,26 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                 value={description}
                 inputStyle={{ color: colors.grey1 }}
               />
-            </View>
-            <View style={styles.section}>
+            </Section>
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Time"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{
+                borderColor: colors.grey2,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'flex-start'
+              }}
+            >
               <Button
                 title={start != null ? displayTime(start) : 'Start'}
-                titleStyle={{ color: colors.grey0 }}
-                buttonStyle={{ backgroundColor: '#6a99e6', margin: 10 }}
+                titleStyle={{ color: colors.white }}
+                buttonStyle={{
+                  backgroundColor: colors.primary,
+                  margin: 10,
+                  borderRadius: 5
+                }}
                 onPress={() => showTimepicker('start')}
               />
               <Text
@@ -688,11 +721,15 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
               </Text>
               <Button
                 title={end != null ? displayTime(end) : 'End'}
-                titleStyle={{ color: colors.grey0 }}
-                buttonStyle={{ backgroundColor: '#6a99e6', margin: 10 }}
+                titleStyle={{ color: colors.white }}
+                buttonStyle={{
+                  backgroundColor: colors.primary,
+                  margin: 10,
+                  borderRadius: 5
+                }}
                 onPress={() => showTimepicker('end')}
               />
-            </View>
+            </Section>
             {/* start picker */}
             {startShow && (
               <DateTimePicker
@@ -731,105 +768,103 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                   )
                 : null}
 
-            <Input
-              label="Notifications"
-              labelStyle={{ color: colors.grey3 }}
-              placeholder="None"
-              placeholderTextColor={colors.grey3}
-              keyboardType="numeric"
-              onChangeText={(notification) => setNotification(notification)}
-              value={
-                notification !== '' && notification !== null
-                  ? notification.toString()
-                  : null
-              }
-              inputStyle={{ color: colors.grey1 }}
-            />
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              label="Notifications (mins before start)"
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
+            >
+              <Input
+                // label="Notifications"
+                // labelStyle={{ color: colors.grey2 }}
+                placeholder="None"
+                placeholderTextColor={colors.grey2}
+                keyboardType="numeric"
+                onChangeText={(notification) => setNotification(notification)}
+                value={
+                  notification !== '' && notification !== null
+                    ? notification.toString()
+                    : null
+                }
+                inputStyle={{ color: colors.grey1 }}
+                renderErrorMessage={false}
+              />
+            </Section>
           </View>
 
           {/* <Text h1 h1Style={{ fontSize:16, color:'#8a939c'}}> Use for:</Text> */}
-          <View
-            style={[
-              styles.section,
-              { flexDirection: 'row', alignItems: 'center' }
-            ]}
+          <Section
+            labelContainerStyle={{ backgroundColor: colors.grey5 }}
+            label={newInfo() ? 'Edit on' : 'Repeat on'}
+            labelStyle={{ color: colors.grey2 }}
+            contentStyle={{ borderColor: colors.grey2 }}
           >
-            {newInfo()
-              ? (
-              <Text h1 h1Style={{ fontSize: 16, color: '#8a939c' }}>
-                {' '}
-                Edit on:
-              </Text>
-                )
-              : (
-              <Text h1 h1Style={{ fontSize: 16, color: '#8a939c' }}>
-                {' '}
-                Repeat on:
-              </Text>
-                )}
-          </View>
-          <CheckBox
-            containerStyle={{
-              backgroundColor: 'rgba(0,0,0,0)',
-              borderWidth: 0
-            }}
-            title="Weekly"
-            textStyle={{ color: colors.grey1 }}
-            checked={weekly}
-            uncheckedColor={colors.grey3}
-            onPress={() => setWeekly(!weekly)}
-          />
-          <View
-            style={{
-              padding: 8,
-              flexDirection: 'row',
-              justifyContent: 'center',
-              alignItems: 'center'
-            }}
-          >
-            {daysUsed.map((day, i) => {
-              return (
-                <Avatar
-                  key={i}
-                  containerStyle={
-                    day === true
-                      ? { backgroundColor: colors.primary, margin: 1 }
-                      : { backgroundColor: colors.grey3, margin: 1 }
-                  }
-                  size="small"
-                  rounded
-                  title={days[i].slice(0, 1)}
-                  titleStyle={{ color: colors.grey0 }}
-                  onPress={() => changeDay(i)}
-                />
-              )
-            })}
-          </View>
-          {daysUsed.includes(true) === false
-            ? (
-            <Text
+            <CheckBox
+              containerStyle={{
+                backgroundColor: 'rgba(0,0,0,0)',
+                borderWidth: 0
+              }}
+              title="Weekly"
+              textStyle={{ color: colors.grey1 }}
+              checked={weekly}
+              uncheckedColor={colors.grey2}
+              onPress={() => setWeekly(!weekly)}
+            />
+            <View
               style={{
-                fontSize: 15,
-                color: colors.warning,
-                alignSelf: 'center'
+                padding: 8,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center'
               }}
             >
-              Nothing is selected!
-            </Text>
-              )
-            : null}
+              {daysUsed.map((day, i) => {
+                return (
+                  <Avatar
+                    key={i}
+                    containerStyle={
+                      day === true
+                        ? { backgroundColor: colors.primary, margin: 1 }
+                        : { backgroundColor: colors.grey2, margin: 1 }
+                    }
+                    size="small"
+                    rounded
+                    title={days[i].slice(0, 1)}
+                    titleStyle={
+                      day === true
+                        ? { color: colors.white }
+                        : { color: colors.grey4 }
+                    }
+                    onPress={() => changeDay(i)}
+                  />
+                )
+              })}
+            </View>
+            {daysUsed.includes(true) === false
+              ? (
+              <Text
+                style={{
+                  fontSize: 15,
+                  color: colors.warning,
+                  alignSelf: 'center'
+                }}
+              >
+                Nothing is selected!
+              </Text>
+                )
+              : null}
+          </Section>
+          <Button
+            title="Save"
+            titleStyle={{ color: colors.white }}
+            buttonStyle={{
+              backgroundColor: colors.primary,
+              alignSelf: 'flex-end',
+              borderRadius: 5
+            }}
+            onPress={() => handleSave()}
+          />
         </ScrollView>
-        <Button
-          title="Save"
-          titleStyle={{ color: colors.grey0 }}
-          buttonStyle={{
-            backgroundColor: colors.primary,
-            alignSelf: 'flex-end',
-            bottom: 5,
-            right: 5
-          }}
-          onPress={() => handleSave()}
-        />
       </SafeAreaView>
     </ThemeProvider>
   )

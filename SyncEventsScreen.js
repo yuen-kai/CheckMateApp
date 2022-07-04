@@ -42,14 +42,16 @@ export default function SyncEventsScreen ({ route, navigation }) {
 
   const theme = createTheme({
     lightColors: {
-      primary: '#6a99e6'
+      primary: '#6a99e6',
+      listItemBg: '#dde7ed'
       // grey1: '#f5f5f5'
     },
     darkColors: {
-      primary: '#8fbbf7',
-      white: '#444444',
+      primary: '#56a3db',
+      white: '#606060',
       // primary: '#6a99e6',
-      grey5: '#222222'
+      grey5: '#222222',
+      listItemBg: '#272727'
       // grey3: ''
     }
   })
@@ -125,7 +127,7 @@ export default function SyncEventsScreen ({ route, navigation }) {
           '.\n' +
           event.description
       },
-      trigger: time(new Date(event.pStart))
+      trigger: time(new Date(event.pStart).getTime() - event.notification * 1000 * 60)
     })
   }
 
@@ -303,7 +305,7 @@ export default function SyncEventsScreen ({ route, navigation }) {
         />
         {events.length === 0
           ? (
-          <Text h4 style={{ alignSelf: 'center', color: colors.grey1 }}>
+          <Text h4 style={{ alignSelf: 'center', color: colors.grey1, marginTop: 10 }}>
             No Calendar Events
           </Text>
             )
@@ -314,12 +316,12 @@ export default function SyncEventsScreen ({ route, navigation }) {
               <ListItem
                 key={index}
                 bottomDivider
-                containerStyle={{ backgroundColor: colors.white }}
+                containerStyle={{ backgroundColor: colors.listItemBg }}
               >
                 {refresh || !refresh
                   ? (
                   <CheckBox
-                    containerStyle={{ backgroundColor: colors.grey4 }}
+                    containerStyle={{ backgroundColor: colors.listItemBg }}
                     checked={use[index]}
                     onPress={() => {
                       if (!use[index]) {
@@ -356,7 +358,8 @@ export default function SyncEventsScreen ({ route, navigation }) {
                     {displayTime(event.startDate)} -{' '}
                     {displayTime(event.endDate)}
                   </ListItem.Subtitle>
-                  <ListItem.Subtitle
+                  {event.notes !== '' || event.location !== ''
+                    ? <ListItem.Subtitle
                     style={
                       !checkedEvents.some((e) => e.id === event.id)
                         ? { color: colors.grey3 }
@@ -368,6 +371,7 @@ export default function SyncEventsScreen ({ route, navigation }) {
                         ? ' At ' + event.location + '.'
                         : '')}
                   </ListItem.Subtitle>
+                    : null}
                   <ListItem.Subtitle
                     style={
                       !checkedEvents.some((e) => e.id === event.id)
@@ -387,6 +391,7 @@ export default function SyncEventsScreen ({ route, navigation }) {
           })}
           <Button
             title="Save"
+            titleStyle={{ color: colors.white }}
             buttonStyle={{
               backgroundColor: colors.primary,
               alignSelf: 'flex-end',

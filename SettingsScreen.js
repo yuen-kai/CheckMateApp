@@ -63,13 +63,15 @@ export default function SettingsScreen ({ navigation }) {
 
   const theme = createTheme({
     lightColors: {
-      primary: '#6a99e6'
+      primary: '#6a99e6',
+      grey4: '#dde7ed'
     },
     darkColors: {
-      primary: '#8fbbf7',
-      white: '#444444',
+      primary: '#56a3db',
+      white: '#606060',
       // primary: '#6a99e6',
-      grey5: '#222222'
+      grey5: '#222222',
+      grey4: '#272727'
       // grey3: ''
     }
   })
@@ -187,11 +189,11 @@ export default function SettingsScreen ({ navigation }) {
           setColorScheme('dark')
           setColors(theme.darkColors)
         }
-      } else if (themePref == null) {
+      } else if (Appearance.getColorScheme() == null) {
         setCheckedT(3)
         setColorScheme('light')
         setColors(theme.lightColors)
-      } else if (themePref === 'dark') {
+      } else if (Appearance.getColorScheme() === 'dark') {
         setCheckedT(3)
         setColorScheme('dark')
         setColors(theme.darkColors)
@@ -275,18 +277,27 @@ export default function SettingsScreen ({ navigation }) {
     )
   }
 
-  async function schedulePushNotification (time, i) {
+  async function schedulePushNotification (time, i, weekly) {
+    if (weekly) {
+      return await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Time to start working!',
+          body: 'Time to be productive!'
+        },
+        trigger: {
+          weekday: i + 1,
+          hour: time(time).getHours(),
+          minute: time(time).getMinutes(),
+          repeats: true
+        }
+      })
+    }
     return await Notifications.scheduleNotificationAsync({
       content: {
         title: 'Time to start working!',
         body: 'Time to be productive!'
       },
-      trigger: {
-        weekday: i + 1,
-        hour: new Date(time).getHours(),
-        minute: new Date(time).getMinutes(),
-        repeats: true
-      }
+      trigger: time(time)
     })
   }
 
@@ -440,7 +451,8 @@ export default function SettingsScreen ({ navigation }) {
                 <View style={{ borderWidth: 1, borderRadius: 10 }}>
                   <Button
                     title={displayTime(l.time)}
-                    buttonStyle={{ backgroundColor: colors.primary }}
+                    titleStyle={{ color: colors.white }}
+                    buttonStyle={{ backgroundColor: colors.primary, borderTopLeftRadius: 10, borderTopRightRadius: 10 }}
                     onPress={() => setShow(true, i)}
                   />
                   {l.show && (
@@ -512,6 +524,7 @@ export default function SettingsScreen ({ navigation }) {
                           size={25}
                           rounded
                           title={days[j].slice(0, 1)}
+                          titleStyle={day === true ? { color: colors.white } : { color: colors.grey5 }}
                           onPress={() => changeNoti(i, j)}
                         />
                       )
@@ -542,6 +555,12 @@ export default function SettingsScreen ({ navigation }) {
 
             <Dialog.Actions>
               <Dialog.Button
+                title="Done"
+                onPress={() => {
+                  setNotiView(false)
+                }}
+              />
+              <Dialog.Button
                 title="New"
                 onPress={() => {
                   const tempPref = [...notiPref]
@@ -562,12 +581,6 @@ export default function SettingsScreen ({ navigation }) {
                     )
                   })
                   setNotiPref(tempPref)
-                }}
-              />
-              <Dialog.Button
-                title="Done"
-                onPress={() => {
-                  setNotiView(false)
                 }}
               />
             </Dialog.Actions>
@@ -628,7 +641,7 @@ export default function SettingsScreen ({ navigation }) {
 
         {list.map((l, i) => (
           <TouchableOpacity key={i} onPress={() => l.onPress()}>
-            <ListItem containerStyle={{ backgroundColor: colors.white }}>
+            <ListItem containerStyle={{ backgroundColor: colors.grey4 }}>
               {l.icon}
               <ListItem.Content>
                 <ListItem.Title style={{ color: colors.grey1 }}>
@@ -641,6 +654,7 @@ export default function SettingsScreen ({ navigation }) {
 
         <Button
           title="Save"
+          titleStyle={{ color: colors.white }}
           buttonStyle={{
             backgroundColor: colors.primary,
             alignSelf: 'flex-end',
