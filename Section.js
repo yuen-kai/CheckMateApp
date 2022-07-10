@@ -4,7 +4,9 @@ import { View, Text, StyleSheet } from 'react-native'
 const styles = StyleSheet.create({
   container: {
     position: 'relative',
-    marginVertical: 10
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '83%'
   },
   labelContainer: {
     position: 'absolute',
@@ -17,15 +19,16 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     justifyContent: 'flex-end',
-    borderRadius: 20,
+    borderRadius: 15,
     paddingHorizontal: 25,
+    paddingLeft: 10,
     paddingVertical: 10,
     marginTop: 7
   }
 })
 
 const Section = (props) => (
-  <View style={styles.container}>
+  <View style={[styles.container, props.containerStyle]}>
     <View style={[styles.labelContainer, props.labelContainerStyle]}>
       <Text style={props.labelStyle}>{props.label}</Text>
     </View>

@@ -25,6 +25,7 @@ import {
   createTheme,
   Header
 } from '@rneui/themed'
+// import { DateTimePicker } from 'react-native-ui-lib'
 import Section from './Section'
 
 let savedTasks
@@ -59,6 +60,8 @@ export default function AddTaskScreen ({ route, navigation }) {
   const [importance, setImportance] = useState(5)
   const [dueImportance, setDueImportance] = useState(3)
   const [length, setLength] = useState(0)
+  const [hours, setHours] = useState(0)
+  const [minutes, setMinutes] = useState(0)
   const [weekly, setWeekly] = useState(false)
   const [description, setDescription] = useState('')
   const [empty, setEmpty] = useState(false)
@@ -67,13 +70,14 @@ export default function AddTaskScreen ({ route, navigation }) {
 
   const theme = createTheme({
     lightColors: {
-      primary: '#6a99e6'
+      primary: '#6a99e6',
+      background: '#f2f2f2'
     },
     darkColors: {
       primary: '#56a3db',
       white: '#606060',
       // primary: '#6a99e6',
-      grey5: '#222222'
+      background: '#222222'
       // grey3: ''
     }
   })
@@ -90,9 +94,7 @@ export default function AddTaskScreen ({ route, navigation }) {
     // console.log('hello')
     // getData()
 
-    return () => {
-      unsubscribe
-    }
+    return unsubscribe
   }, [])
 
   const getData = async () => {
@@ -104,6 +106,7 @@ export default function AddTaskScreen ({ route, navigation }) {
       savedTasks = jsonValue != null ? JSON.parse(jsonValue) : null
       await editInfo()
       await getTheme()
+      setReady(true)
     } catch (e) {
       Alert.alert(
         'Failed to get data!',
@@ -153,6 +156,10 @@ export default function AddTaskScreen ({ route, navigation }) {
         setName(selectedTask.name)
         setImportance(selectedTask.importance)
         setLength(selectedTask.length)
+
+        setHours(Math.floor(selectedTask.length / 60))
+        setMinutes(selectedTask.length % 60)
+
         setDueImportance(selectedTask.dueImportance)
         setDescription(selectedTask.description)
         // await AsyncStorage.removeItem('editName')
@@ -181,7 +188,6 @@ export default function AddTaskScreen ({ route, navigation }) {
       )
       console.log(e)
     }
-    setReady(true)
   }
 
   function newInfo () {
@@ -416,16 +422,16 @@ export default function AddTaskScreen ({ route, navigation }) {
 
   if (!ready) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.grey5 }]} />
+      <View style={[styles.container, { backgroundColor: colors.background }]} />
     )
   }
   return (
     <ThemeProvider theme={theme}>
       <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.grey5 }]}
+        style={[styles.container, { backgroundColor: colors.background }]}
       >
         <Header
-          backgroundColor={colors.grey5}
+          backgroundColor={colors.background}
           placement="left"
           centerComponent={{
             text: edit === true ? 'Edit Task' : 'Add Task',
@@ -449,15 +455,23 @@ export default function AddTaskScreen ({ route, navigation }) {
         <ScrollView>
           <View style={{ flex: 1 }}>
             {/* <View style={styles.section}> */}
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
-              label="Name"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
+            <View style={styles.section}>
+              <Icon
+                name="reorder"
+                type="material"
+                color={colors.grey1}
+                size={30}
+              />
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Name"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2, paddingTop: 7, paddingBottom: 3 }}
+              >
                 {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
                 <Input
                   multiline
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
                   // label="Name"
                   // labelStyle={{ color: colors.grey2 }}
                   placeholder="Add Name"
@@ -477,53 +491,136 @@ export default function AddTaskScreen ({ route, navigation }) {
                     // console.log(same)
                   }}
                   value={name}
-                  inputStyle={{ color: colors.grey1 }}
+                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
                 />
-            </Section>
-            {/* <View style={styles.section}> */}
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
-              label="Description"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
-              <Input
-                multiline
-                // label="Description"
-                placeholder="Add Description"
-                placeholderTextColor={colors.grey2}
-                renderErrorMessage={false}
-                onChangeText={(description) => setDescription(description)}
-                value={description}
-                inputStyle={{ color: colors.grey1 }}
+              </Section>
+            </View>
+            <View style={styles.section}>
+              <Icon
+                name="reorder"
+                type="material"
+                color={colors.grey1}
+                size={30}
               />
-            </Section>
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Description (Optional)"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2, paddingTop: 7, paddingBottom: 3 }}
+              >
+                <Input
+                  multiline
+                  // label="Description"
+                  placeholder="Add Description"
+                  placeholderTextColor={colors.grey2}
+                  renderErrorMessage={false}
+                  onChangeText={(description) => setDescription(description)}
+                  value={description}
+                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
+                />
+              </Section>
+            </View>
             {/* </View> */}
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+            {/* <Section
+              labelContainerStyle={{ backgroundColor: colors.background }}
               label="Length (min)"
               labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
-              {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
-              <Input
-                // label="Length (min)"
-                // labelStyle={{ color: colors.grey2 }}
-                placeholder="Add Length"
-                placeholderTextColor={colors.grey2}
-                renderErrorMessage={empty && length === 0}
-                errorMessage={
-                  empty && length === 0 ? 'Enter a non-zero task length' : null
-                }
-                errorStyle={{ color: colors.error }}
-                keyboardType="numeric"
-                onChangeText={(length) => setLength(length)}
-                value={length !== 0 ? length.toString() : null}
-                inputStyle={{ color: colors.grey1 }}
+              contentStyle={{ borderColor: colors.grey2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            > */}
+            <View style={styles.section}>
+              <Icon
+                name="timer"
+                type="material"
+                color={colors.grey1}
+                size={30}
               />
-            </Section>
+              <View style={[styles.section, { width: '83%' }]}>
+                <Section
+                  labelContainerStyle={{ backgroundColor: colors.background }}
+                  label="Hours"
+                  labelStyle={{ color: colors.grey2 }}
+                  contentStyle={{
+                    borderColor: colors.grey2,
+                    paddingHorizontal: 5,
+                    paddingVertical: 8,
+                    justifyContent: 'center'
+                  }}
+                  containerStyle={{ flex: 3, marginRight: 5 }}
+                >
+                  {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
+                  <Input
+                    // label="Length (min)"
+                    // labelStyle={{ color: colors.grey2 }}
+                    placeholder="Hours"
+                    placeholderTextColor={colors.grey2}
+                    keyboardType="numeric"
+                    onChangeText={(hours) => {
+                      hours = parseInt(hours)
+                      if (isNaN(hours)) {
+                        hours = 0
+                      }
+                      setHours(hours)
+                      setLength(hours * 60 + minutes)
+                    }}
+                    value={hours !== 0 && !isNaN(hours) ? hours.toString() : null}
+                    inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                    renderErrorMessage={false}
+                    inputContainerStyle={{ borderBottomWidth: 0 }}
+                  />
+                </Section>
+                <Section
+                  labelContainerStyle={{ backgroundColor: colors.background }}
+                  label="Minutes"
+                  labelStyle={{ color: colors.grey2 }}
+                  contentStyle={{
+                    borderColor: colors.grey2,
+                    paddingHorizontal: 5,
+                    paddingVertical: 8,
+                    justifyContent: 'center'
+                  }}
+                  containerStyle={{ flex: 3, marginRight: 5 }}
+                >
+                  <Input
+                    // label="Length (min)"
+                    // labelStyle={{ color: colors.grey2 }}
+                    placeholder="Minutes"
+                    placeholderTextColor={colors.grey2}
+                    renderErrorMessage={empty && length === 0}
+                    errorMessage={
+                      empty && length === 0
+                        ? 'Enter a non-zero task length'
+                        : null
+                    }
+                    errorStyle={{ color: colors.error }}
+                    keyboardType="numeric"
+                    onChangeText={(minutes) => {
+                      minutes = parseInt(minutes)
+                      if (isNaN(minutes)) {
+                        minutes = 0
+                      }
+                      setMinutes(minutes)
+                      setLength(hours * 60 + minutes)
+                    }}
+                    value={
+                      minutes !== 0 && !isNaN(minutes) ? minutes.toString() : null
+                    }
+                    inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                    inputContainerStyle={{ borderBottomWidth: 0 }}
+                  />
+                </Section>
+              </View>
+            </View>
+            <View style={styles.section}>
+              <Icon
+                name="exclamation-triangle"
+                type="font-awesome-5"
+                color={colors.grey1}
+                size={20}
+                style={{ marginLeft: 3 }}
+              />
             <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              labelContainerStyle={{ backgroundColor: colors.background }}
               label="Importance"
               labelStyle={{ color: colors.grey2 }}
               contentStyle={{ borderColor: colors.grey2 }}
@@ -577,9 +674,16 @@ export default function AddTaskScreen ({ route, navigation }) {
                 />
               </View>
             </Section>
-
+            </View>
+            <View style={styles.section}>
+              <Icon
+                name="calendar-today"
+                type="material"
+                color={colors.grey1}
+                size={30}
+              />
             <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              labelContainerStyle={{ backgroundColor: colors.background }}
               label="Due Date"
               labelStyle={{ color: colors.grey2 }}
               contentStyle={{ borderColor: colors.grey2 }}
@@ -595,7 +699,10 @@ export default function AddTaskScreen ({ route, navigation }) {
                   <Button
                     title={displayDate(date)}
                     titleStyle={{ color: colors.white }}
-                    buttonStyle={{ backgroundColor: colors.primary, borderRadius: 5 }}
+                    buttonStyle={{
+                      backgroundColor: colors.primary,
+                      borderRadius: 5
+                    }}
                     onPress={() => showDatepicker()}
                   />
                 </View>
@@ -603,12 +710,15 @@ export default function AddTaskScreen ({ route, navigation }) {
                   <Button
                     title={displayTime(date)}
                     titleStyle={{ color: colors.white }}
-                    buttonStyle={{ backgroundColor: colors.primary, borderRadius: 5 }}
+                    buttonStyle={{
+                      backgroundColor: colors.primary,
+                      borderRadius: 5
+                    }}
                     onPress={() => showTimepicker()}
                   />
                 </View>
               </View>
-            </Section>
+
             {show && (
               <DateTimePicker
                 testID="dateTimePicker"
@@ -616,13 +726,22 @@ export default function AddTaskScreen ({ route, navigation }) {
                 mode={mode}
                 // display="default"
                 onChange={onChange}
-                style={{ width: '100%', backgroundColor: colors.grey5 }}
+                style={{ width: '100%', backgroundColor: colors.background }}
                 textColor={colors.white}
                 themeVariant={colorScheme}
               />
             )}
+            </Section>
+            </View>
+            <View style={styles.section}>
+              <Icon
+                name='calendar-alert'
+                type='material-community'
+                color={colors.grey1}
+                size={35}
+              />
             <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              labelContainerStyle={{ backgroundColor: colors.background }}
               label="Due Date's Importance"
               labelStyle={{ color: colors.grey2 }}
               contentStyle={{ borderColor: colors.grey2 }}
@@ -677,8 +796,16 @@ export default function AddTaskScreen ({ route, navigation }) {
                 />
               </View>
             </Section>
+            </View>
+            <View style={styles.section}>
+              <Icon
+                name='replay'
+                type='material'
+                color={colors.grey1}
+                size={30}
+              />
             <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
+              labelContainerStyle={{ backgroundColor: colors.background }}
               label={newInfo() ? 'Edit on' : 'Repeat on'}
               labelStyle={{ color: colors.grey2 }}
               contentStyle={{ borderColor: colors.grey2 }}
@@ -713,6 +840,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                   flexDirection: 'row',
                   justifyContent: 'center',
                   alignItems: 'center'
+                  // alignSelf: 'stretch'
                 }}
               >
                 {daysUsed.map((day, i) => {
@@ -727,7 +855,11 @@ export default function AddTaskScreen ({ route, navigation }) {
                       size="small"
                       rounded
                       title={days[i].slice(0, 1)}
-                      titleStyle={day === true ? { color: colors.white } : { color: colors.grey4 }}
+                      titleStyle={
+                        day === true
+                          ? { color: colors.white }
+                          : { color: colors.grey4 }
+                      }
                       onPress={() => changeDay(i)}
                     />
                   )
@@ -745,6 +877,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                 </Text>
               ) : null}
             </Section>
+            </View>
             <Button
               title="Save"
               titleStyle={{ color: colors.white }}
@@ -779,5 +912,11 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16
+  },
+  section: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 10
   }
 })

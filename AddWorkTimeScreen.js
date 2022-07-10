@@ -94,14 +94,15 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
   const [same, setSame] = useState(false)
   const theme = createTheme({
     lightColors: {
-      primary: '#6a99e6'
+      primary: '#6a99e6',
+      background: '#f2f2f2'
       // grey1: '#f5f5f5'
     },
     darkColors: {
       primary: '#56a3db',
       white: '#606060',
       // primary: '#6a99e6',
-      grey5: '#222222'
+      background: '#222222'
       // grey3: ''
     }
   })
@@ -601,16 +602,18 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
 
   if (!ready) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.grey5 }]} />
+      <View
+        style={[styles.container, { backgroundColor: colors.background }]}
+      />
     )
   }
   return (
     <ThemeProvider theme={theme}>
       <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.grey5 }]}
+        style={[styles.container, { backgroundColor: colors.background }]}
       >
         <Header
-          backgroundColor={colors.grey5}
+          backgroundColor={colors.background}
           placement="left"
           centerComponent={{
             text: edit === true ? 'Edit Event' : 'Add Event',
@@ -637,223 +640,277 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             {new Date().getDate()}
           </Text>
           <View style={{ flexDirection: 'column' }}>
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
-              label="Name"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
-              {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
-              <Input
-                multiline
-                // label="Name"
-                // labelStyle={{ color: colors.grey2 }}
-                placeholder="Add Name"
-                placeholderTextColor={colors.grey2}
-                renderErrorMessage={empty || same}
-                errorMessage={
-                  empty
-                    ? 'Please enter a name'
-                    : same
-                      ? 'Another task or event already has this name'
-                      : null
-                }
-                errorStyle={{ color: colors.error }}
-                onChangeText={(name) => {
-                  setName(name)
-                  sameName()
-                }}
-                value={name}
-                inputStyle={{ color: colors.grey1 }}
+            <View style={styles.section}>
+              <Icon
+                name="reorder"
+                type="material"
+                color={colors.grey1}
+                size={30}
               />
-            </Section>
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
-              label="Description"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
-              <Input
-                multiline
-                // label="Description"
-                // labelStyle={{ color: colors.grey2 }}
-                placeholder="Add Description"
-                placeholderTextColor={colors.grey2}
-                renderErrorMessage={false}
-                onChangeText={(newDescription) =>
-                  setDescription(newDescription)
-                }
-                value={description}
-                inputStyle={{ color: colors.grey1 }}
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Name"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2 }}
+              >
+                {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
+                <Input
+                  multiline
+                  // label="Name"
+                  // labelStyle={{ color: colors.grey2 }}
+                  placeholder="Add Name"
+                  placeholderTextColor={colors.grey2}
+                  renderErrorMessage={empty || same}
+                  errorMessage={
+                    empty
+                      ? 'Please enter a name'
+                      : same
+                        ? 'Another task or event already has this name'
+                        : null
+                  }
+                  errorStyle={{ color: colors.error }}
+                  onChangeText={(name) => {
+                    setName(name)
+                    sameName()
+                  }}
+                  value={name}
+                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                  inputContainerStyle={{ bottomBorderWidth: 0 }}
+                />
+              </Section>
+            </View>
+            <View style={styles.section}>
+              <Icon
+                name="reorder"
+                type="material"
+                color={colors.grey1}
+                size={30}
               />
-            </Section>
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
-              label="Time"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{
-                borderColor: colors.grey2,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'flex-start'
-              }}
-            >
-              <Button
-                title={start != null ? displayTime(start) : 'Start'}
-                titleStyle={{ color: colors.white }}
-                buttonStyle={{
-                  backgroundColor: colors.primary,
-                  margin: 10,
-                  borderRadius: 5
-                }}
-                onPress={() => showTimepicker('start')}
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Description (Optional)"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2 }}
+              >
+                <Input
+                  multiline
+                  // label="Description"
+                  // labelStyle={{ color: colors.grey2 }}
+                  placeholder="Add Description"
+                  placeholderTextColor={colors.grey2}
+                  renderErrorMessage={false}
+                  onChangeText={(newDescription) =>
+                    setDescription(newDescription)
+                  }
+                  value={description}
+                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                  inputContainerStyle={{ bottomBorderWidth: 0 }}
+                />
+              </Section>
+            </View>
+            <View style={styles.section}>
+              <Icon
+                name="alarm"
+                type="material"
+                color={colors.grey1}
+                size={30}
               />
-              <Text
-                h4
-                h4Style={{
-                  fontWeight: 'normal',
-                  fontSize: 18,
-                  margin: 10,
-                  color: colors.grey1
+              <View
+                style={{
+                  width: '83%',
+                  flexDirection: 'row',
+                  alignItems: 'center'
                 }}
               >
-                to
-              </Text>
-              <Button
-                title={end != null ? displayTime(end) : 'End'}
-                titleStyle={{ color: colors.white }}
-                buttonStyle={{
-                  backgroundColor: colors.primary,
-                  margin: 10,
-                  borderRadius: 5
-                }}
-                onPress={() => showTimepicker('end')}
-              />
-            </Section>
-            {/* start picker */}
-            {startShow && (
-              <DateTimePicker
-                testID="startDateTimePicker"
-                value={new Date(start)}
-                mode={'time'}
-                display="default"
-                onChange={onStartChange}
-              />
-            )}
+                <Section
+                  labelContainerStyle={{ backgroundColor: colors.background }}
+                  label="Start"
+                  labelStyle={{ color: colors.grey2 }}
+                  contentStyle={{
+                    borderColor: colors.grey2,
+                    paddingHorizontal: 5,
+                    paddingVertical: 8,
+                    justifyContent: 'center'
+                  }}
+                  containerStyle={{ flex: 1, marginRight: 5 }}
+                >
+                  <Button
+                    title={start != null ? displayTime(start) : 'Start'}
+                    titleStyle={{ color: colors.grey1, textAlign: 'left' }}
+                    buttonStyle={{
+                      backgroundColor: 'rgba(0,0,0,0)',
+                      justifyContent: 'flex-start',
+                      paddingLeft: 5,
+                      borderRadius: 20
+                    }}
+                    onPress={() => showTimepicker('start')}
+                  />
+                </Section>
+                <Section
+                  containerStyle={{ flex: 1, marginLeft: 5 }}
+                  labelContainerStyle={{ backgroundColor: colors.background }}
+                  label="End"
+                  labelStyle={{ color: colors.grey2 }}
+                  contentStyle={{
+                    borderColor: colors.grey2,
+                    paddingHorizontal: 5,
+                    paddingVertical: 8,
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Button
+                    title={end != null ? displayTime(end) : 'End'}
+                    titleStyle={{ color: colors.grey1, textAlign: 'left' }}
+                    buttonStyle={{
+                      backgroundColor: 'rgba(0,0,0,0)',
+                      borderRadius: 20,
+                      justifyContent: 'flex-start'
+                    }}
+                    onPress={() => showTimepicker('end')}
+                  />
+                </Section>
+              </View>
+              {/* start picker */}
+              {startShow && (
+                <DateTimePicker
+                  testID="startDateTimePicker"
+                  value={new Date(start)}
+                  mode={'time'}
+                  display="default"
+                  onChange={onStartChange}
+                />
+              )}
 
-            {/* end picker */}
-            {endShow && (
-              <DateTimePicker
-                testID="endDateTimePicker"
-                value={new Date(end)}
-                mode={'time'}
-                display="default"
-                onChange={onEndChange}
-              />
-            )}
+              {/* end picker */}
+              {endShow && (
+                <DateTimePicker
+                  testID="endDateTimePicker"
+                  value={new Date(end)}
+                  mode={'time'}
+                  display="default"
+                  onChange={onEndChange}
+                />
+              )}
 
-            {start != null &&
-            end != null &&
-            roundTime(end) - roundTime(start) <= 0
-              ? (
-              <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
-                Events need to be at least 1 minute long!
-              </Text>
-                )
-              : overlapingTime()
+              {start != null &&
+              end != null &&
+              roundTime(end) - roundTime(start) <= 0
                 ? (
-              <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
-                Overlaping times!
-              </Text>
+                <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
+                  Events need to be at least 1 minute long!
+                </Text>
                   )
-                : null}
-
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.grey5 }}
-              label="Notifications (mins before start)"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
-              <Input
-                // label="Notifications"
-                // labelStyle={{ color: colors.grey2 }}
-                placeholder="None"
-                placeholderTextColor={colors.grey2}
-                keyboardType="numeric"
-                onChangeText={(notification) => setNotification(notification)}
-                value={
-                  notification !== '' && notification !== null
-                    ? notification.toString()
-                    : null
-                }
-                inputStyle={{ color: colors.grey1 }}
-                renderErrorMessage={false}
+                : overlapingTime()
+                  ? (
+                <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
+                  Overlaping times!
+                </Text>
+                    )
+                  : null}
+            </View>
+            <View style={styles.section}>
+              <Icon
+                name="notifications"
+                type="material"
+                color={colors.grey1}
+                size={30}
               />
-            </Section>
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Notifications (mins before start)"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2 }}
+              >
+                <Input
+                  // label="Notifications"
+                  // labelStyle={{ color: colors.grey2 }}
+                  placeholder="None"
+                  placeholderTextColor={colors.grey2}
+                  keyboardType="numeric"
+                  onChangeText={(notification) => setNotification(notification)}
+                  value={
+                    notification !== '' && notification !== null
+                      ? notification.toString()
+                      : null
+                  }
+                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                  inputContainerStyle={{ bottomBorderWidth: 0 }}
+                  renderErrorMessage={false}
+                />
+              </Section>
+            </View>
           </View>
 
           {/* <Text h1 h1Style={{ fontSize:16, color:'#8a939c'}}> Use for:</Text> */}
-          <Section
-            labelContainerStyle={{ backgroundColor: colors.grey5 }}
-            label={newInfo() ? 'Edit on' : 'Repeat on'}
-            labelStyle={{ color: colors.grey2 }}
-            contentStyle={{ borderColor: colors.grey2 }}
-          >
-            <CheckBox
-              containerStyle={{
-                backgroundColor: 'rgba(0,0,0,0)',
-                borderWidth: 0
-              }}
-              title="Weekly"
-              textStyle={{ color: colors.grey1 }}
-              checked={weekly}
-              uncheckedColor={colors.grey2}
-              onPress={() => setWeekly(!weekly)}
+          <View style={styles.section}>
+            <Icon
+              name="replay"
+              type="material"
+              color={colors.grey1}
+              size={30}
             />
-            <View
-              style={{
-                padding: 8,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                alignItems: 'center'
-              }}
+            <Section
+              labelContainerStyle={{ backgroundColor: colors.background }}
+              label={newInfo() ? 'Edit on' : 'Repeat on'}
+              labelStyle={{ color: colors.grey2 }}
+              contentStyle={{ borderColor: colors.grey2 }}
             >
-              {daysUsed.map((day, i) => {
-                return (
-                  <Avatar
-                    key={i}
-                    containerStyle={
-                      day === true
-                        ? { backgroundColor: colors.primary, margin: 1 }
-                        : { backgroundColor: colors.grey2, margin: 1 }
-                    }
-                    size="small"
-                    rounded
-                    title={days[i].slice(0, 1)}
-                    titleStyle={
-                      day === true
-                        ? { color: colors.white }
-                        : { color: colors.grey4 }
-                    }
-                    onPress={() => changeDay(i)}
-                  />
-                )
-              })}
-            </View>
-            {daysUsed.includes(true) === false
-              ? (
-              <Text
+              <CheckBox
+                containerStyle={{
+                  backgroundColor: 'rgba(0,0,0,0)',
+                  borderWidth: 0
+                }}
+                title="Weekly"
+                textStyle={{ color: colors.grey1 }}
+                checked={weekly}
+                uncheckedColor={colors.grey2}
+                onPress={() => setWeekly(!weekly)}
+              />
+              <View
                 style={{
-                  fontSize: 15,
-                  color: colors.warning,
-                  alignSelf: 'center'
+                  padding: 8,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  alignItems: 'center'
                 }}
               >
-                Nothing is selected!
-              </Text>
-                )
-              : null}
-          </Section>
+                {daysUsed.map((day, i) => {
+                  return (
+                    <Avatar
+                      key={i}
+                      containerStyle={
+                        day === true
+                          ? { backgroundColor: colors.primary, margin: 1 }
+                          : { backgroundColor: colors.grey2, margin: 1 }
+                      }
+                      size="small"
+                      rounded
+                      title={days[i].slice(0, 1)}
+                      titleStyle={
+                        day === true
+                          ? { color: colors.white }
+                          : { color: colors.grey4 }
+                      }
+                      onPress={() => changeDay(i)}
+                    />
+                  )
+                })}
+              </View>
+              {daysUsed.includes(true) === false
+                ? (
+                <Text
+                  style={{
+                    fontSize: 15,
+                    color: colors.warning,
+                    alignSelf: 'center'
+                  }}
+                >
+                  Nothing is selected!
+                </Text>
+                  )
+                : null}
+            </Section>
+          </View>
           <Button
             title="Save"
             titleStyle={{ color: colors.white }}
@@ -892,10 +949,9 @@ const styles = StyleSheet.create({
     flex: 4
   },
   section: {
-    // backgroundColor:'blue',
     flexDirection: 'row',
-    // justifyContent: 'space-around',
     alignItems: 'center',
-    marginVertical: '3%'
+    justifyContent: 'space-between',
+    marginVertical: 10
   }
 })

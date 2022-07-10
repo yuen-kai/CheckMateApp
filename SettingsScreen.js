@@ -64,13 +64,14 @@ export default function SettingsScreen ({ navigation }) {
   const theme = createTheme({
     lightColors: {
       primary: '#6a99e6',
-      grey4: '#dde7ed'
+      grey4: '#efefef',
+      background: '#f2f2f2'
     },
     darkColors: {
       primary: '#56a3db',
       white: '#606060',
       // primary: '#6a99e6',
-      grey5: '#222222',
+      background: '#222222',
       grey4: '#272727'
       // grey3: ''
     }
@@ -132,8 +133,8 @@ export default function SettingsScreen ({ navigation }) {
   const getSyncPref = async () => {
     try {
       const value = await AsyncStorage.getItem('syncEvents5')
-      if (value !== null) {
-        const pref = JSON.parse(value)
+      const pref = value != null ? JSON.parse(value) : null
+      if (pref != null) {
         setSyncPref(pref)
         if (pref === 'never') {
           setChecked(1)
@@ -286,8 +287,8 @@ export default function SettingsScreen ({ navigation }) {
         },
         trigger: {
           weekday: i + 1,
-          hour: time(time).getHours(),
-          minute: time(time).getMinutes(),
+          hour: new Date(time).getHours(),
+          minute: new Date(time).getMinutes(),
           repeats: true
         }
       })
@@ -297,7 +298,9 @@ export default function SettingsScreen ({ navigation }) {
         title: 'Time to start working!',
         body: 'Time to be productive!'
       },
-      trigger: time(time)
+      trigger: new Date(
+        new Date(time).setDate(new Date().getDate() + (i - new Date().getDay()))
+      )
     })
   }
 
@@ -338,7 +341,7 @@ export default function SettingsScreen ({ navigation }) {
     for (let i = 0; i < notiPref.length; i++) {
       const notification = notiPref[i]
       for (let j = 0; j < 7; j++) {
-        if (notification.days[j].notiID != null) {
+        if (notification.days[j].notiID !== '') {
           await Notifications.cancelScheduledNotificationAsync(
             notification.days[j].notiID
           )
@@ -365,14 +368,14 @@ export default function SettingsScreen ({ navigation }) {
 
   if (!ready) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.grey5 }]} />
+      <View style={[styles.container, { backgroundColor: colors.background }]} />
     )
   }
   return (
     <ThemeProvider theme={theme}>
       <StatusBar style={colorScheme === 'light' ? 'dark' : 'light'} />
       <Header
-        backgroundColor={colors.grey5}
+        backgroundColor={colors.background}
         placement="left"
         centerComponent={{
           text: 'Settings',
@@ -393,7 +396,7 @@ export default function SettingsScreen ({ navigation }) {
         // centerComponent=
       />
       <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.grey5 }]}
+        style={[styles.container, { backgroundColor: colors.background }]}
       >
         <Dialog
           isVisible={syncView}
@@ -447,14 +450,30 @@ export default function SettingsScreen ({ navigation }) {
             />
 
             {notiPref.map((l, i) => (
-              <View key={i} style={{ flexDirection: 'row' }}>
+              <View key={i} style={{ flexDirection: 'row', marginVertical: 5 }}>
                 <View style={{ borderWidth: 1, borderRadius: 10 }}>
                   <Button
-                    title={displayTime(l.time)}
-                    titleStyle={{ color: colors.white }}
-                    buttonStyle={{ backgroundColor: colors.primary, borderTopLeftRadius: 10, borderTopRightRadius: 10 }}
+                    // title={displayTime(l.time)}
+                    // titleStyle={{ color: colors.white }}
+                    buttonStyle={{
+                      backgroundColor: colors.primary,
+                      borderTopLeftRadius: 10,
+                      borderTopRightRadius: 10,
+                      justifyContent: 'flex-start'
+                    }}
                     onPress={() => setShow(true, i)}
-                  />
+                  >
+                    <Text style={{ color: colors.white, marginLeft: 55 }}>
+                      {displayTime(l.time)}
+                    </Text>
+                    <Icon
+                      name="clear"
+                      type="material"
+                      onPress={() => removeNoti(i)}
+                      color={colors.white}
+                      style={{ marginLeft: 50 }}
+                    />
+                  </Button>
                   {l.show && (
                     <DateTimePicker
                       testID="dateTimePicker"
@@ -524,7 +543,11 @@ export default function SettingsScreen ({ navigation }) {
                           size={25}
                           rounded
                           title={days[j].slice(0, 1)}
-                          titleStyle={day === true ? { color: colors.white } : { color: colors.grey5 }}
+                          titleStyle={
+                            day === true
+                              ? { color: colors.white }
+                              : { color: colors.background }
+                          }
                           onPress={() => changeNoti(i, j)}
                         />
                       )
@@ -544,12 +567,6 @@ export default function SettingsScreen ({ navigation }) {
                       )
                     : null}
                 </View>
-                <Icon
-                  name="clear"
-                  type="material"
-                  onPress={() => removeNoti(i)}
-                  color={colors.grey1}
-                />
               </View>
             ))}
 

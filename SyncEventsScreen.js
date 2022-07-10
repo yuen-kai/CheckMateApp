@@ -21,7 +21,8 @@ import {
   ThemeProvider,
   createTheme,
   Header,
-  Icon
+  Icon,
+  Divider
 } from '@rneui/themed'
 
 Notifications.setNotificationHandler({
@@ -43,15 +44,18 @@ export default function SyncEventsScreen ({ route, navigation }) {
   const theme = createTheme({
     lightColors: {
       primary: '#6a99e6',
-      listItemBg: '#dde7ed'
+      listItemBg: '#dde7ed',
+      disabledBg: '#dde7ed',
+      background: '#f2f2f2'
       // grey1: '#f5f5f5'
     },
     darkColors: {
       primary: '#56a3db',
       white: '#606060',
       // primary: '#6a99e6',
-      grey5: '#222222',
-      listItemBg: '#272727'
+      listItemBg: '#272727',
+      disabledBg: '#333333',
+      background: '#222222'
       // grey3: ''
     }
   })
@@ -127,7 +131,9 @@ export default function SyncEventsScreen ({ route, navigation }) {
           '.\n' +
           event.description
       },
-      trigger: time(new Date(event.pStart).getTime() - event.notification * 1000 * 60)
+      trigger: time(
+        new Date(event.pStart).getTime() - event.notification * 1000 * 60
+      )
     })
   }
 
@@ -274,16 +280,16 @@ export default function SyncEventsScreen ({ route, navigation }) {
 
   if (!ready) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.grey5 }]} />
+      <View style={[styles.container, { backgroundColor: colors.background }]} />
     )
   }
   return (
     <ThemeProvider theme={theme}>
       <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.grey5 }]}
+        style={[styles.container, { backgroundColor: colors.background }]}
       >
         <Header
-          backgroundColor={colors.grey5}
+          backgroundColor={colors.background}
           placement="left"
           centerComponent={{
             text: 'Review Calendar Events',
@@ -305,7 +311,10 @@ export default function SyncEventsScreen ({ route, navigation }) {
         />
         {events.length === 0
           ? (
-          <Text h4 style={{ alignSelf: 'center', color: colors.grey1, marginTop: 10 }}>
+          <Text
+            h4
+            style={{ alignSelf: 'center', color: colors.grey1, marginTop: 10 }}
+          >
             No Calendar Events
           </Text>
             )
@@ -313,80 +322,100 @@ export default function SyncEventsScreen ({ route, navigation }) {
         <ScrollView>
           {events.map((event, index) => {
             return (
-              <ListItem
-                key={index}
-                bottomDivider
-                containerStyle={{ backgroundColor: colors.listItemBg }}
-              >
-                {refresh || !refresh
-                  ? (
-                  <CheckBox
-                    containerStyle={{ backgroundColor: colors.listItemBg }}
-                    checked={use[index]}
-                    onPress={() => {
-                      if (!use[index]) {
-                        checkEvents.push(event)
-                      } else {
-                        checkEvents.splice(checkEvents.indexOf(event), 1)
-                      }
-                      setUseArr(index)
-                    }}
-                    disabled={reviewEvents(event)}
-                    uncheckedColor={
-                      reviewEvents(event) ? colors.grey3 : colors.grey1
-                    }
-                  />
-                    )
-                  : null}
-                <ListItem.Content>
-                  <ListItem.Title
-                    style={
-                      !checkedEvents.some((e) => e.id === event.id)
-                        ? { color: colors.grey3 }
-                        : { color: colors.grey1 }
-                    }
-                  >
-                    {event.title}
-                  </ListItem.Title>
-                  <ListItem.Subtitle
-                    style={
-                      !checkedEvents.some((e) => e.id === event.id)
-                        ? { color: colors.grey3 }
-                        : { color: colors.grey1 }
-                    }
-                  >
-                    {displayTime(event.startDate)} -{' '}
-                    {displayTime(event.endDate)}
-                  </ListItem.Subtitle>
-                  {event.notes !== '' || event.location !== ''
-                    ? <ListItem.Subtitle
-                    style={
-                      !checkedEvents.some((e) => e.id === event.id)
-                        ? { color: colors.grey3 }
-                        : { color: colors.grey1 }
-                    }
-                  >
-                    {event.notes +
-                      (event.location !== ''
-                        ? ' At ' + event.location + '.'
-                        : '')}
-                  </ListItem.Subtitle>
+                <ListItem
+                  key={index}
+                  containerStyle={{
+                    backgroundColor: reviewEvents(event) ? colors.disabledBg : colors.listItemBg,
+                    paddingVertical: 20,
+                    borderWidth: 2,
+                    borderRadius: 5,
+                    borderColor: colors.grey4,
+                    margin: 5
+                  }}
+                >
+                  {refresh || !refresh
+                    ? (
+                    <ListItem.CheckBox
+                      containerStyle={{
+                        backgroundColor: reviewEvents(event) ? colors.disabledBg : colors.listItemBg,
+                        borderRadius: 5,
+                        marginLeft: 3,
+                        padding: 10
+                      }}
+                      size={18}
+                      checked={use[index]}
+                      onPress={() => {
+                        if (!use[index]) {
+                          checkEvents.push(event)
+                        } else {
+                          checkEvents.splice(checkEvents.indexOf(event), 1)
+                        }
+                        setUseArr(index)
+                      }}
+                      disabled={reviewEvents(event)}
+                      uncheckedColor={colors.grey3}
+                    />
+                      )
                     : null}
-                  <ListItem.Subtitle
-                    style={
-                      !checkedEvents.some((e) => e.id === event.id)
-                        ? { color: colors.grey3 }
-                        : { color: colors.grey1 }
-                    }
-                  >
-                    {event.alarms[0] != null
-                      ? 'Notify ' +
-                        event.alarms[0].relativeOffset * -1 +
-                        ' minutes before.'
-                      : "Doesn't notify"}
-                  </ListItem.Subtitle>
-                </ListItem.Content>
-              </ListItem>
+                  <ListItem.Content>
+                    <ListItem.Title
+                      style={
+                        reviewEvents(event)
+                          ? {
+                              color: colors.grey3,
+                              fontSize: 16,
+                              fontWeight: 'bold'
+                            }
+                          : {
+                              color: colors.grey1,
+                              fontSize: 16,
+                              fontWeight: 'bold'
+                            }
+                      }
+                    >
+                      {event.title}
+                    </ListItem.Title>
+                    <ListItem.Subtitle
+                      style={
+                        reviewEvents(event)
+                          ? { color: colors.grey3, fontSize: 13 }
+                          : { color: colors.grey1, fontSize: 13 }
+                      }
+                    >
+                      {displayTime(event.startDate)} -{' '}
+                      {displayTime(event.endDate)}
+                    </ListItem.Subtitle>
+                    {event.notes !== '' || event.location !== ''
+                      ? (
+                      <ListItem.Subtitle
+                        style={
+                          reviewEvents(event)
+                            ? { color: colors.grey3 }
+                            : { color: colors.grey1 }
+                        }
+                      >
+                        {event.notes +
+                          (event.location !== ''
+                            ? ' At ' + event.location + '.'
+                            : '')}
+                      </ListItem.Subtitle>
+                        )
+                      : null}
+                    <ListItem.Subtitle
+                      style={
+                        reviewEvents(event)
+                          ? { color: colors.grey3 }
+                          : { color: colors.grey1 }
+                      }
+                    >
+                      {event.alarms[0] != null
+                        ? 'Notify ' +
+                          event.alarms[0].relativeOffset * -1 +
+                          ' min before.'
+                        : "Doesn't notify"}
+                    </ListItem.Subtitle>
+                  </ListItem.Content>
+                </ListItem>
             )
           })}
           <Button
@@ -395,7 +424,10 @@ export default function SyncEventsScreen ({ route, navigation }) {
             buttonStyle={{
               backgroundColor: colors.primary,
               alignSelf: 'flex-end',
-              marginTop: 10
+              margin: 10,
+              borderRadius: 8,
+              paddingHorizontal: 15,
+              paddingVertical: 5
             }}
             onPress={() => {
               handleSave()
