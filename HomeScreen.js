@@ -999,6 +999,35 @@ export default function HomeScreen ({ route, navigation }) {
     return hours + ' ' + minutes
   }
 
+  function move (direction) {
+    let tempTask
+    if (direction === 'up') {
+      const index = tasks.findIndex(
+        (task) => task.name === combined[taskIndex].name
+      )
+      tempTask = combined[taskIndex]
+      tasks.splice(index, 1)
+      tasks.splice(index - 1, 0, { ...combined[taskIndex] })
+    } else if (direction === 'down') {
+      const index = tasks.findIndex(
+        (task) => task.name === combined[taskIndex].name
+      )
+      tempTask = combined[taskIndex]
+      tasks.splice(index, 1)
+      tasks.splice(index + 1, 0, { ...combined[taskIndex] })
+    }
+    const tCombined = makeCombined()
+    tempTask.name.substring(tempTask.name.length - 8) !== ' (cont.)'
+      ? setTaskIndex(tCombined.findIndex((task) => task.name === tempTask.name))
+      : setTaskIndex(
+        tCombined.findIndex(
+          (task) =>
+            task.name === tempTask.name.substring(0, tempTask.name.length - 8)
+        )
+      )
+    saveTasks()
+  }
+
   function renderItem (item) {
     const index = item.index
     const drag = item.drag
@@ -1056,10 +1085,10 @@ export default function HomeScreen ({ route, navigation }) {
                       height:
                         item.tLength != null
                           ? item.tLength * 2 < 60
-                            ? 60
+                            ? null
                             : item.tLength * 2
                           : item.length * 2 < 60
-                            ? 60
+                            ? null
                             : item.length * 2,
                       alignItems: 'flex-start'
                     }
@@ -1072,24 +1101,17 @@ export default function HomeScreen ({ route, navigation }) {
                         height:
                         item.tLength != null
                           ? item.tLength * 2 < 60
-                            ? 60
+                            ? null
                             : item.tLength * 2
                           : item.length * 2 < 60
-                            ? 60
+                            ? null
                             : item.length * 2,
                         alignItems: 'flex-start'
                       }
                     : {
                         backgroundColor: colors.white,
                         borderRadius: 10,
-                        height:
-                        item.tLength != null
-                          ? item.tLength * 2 < 60
-                            ? 60
-                            : item.length * 2
-                          : item.length * 2 < 60
-                            ? 60
-                            : item.length * 2,
+                        height: item.length * 2 < 60 ? null : item.length * 2,
                         alignItems: 'flex-start'
                       }
               }
@@ -1097,78 +1119,131 @@ export default function HomeScreen ({ route, navigation }) {
               <ListItem.Content
                 style={item.break != null ? { alignItems: 'center' } : null}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <ListItem.Title
-                    style={
-                      taskIndex !== index
-                        ? item.break == null
-                          ? { fontWeight: 'bold', color: colors.grey1, paddingRight: 10 }
-                          : {
-                              fontWeight: 'bold',
-                              color: colors.grey1,
-                              fontSize: 20,
-                              paddingRight: 10
-                            }
-                        : { fontWeight: 'bold', color: colors.grey1, paddingRight: 10 }
-                    }
-                  >
-                    {item.name}
-                  </ListItem.Title>
-                  {item.sortValue <
-                  new Date(new Date().setHours(24, 0, 0, 0)).getTime() /
-                    (1000 * 60 * 60) +
-                    (6 - 4) * 2 * (11 - 7) +
-                    60 / 10
-                    ? <Icon
-                      name="exclamation-triangle"
-                      type="font-awesome-5"
-                      color={colors.warning}
-                      size={17}
-                      style={{ alignSelf: 'flex-start' }}
-                    /> : null}
-                </View>
-                {/* <ListItem.Subtitle
-                    style={
-                      taskIndex === index ? { color: 'white' } : null
-                    }
-                  >
-                    {displayTime(item.start) +
-                      ' - ' +
-                      displayTime(item.end)}
-                  </ListItem.Subtitle> */}
-                {item.sortValue != null ? (
-                  <ListItem.Subtitle
-                    style={
-                      taskIndex === index
-                        ? { color: colors.grey1 }
-                        : { color: colors.grey1 }
-                    }
-                  >
-                    {'Due: ' +
-                      days[new Date(item.date).getDay()] +
-                      ' ' +
-                      displayDate(item.date) +
-                      ' ' +
-                      displayTime(item.date)}
-                  </ListItem.Subtitle>
-                ) : null}
-                {(item.tLength != null
-                  ? item.tLength >= 45
-                  : item.length >= 45) ||
-                (item.sortValue == null && item.length >= 30) ? (
-                  <ListItem.Subtitle
-                    style={
-                      taskIndex === index
-                        ? { color: colors.grey1 }
-                        : { color: colors.grey1 }
-                    }
-                  >
-                    {item.tLength != null
-                      ? displayTimeLeft(item.tLength) + ' / '
-                      : null}
-                    {displayTimeLeft(item.length)}
-                  </ListItem.Subtitle>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignSelf: 'stretch'
+                  }}
+                >
+                  <View>
+                    <View
+                      style={{ flexDirection: 'row', alignItems: 'center' }}
+                    >
+                      <ListItem.Title
+                        style={
+                          taskIndex !== index
+                            ? item.break == null
+                              ? {
+                                  fontWeight: 'bold',
+                                  color: colors.grey1,
+                                  paddingRight: 10
+                                }
+                              : {
+                                  fontWeight: 'bold',
+                                  color: colors.grey1,
+                                  fontSize: 20,
+                                  paddingRight: 10
+                                }
+                            : {
+                                fontWeight: 'bold',
+                                color: colors.grey1,
+                                paddingRight: 10
+                              }
+                        }
+                      >
+                        {item.name}
+                      </ListItem.Title>
+                      {item.sortValue <
+                      new Date(new Date().setHours(24, 0, 0, 0)).getTime() /
+                        (1000 * 60 * 60) +
+                        (6 - 4) * 2 * (11 - 7) +
+                        60 / 10 ? (
+                        <Icon
+                          name="exclamation-triangle"
+                          type="font-awesome-5"
+                          color={colors.warning}
+                          size={17}
+                          style={{ alignSelf: 'flex-start' }}
+                        />
+                          ) : null}
+                    </View>
+                    {/* <ListItem.Subtitle
+                      style={
+                        taskIndex === index ? { color: 'white' } : null
+                      }
+                    >
+                      {displayTime(item.start) +
+                        ' - ' +
+                        displayTime(item.end)}
+                    </ListItem.Subtitle> */}
+                    {item.sortValue != null ? (
+                      <ListItem.Subtitle
+                        style={
+                          taskIndex === index
+                            ? { color: colors.grey1 }
+                            : { color: colors.grey1 }
+                        }
+                      >
+                        {'Due: ' +
+                          days[new Date(item.date).getDay()] +
+                          ' ' +
+                          displayDate(item.date) +
+                          ' ' +
+                          displayTime(item.date)}
+                      </ListItem.Subtitle>
                     ) : null}
+                    {(item.tLength != null
+                      ? item.tLength >= 45
+                      : item.length >= 45) ||
+                    (item.sortValue == null && item.length >= 30) ? (
+                      <ListItem.Subtitle
+                        style={
+                          taskIndex === index
+                            ? { color: colors.grey1 }
+                            : { color: colors.grey1 }
+                        }
+                      >
+                        {item.tLength != null
+                          ? displayTimeLeft(item.tLength) + ' / '
+                          : null}
+                        {displayTimeLeft(item.length)}
+                      </ListItem.Subtitle>
+                        ) : null}
+                  </View>
+                  <View style={{ alignSelf: 'center', marginLeft: 5 }}>
+                    {item.break == null &&
+                    item.sortValue != null &&
+                    index === taskIndex &&
+                    tasks.findIndex(
+                      (task) => task.name === combined[taskIndex].name
+                    ) > 0 ? (
+                      <Icon
+                        name="arrow-upward"
+                        onPress={() => move('up')}
+                        color={colors.grey1}
+                        size={20}
+
+                        style={{ marginBottom: 5 }}
+                      />
+                        ) : null}
+                    {item.break == null &&
+                    item.sortValue != null &&
+                    index === taskIndex &&
+                    tasks.findIndex(
+                      (task) => task.name === combined[taskIndex].name
+                    ) <
+                      tasks.length - 1 ? (
+                      <Icon
+                        name="arrow-downward"
+                        onPress={() => move('down')}
+                        color={colors.grey1}
+                        size={20}
+                        style={{ marginTop: 5 }}
+                      />
+                        ) : null}
+                  </View>
+                </View>
               </ListItem.Content>
             </ListItem>
           </TouchableOpacity>
@@ -1456,7 +1531,9 @@ export default function HomeScreen ({ route, navigation }) {
 
   if (!ready) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]} />
+      <View
+        style={[styles.container, { backgroundColor: colors.background }]}
+      />
     )
   }
   return (
@@ -1668,12 +1745,11 @@ export default function HomeScreen ({ route, navigation }) {
               renderItem={(item) => renderItem(item)}
             />
           </View>
-          {resetOrder() ? (
-            <View style={{ bottom: 65, right: 8, position: 'absolute' }}>
+          {resetOrder() && !open ? (
+            <View style={{ bottom: 65, right: 5, position: 'absolute' }}>
               <View style={{ padding: 8 }}>
                 <Icon
-                  name="sort-amount-down"
-                  type="font-awesome-5"
+                  name="low-priority"
                   reverse
                   raised
                   color={colors.primary}

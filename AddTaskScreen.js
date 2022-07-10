@@ -23,7 +23,8 @@ import {
   Button,
   ThemeProvider,
   createTheme,
-  Header
+  Header,
+  Dialog
 } from '@rneui/themed'
 // import { DateTimePicker } from 'react-native-ui-lib'
 import Section from './Section'
@@ -67,6 +68,7 @@ export default function AddTaskScreen ({ route, navigation }) {
   const [empty, setEmpty] = useState(false)
   const [edit, setEdit] = useState(false)
   const [same, setSame] = useState(false)
+  const [alert, setAlert] = useState({ show: false })
 
   const theme = createTheme({
     lightColors: {
@@ -311,10 +313,20 @@ export default function AddTaskScreen ({ route, navigation }) {
     // Check if valid
     if (name === '' || importance === 0 || length === 0) {
       setEmpty(true)
-      Alert.alert('Invalid Task', 'Not all fields have been filled out!')
+      setAlert({
+        show: true,
+        title: 'Invalid Task',
+        message: 'Not all fields have been filled out!',
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
+      })
     } else if ((await sameName()) === true) {
       // setSame(true)
-      Alert.alert('Name Used', 'Name already used. Please select a new name.')
+      setAlert({
+        show: true,
+        title: 'Name Taken',
+        message: 'Name already taken. Please choose a different name.',
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
+      })
     } else {
       // Put in task for all the days used
       for (let i = 0; i <= daysUsed.length - 1; i++) {
@@ -452,6 +464,29 @@ export default function AddTaskScreen ({ route, navigation }) {
           // centerComponent=
         />
 
+        {alert.show ? (
+          <Dialog
+            overlayStyle={{ backgroundColor: colors.white }}
+            onBackdropPress={() => setAlert({ show: false })}
+          >
+            <Dialog.Title
+              title={alert.title}
+              titleStyle={{ color: colors.grey1 }}
+            />
+            <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+            <Dialog.Actions>
+              {alert.buttons.map((l, i) => (
+                <Dialog.Button
+                  key={i}
+                  title={l.title}
+                  titleStyle={{ color: colors.grey1 }}
+                  onPress={() => l.action()}
+                />
+              ))}
+            </Dialog.Actions>
+          </Dialog>
+        ) : null}
+
         <ScrollView>
           <View style={{ flex: 1 }}>
             {/* <View style={styles.section}> */}
@@ -476,14 +511,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                   // labelStyle={{ color: colors.grey2 }}
                   placeholder="Add Name"
                   placeholderTextColor={colors.grey2}
-                  renderErrorMessage={(empty && name === '') || same}
-                  errorMessage={
-                    empty && name === ''
-                      ? 'Please enter a name'
-                      : same
-                        ? 'Another task or event already has this name'
-                        : null
-                  }
+                  renderErrorMessage={false}
                   errorStyle={{ color: colors.error }}
                   onChangeText={async (name) => {
                     setName(name)
@@ -495,6 +523,17 @@ export default function AddTaskScreen ({ route, navigation }) {
                 />
               </Section>
             </View>
+              {(empty && name === '') || same
+                ? <Text
+                  style={{
+                    fontSize: 13,
+                    color: colors.error,
+                    alignSelf: 'flex-start',
+                    left: '17%'
+                  }}
+                >
+                  {empty && name === '' ? 'Enter a name' : 'Another task or event already has this name'}
+                </Text> : null}
             <View style={styles.section}>
               <Icon
                 name="reorder"
@@ -586,12 +625,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                     // labelStyle={{ color: colors.grey2 }}
                     placeholder="Minutes"
                     placeholderTextColor={colors.grey2}
-                    renderErrorMessage={empty && length === 0}
-                    errorMessage={
-                      empty && length === 0
-                        ? 'Enter a non-zero task length'
-                        : null
-                    }
+                    renderErrorMessage={false}
                     errorStyle={{ color: colors.error }}
                     keyboardType="numeric"
                     onChangeText={(minutes) => {
@@ -611,6 +645,17 @@ export default function AddTaskScreen ({ route, navigation }) {
                 </Section>
               </View>
             </View>
+            {empty && length === 0
+              ? <Text
+                  style={{
+                    fontSize: 13,
+                    color: colors.error,
+                    alignSelf: 'flex-start',
+                    left: '17%'
+                  }}
+                >
+                  {'Enter a non-zero task length'}
+                </Text> : null}
             <View style={styles.section}>
               <Icon
                 name="exclamation-triangle"
@@ -868,7 +913,7 @@ export default function AddTaskScreen ({ route, navigation }) {
               {daysUsed.includes(true) === false ? (
                 <Text
                   style={{
-                    fontSize: 15,
+                    fontSize: 13,
                     color: colors.error,
                     alignSelf: 'center'
                   }}
@@ -884,7 +929,9 @@ export default function AddTaskScreen ({ route, navigation }) {
               buttonStyle={{
                 backgroundColor: colors.primary,
                 alignSelf: 'flex-end',
-                borderRadius: 5
+                borderRadius: 5,
+                paddingHorizontal: 15,
+                paddingVertical: 5
               }}
               onPress={() => handleSave()}
             />
@@ -917,6 +964,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginVertical: 10
+    marginTop: 15,
+    marginBottom: 5
   }
 })

@@ -24,7 +24,8 @@ import {
   ThemeProvider,
   createTheme,
   Header,
-  Icon
+  Icon,
+  Dialog
 } from '@rneui/themed'
 import Section from './Section'
 
@@ -92,6 +93,8 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
   const [edit, setEdit] = useState(false)
   const [notification, setNotification] = useState('')
   const [same, setSame] = useState(false)
+  const [alert, setAlert] = useState({ show: false })
+
   const theme = createTheme({
     lightColors: {
       primary: '#6a99e6',
@@ -469,7 +472,12 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
     // Check if valid
     if (name === '') {
       setEmpty(true)
-      Alert.alert('Empty Name', 'Please enter a name.')
+      setAlert({
+        show: true,
+        title: 'Empty Name',
+        message: 'Please enter a name.',
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
+      })
     } else if (
       !(
         selectedTask.start != null &&
@@ -477,17 +485,26 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
         roundTime(selectedTask.end) - roundTime(selectedTask.start) >= 1
       )
     ) {
-      Alert.alert(
-        'Invalid Time',
-        'The times that you have set for this task are invalid.'
-      )
+      setAlert({
+        show: true,
+        title: 'Invalid Time',
+        message: 'The times that you have set for this event are invalid.',
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
+      })
     } else if ((await sameName()) === true) {
-      Alert.alert('Name Used', 'Name already used. Please select a new name.')
+      setAlert({
+        show: true,
+        title: 'Name Taken',
+        message: 'Name already taken. Please choose a new name.',
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
+      })
     } else if (sameTime === true) {
-      Alert.alert(
-        'Event Times Overlap',
-        'The times that you have set for this event overlap with the times of another event.'
-      )
+      setAlert({
+        show: true,
+        title: 'Event Times Overlap',
+        message: 'The times that you have set for this event overlap with the times of another event.',
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
+      })
     } else {
       const remove = !newInfo()
       // Put in task for all the days used
@@ -634,6 +651,31 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
           // centerComponent=
         />
 
+{alert.show
+  ? (
+          <Dialog
+            overlayStyle={{ backgroundColor: colors.white }}
+            onBackdropPress={() => setAlert({ show: false })}
+          >
+            <Dialog.Title
+              title={alert.title}
+              titleStyle={{ color: colors.grey1 }}
+            />
+            <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+            <Dialog.Actions>
+              {alert.buttons.map((l, i) => (
+                <Dialog.Button
+                  key={i}
+                  title={l.title}
+                  titleStyle={{ color: colors.grey1 }}
+                  onPress={() => l.action()}
+                />
+              ))}
+            </Dialog.Actions>
+          </Dialog>
+    )
+  : null}
+
         <ScrollView style={{ padding: 10 }}>
           <Text style={{ fontSize: 20, padding: 4, color: colors.grey1 }}>
             {days[new Date().getDay()]}, {monthNames[new Date().getMonth()]}{' '}
@@ -660,15 +702,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                   // labelStyle={{ color: colors.grey2 }}
                   placeholder="Add Name"
                   placeholderTextColor={colors.grey2}
-                  renderErrorMessage={empty || same}
-                  errorMessage={
-                    empty
-                      ? 'Please enter a name'
-                      : same
-                        ? 'Another task or event already has this name'
-                        : null
-                  }
-                  errorStyle={{ color: colors.error }}
+                  renderErrorMessage={false}
                   onChangeText={(name) => {
                     setName(name)
                     sameName()
@@ -679,6 +713,22 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                 />
               </Section>
             </View>
+            {(empty && name === '') || same
+              ? (
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: colors.error,
+                  alignSelf: 'flex-start',
+                  left: '17%'
+                }}
+              >
+                {empty && name === ''
+                  ? 'Enter a name'
+                  : 'Another task or event already has this name'}
+              </Text>
+                )
+              : null}
             <View style={styles.section}>
               <Icon
                 name="reorder"
@@ -792,22 +842,22 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                 />
               )}
 
-              {start != null &&
+            </View>
+            {start != null &&
               end != null &&
               roundTime(end) - roundTime(start) <= 0
-                ? (
-                <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
+              ? (
+                <Text style={{ fontSize: 13, color: colors.error, left: '17%' }}>
                   Events need to be at least 1 minute long!
                 </Text>
-                  )
-                : overlapingTime()
-                  ? (
-                <Text style={{ fontSize: 15, color: 'red', marginBottom: 15 }}>
+                )
+              : overlapingTime()
+                ? (
+                <Text style={{ fontSize: 13, color: colors.error, left: '17%' }}>
                   Overlaping times!
                 </Text>
-                    )
-                  : null}
-            </View>
+                  )
+                : null}
             <View style={styles.section}>
               <Icon
                 name="notifications"
@@ -900,7 +950,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                 ? (
                 <Text
                   style={{
-                    fontSize: 15,
+                    fontSize: 13,
                     color: colors.warning,
                     alignSelf: 'center'
                   }}
@@ -912,12 +962,15 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             </Section>
           </View>
           <Button
+          containerStyle={{ marginTop: 10 }}
             title="Save"
             titleStyle={{ color: colors.white }}
             buttonStyle={{
               backgroundColor: colors.primary,
               alignSelf: 'flex-end',
-              borderRadius: 5
+              borderRadius: 5,
+              paddingHorizontal: 15,
+              paddingVertical: 5
             }}
             onPress={() => handleSave()}
           />
@@ -952,6 +1005,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginVertical: 10
+    marginTop: 15,
+    marginBottom: 5
+
   }
 })

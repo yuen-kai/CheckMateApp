@@ -676,7 +676,10 @@ export default function SettingsScreen ({ navigation }) {
             backgroundColor: colors.primary,
             alignSelf: 'flex-end',
             margin: 10,
-            marginTop: 20
+            marginTop: 20,
+            paddingHorizontal: 15,
+            paddingVertical: 5,
+            borderRadius: 8
           }}
           onPress={() => handleSave()}
         />
