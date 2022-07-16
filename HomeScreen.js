@@ -72,7 +72,8 @@ export default function HomeScreen ({ route, navigation }) {
     lightColors: {
       primary: '#6a99e6',
       green: '#00b300',
-      background: '#f2f2f2'
+      background: '#f2f2f2',
+      white: '#dbdbdb'
     },
     darkColors: {
       primary: '#56a3db',
@@ -99,7 +100,7 @@ export default function HomeScreen ({ route, navigation }) {
         'Before I can assist you, I need to know what tasks you need to work on. Add your tasks and fill in the parameters.',
       image: taskScreen,
       width: 200,
-      height: 422.22
+      height: 398.14
     },
     {
       title: '2. Adding Events',
@@ -107,15 +108,15 @@ export default function HomeScreen ({ route, navigation }) {
         'I also need to know your events. Add your events and fill in the parameters.',
       image: eventScreen,
       width: 200,
-      height: 422.22
+      height: 393.55
     },
     {
       title: '3. Syncing With Calendar',
       content:
-        'Would you like events from your calendar to be added to your schedule? You can change these preferences by clicking the settings button at the top of the screen. Pressing the sync button will allow you to review and add your calendar events.',
+        'Would you like events from your calendar to be added to your schedule? You can always change these preferences in settings. Clicking the sync button at the top of the home screen will allow you to review and add your calendar events.',
       image: syncScreen,
       width: 200,
-      height: 198.05
+      height: 206.12
     },
     {
       title: '4. Making the Schedule',
@@ -123,23 +124,23 @@ export default function HomeScreen ({ route, navigation }) {
         'This part is taken care for you. An optimized schedule using your tasks and events will be automatically created for you.',
       image: homeScreen,
       width: 200,
-      height: 422.22
+      height: 389.85
     },
     {
       title: '5. Using the Schedule',
       content:
-        'Work at your own pace by selecting a task and using the buttons at the bottom of the screen to start, pause, finish, or edit it. Events will automatically be started when the time is right. Your schedule will automatically adjust for you.',
+        'Work at your own pace by selecting a task and using the buttons at the bottom of the screen to start, pause, finish, or edit it. Events will automatically be started when the time is right. Use the arrows beside the selected task to move it up or down. Press the button near the bottom right to optimize your schedule.',
       image: controls,
       width: 200,
-      height: 94.72
+      height: 397.93
     },
     {
       title: 'Be Productive!',
       content:
-        "That's all! Click on the '?' icon to see this tutorial again. Now go be productive!",
+        "That's all! Go to settings to toggle notification reminders. Click on the '?' icon to see this tutorial again. Go be productive!",
       image: top,
       width: 200,
-      height: 91.38
+      height: 65.55
     }
   ]
 
@@ -163,11 +164,9 @@ export default function HomeScreen ({ route, navigation }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       getData()
+      registerForPushNotificationsAsync().then()
+      Calendar.requestCalendarPermissionsAsync().then()
     })
-
-    // getData()
-
-    registerForPushNotificationsAsync().then()
 
     return unsubscribe
   }, [route.params, navigation])
@@ -213,21 +212,21 @@ export default function HomeScreen ({ route, navigation }) {
   async function registerForPushNotificationsAsync () {
     let token
     if (Device.isDevice) {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync()
+      const settings = await Notifications.getPermissionsAsync()
+      const existingStatus = settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
       let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync()
         finalStatus = status
       }
       if (finalStatus !== 'granted') {
-        alert('Failed to get push token for push notification!')
+        Alert.alert('Failed to get push token for push notification!')
         return
       }
       token = (await Notifications.getExpoPushTokenAsync()).data
       // console.log(token)
     } else {
-      alert('Must use physical device for Push Notifications')
+      Alert.alert('Must use physical device for Push Notifications')
     }
 
     if (Platform.OS === 'android') {
@@ -654,18 +653,20 @@ export default function HomeScreen ({ route, navigation }) {
 
         // Shift times
         savedTask[0][new Date().getDay()].forEach((e) => {
-          e.start = time(
+          e.pStart = time(
             new Date().setHours(
-              new Date(e.start).getHours(),
-              new Date(e.start).getMinutes()
+              new Date(e.pStart).getHours(),
+              new Date(e.pStart).getMinutes()
             )
           )
-          e.end = time(
+          e.start = e.pStart
+          e.pEnd = time(
             new Date().setHours(
-              new Date(e.end).getHours(),
-              new Date(e.end).getMinutes()
+              new Date(e.pEnd).getHours(),
+              new Date(e.pEnd).getMinutes()
             )
           )
+          e.end = e.pEnd
         })
         setTasks = [...savedTask[0][new Date().getDay()]]
       } else {
@@ -1116,17 +1117,19 @@ export default function HomeScreen ({ route, navigation }) {
                       }
               }
             >
-              <ListItem.Content
-                style={item.break != null ? { alignItems: 'center' } : null}
-              >
+              <ListItem.Content>
                 <View
-                  style={{
+                  style={item.break == null ? {
                     flexDirection: 'row',
                     justifyContent: 'space-between',
                     alignSelf: 'stretch'
+                  } : {
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    alignSelf: 'stretch'
                   }}
                 >
-                  <View>
+                  <View style={item.break != null ? { alignItems: 'center' } : null}>
                     <View
                       style={{ flexDirection: 'row', alignItems: 'center' }}
                     >
@@ -1221,7 +1224,7 @@ export default function HomeScreen ({ route, navigation }) {
                       <Icon
                         name="arrow-upward"
                         onPress={() => move('up')}
-                        color={colors.grey1}
+                        color={colors.grey3}
                         size={20}
 
                         style={{ marginBottom: 5 }}
@@ -1237,7 +1240,7 @@ export default function HomeScreen ({ route, navigation }) {
                       <Icon
                         name="arrow-downward"
                         onPress={() => move('down')}
-                        color={colors.grey1}
+                        color={colors.grey3}
                         size={20}
                         style={{ marginTop: 5 }}
                       />
@@ -1365,7 +1368,7 @@ export default function HomeScreen ({ route, navigation }) {
           )
         } else {
           // remove combined[taskIndex] from setTasks
-          if (combined[taskIndex].notificationId != null) {
+          if (!combined[taskIndex].weekly && combined[taskIndex].notificationId != null) {
             await Notifications.cancelScheduledNotificationAsync(
               combined[taskIndex].notificationId
             )
@@ -1568,13 +1571,13 @@ export default function HomeScreen ({ route, navigation }) {
               <View>
                 {!error ? (
                   <Icon
-                    name="sync"
-                    type="material"
+                    name="calendar-sync"
+                    type="material-community"
                     size={23}
                     color={colors.grey1}
                     onPress={() => reviewEvents()}
                     onLongPress={() => getSyncEvents(true)}
-                    style={{ marginLeft: 15 }}
+                    style={{ marginLeft: 20 }}
                   />
                 ) : (
                   <Icon
@@ -1586,7 +1589,7 @@ export default function HomeScreen ({ route, navigation }) {
                       reviewEvents()
                     }}
                     onLongPress={() => getSyncEvents(true)}
-                    style={{ marginLeft: 15 }}
+                    style={{ marginLeft: 20 }}
                   />
                 )}
               </View>
@@ -1597,7 +1600,7 @@ export default function HomeScreen ({ route, navigation }) {
                 onPress={() => navigation.navigate('Settings')}
                 solid={true}
                 color={colors.grey1}
-                style={{ marginLeft: 15 }}
+                style={{ marginLeft: 20 }}
               />
             </View>
           }
@@ -1773,7 +1776,6 @@ export default function HomeScreen ({ route, navigation }) {
             transitionDuration={40}
           >
             <Tooltip
-              // toggleAction="onLongPress"
               height={60}
               popover={
                 <Text style={{ color: colors.grey1 }}>

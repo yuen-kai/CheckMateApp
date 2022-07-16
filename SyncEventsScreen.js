@@ -44,8 +44,8 @@ export default function SyncEventsScreen ({ route, navigation }) {
   const theme = createTheme({
     lightColors: {
       primary: '#6a99e6',
-      listItemBg: '#dde7ed',
-      disabledBg: '#dde7ed',
+      listItemBg: '#g9g9g9',
+      disabledBg: '#dbdbdb',
       background: '#f2f2f2'
       // grey1: '#f5f5f5'
     },
@@ -68,9 +68,9 @@ export default function SyncEventsScreen ({ route, navigation }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       getData()
+      registerForPushNotificationsAsync().then()
     })
 
-    registerForPushNotificationsAsync().then()
     // getData()
     return () => {
       unsubscribe
@@ -140,21 +140,21 @@ export default function SyncEventsScreen ({ route, navigation }) {
   async function registerForPushNotificationsAsync () {
     let token
     if (Device.isDevice) {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync()
+      const settings = await Notifications.getPermissionsAsync()
+      const existingStatus = settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
       let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync()
         finalStatus = status
       }
       if (finalStatus !== 'granted') {
-        alert('Failed to get push token for push notification!')
+        Alert.alert('Failed to get push token for push notification!')
         return
       }
       token = (await Notifications.getExpoPushTokenAsync()).data
       // console.log(token)
     } else {
-      alert('Must use physical device for Push Notifications')
+      Alert.alert('Must use physical device for Push Notifications')
     }
 
     if (Platform.OS === 'android') {

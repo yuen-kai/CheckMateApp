@@ -2,7 +2,7 @@
   "expo": {
     "name": "CheckMate",
     "slug": "CheckMate",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/Icon.png",
     "userInterfaceStyle": "automatic",
@@ -18,9 +18,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.yuenkai.CheckMate",
-      "buildNumber": "1.1.0",
+      "buildNumber": "2.0",
       "infoPlist": {
-        "NSRemindersUsageDescription": "This app reads events from the calendar and adds them into the user's schedule in the app."
+        "NSRemindersUsageDescription": "This app reads events from the device's calendar and adds them into the user's schedule in the app."
       }
     },
     "android": {
@@ -31,7 +31,8 @@
       "googleServicesFile": "./google-services.json",
       "icon": "./assets/Icon.png",
       "softwareKeyboardLayoutMode": "pan",
-      "package": "com.yuenkai.CheckMate"
+      "package": "com.yuenkai.CheckMate",
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png"

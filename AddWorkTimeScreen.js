@@ -115,9 +115,8 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       getData()
+      registerForPushNotificationsAsync().then()
     })
-
-    registerForPushNotificationsAsync().then()
 
     return () => {
       unsubscribe
@@ -214,21 +213,21 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
   async function registerForPushNotificationsAsync () {
     let token
     if (Device.isDevice) {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync()
+      const settings = await Notifications.getPermissionsAsync()
+      const existingStatus = settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
       let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync()
         finalStatus = status
       }
       if (finalStatus !== 'granted') {
-        alert('Failed to get push token for push notification!')
+        Alert.alert('Failed to get push token for push notification!')
         return
       }
       token = (await Notifications.getExpoPushTokenAsync()).data
       // console.log(token)
     } else {
-      alert('Must use physical device for Push Notifications')
+      Alert.alert('Must use physical device for Push Notifications')
     }
 
     if (Platform.OS === 'android') {
@@ -296,8 +295,10 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
       edit &&
       !(
         name === task.name &&
+        description === task.description &&
         roundTime(start).getTime() === roundTime(task.pStart).getTime() &&
-        roundTime(end).getTime() === roundTime(task.pEnd).getTime()
+        roundTime(end).getTime() === roundTime(task.pEnd).getTime() &&
+        notification === task.notification
       )
     )
   }
@@ -357,7 +358,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
     setDaysUsed(change)
   }
 
-  async function sameName () {
+  async function sameName (name) {
     const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
     const savedTask =
       savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) : null
@@ -491,7 +492,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
         message: 'The times that you have set for this event are invalid.',
         buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
-    } else if ((await sameName()) === true) {
+    } else if ((await sameName(name)) === true) {
       setAlert({
         show: true,
         title: 'Name Taken',
@@ -532,7 +533,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             )
           }
 
-          workTimes[0][i].push(selectedTask)
+          workTimes[0][i].push({ ...selectedTask })
           if (selectedTask.notification !== '') {
             if (weekly) {
               workTimes[0][i][workTimes[0][i].length - 1].notificationId =
@@ -550,7 +551,10 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                 1
               )
             }
-            workTimes[1][i].push(selectedTask)
+            workTimes[1][i].push({ ...selectedTask })
+            if (selectedTask.notification !== '') {
+              workTimes[1][i][workTimes[1][i].length - 1].notificationId = workTimes[0][i][workTimes[0][i].length - 1].notificationId
+            }
           }
         } else if (remove) {
           if (workTimes[0][i].some((task) => task.name === selectedTask.name)) {
@@ -684,7 +688,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
           <View style={{ flexDirection: 'column' }}>
             <View style={styles.section}>
               <Icon
-                name="reorder"
+                name="label"
                 type="material"
                 color={colors.grey1}
                 size={30}
@@ -705,7 +709,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                   renderErrorMessage={false}
                   onChangeText={(name) => {
                     setName(name)
-                    sameName()
+                    sameName(name)
                   }}
                   value={name}
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
@@ -731,7 +735,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
               : null}
             <View style={styles.section}>
               <Icon
-                name="reorder"
+                name="info"
                 type="material"
                 color={colors.grey1}
                 size={30}

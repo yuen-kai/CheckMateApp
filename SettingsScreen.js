@@ -103,9 +103,9 @@ export default function SettingsScreen ({ navigation }) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       getData()
+      registerForPushNotificationsAsync().then()
     })
 
-    registerForPushNotificationsAsync().then()
     // getData()
     return () => {
       unsubscribe
@@ -307,21 +307,21 @@ export default function SettingsScreen ({ navigation }) {
   async function registerForPushNotificationsAsync () {
     let token
     if (Device.isDevice) {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync()
+      const settings = await Notifications.getPermissionsAsync()
+      const existingStatus = settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
       let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync()
         finalStatus = status
       }
       if (finalStatus !== 'granted') {
-        alert('Failed to get push token for push notification!')
+        Alert.alert('Failed to get push token for push notification!')
         return
       }
       token = (await Notifications.getExpoPushTokenAsync()).data
       // console.log(token)
     } else {
-      alert('Must use physical device for Push Notifications')
+      Alert.alert('Must use physical device for Push Notifications')
     }
 
     if (Platform.OS === 'android') {
@@ -341,18 +341,22 @@ export default function SettingsScreen ({ navigation }) {
     for (let i = 0; i < notiPref.length; i++) {
       const notification = notiPref[i]
       for (let j = 0; j < 7; j++) {
-        if (notification.days[j].notiID !== '') {
-          await Notifications.cancelScheduledNotificationAsync(
-            notification.days[j].notiID
-          )
-        }
+        if (notification.weekly && new Date(
+          new Date(notification.time).setDate(new Date().getDate() + (i - new Date().getDay()))
+        ) > new Date()) {
+          if (notification.days[j].notiID !== '') {
+            await Notifications.cancelScheduledNotificationAsync(
+              notification.days[j].notiID
+            )
+          }
 
-        if (notification.days[j].use) {
-          notiPref[i].days[j].notiID = await schedulePushNotification(
-            notification.time,
-            j,
-            notification.weekly
-          )
+          if (notification.days[j].use) {
+            notiPref[i].days[j].notiID = await schedulePushNotification(
+              notification.time,
+              j,
+              notification.weekly
+            )
+          }
         }
       }
     }

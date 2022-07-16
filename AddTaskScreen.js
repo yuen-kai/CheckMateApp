@@ -319,7 +319,7 @@ export default function AddTaskScreen ({ route, navigation }) {
         message: 'Not all fields have been filled out!',
         buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
-    } else if ((await sameName()) === true) {
+    } else if ((await sameName(name)) === true) {
       // setSame(true)
       setAlert({
         show: true,
@@ -387,7 +387,7 @@ export default function AddTaskScreen ({ route, navigation }) {
     }
   }
 
-  async function sameName () {
+  async function sameName (name) {
     const savedTaskJsonValue = await AsyncStorage.getItem('setTasks')
     const workTimes =
       savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) : null
@@ -492,7 +492,7 @@ export default function AddTaskScreen ({ route, navigation }) {
             {/* <View style={styles.section}> */}
             <View style={styles.section}>
               <Icon
-                name="reorder"
+                name="label"
                 type="material"
                 color={colors.grey1}
                 size={30}
@@ -515,7 +515,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                   errorStyle={{ color: colors.error }}
                   onChangeText={async (name) => {
                     setName(name)
-                    await sameName()
+                    await sameName(name)
                     // console.log(same)
                   }}
                   value={name}
@@ -536,7 +536,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                 </Text> : null}
             <View style={styles.section}>
               <Icon
-                name="reorder"
+                name="info"
                 type="material"
                 color={colors.grey1}
                 size={30}
