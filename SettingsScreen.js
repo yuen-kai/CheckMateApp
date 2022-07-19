@@ -341,8 +341,8 @@ export default function SettingsScreen ({ navigation }) {
     for (let i = 0; i < notiPref.length; i++) {
       const notification = notiPref[i]
       for (let j = 0; j < 7; j++) {
-        if (notification.weekly && new Date(
-          new Date(notification.time).setDate(new Date().getDate() + (i - new Date().getDay()))
+        if (notification.weekly || new Date(
+          new Date(notification.time).setDate(new Date().getDate() + (j - new Date().getDay()))
         ) > new Date()) {
           if (notification.days[j].notiID !== '') {
             await Notifications.cancelScheduledNotificationAsync(
