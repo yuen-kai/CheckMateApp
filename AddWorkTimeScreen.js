@@ -714,6 +714,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                   value={name}
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
                   inputContainerStyle={{ bottomBorderWidth: 0 }}
+                  selectionColor={colors.primary}
                 />
               </Section>
             </View>
@@ -759,6 +760,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                   value={description}
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
                   inputContainerStyle={{ bottomBorderWidth: 0 }}
+                  selectionColor={colors.primary}
                 />
               </Section>
             </View>
@@ -890,6 +892,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
                   inputContainerStyle={{ bottomBorderWidth: 0 }}
                   renderErrorMessage={false}
+                  selectionColor={colors.primary}
                 />
               </Section>
             </View>

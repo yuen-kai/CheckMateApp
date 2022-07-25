@@ -520,6 +520,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                   }}
                   value={name}
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                  selectionColor={colors.primary}
                 />
               </Section>
             </View>
@@ -557,6 +558,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                   value={description}
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
                   inputContainerStyle={{ borderBottomWidth: 0 }}
+                  selectionColor={colors.primary}
                 />
               </Section>
             </View>
@@ -606,6 +608,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                     inputStyle={{ color: colors.grey1, fontSize: 17 }}
                     renderErrorMessage={false}
                     inputContainerStyle={{ borderBottomWidth: 0 }}
+                    selectionColor={colors.primary}
                   />
                 </Section>
                 <Section
@@ -641,6 +644,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                     }
                     inputStyle={{ color: colors.grey1, fontSize: 17 }}
                     inputContainerStyle={{ borderBottomWidth: 0 }}
+                    selectionColor={colors.primary}
                   />
                 </Section>
               </View>

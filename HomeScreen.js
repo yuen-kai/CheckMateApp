@@ -479,6 +479,22 @@ export default function HomeScreen ({ route, navigation }) {
           (1000 * 60),
         description: event.notes
       })
+      if (event.alarms[0] != null) {
+        setTasks[0][new Date().getDay()][
+          setTasks[0][new Date().getDay()].length - 1
+        ].notification = event.alarms[0].relativeOffset * -1
+        setTasks[0][new Date().getDay()][
+          setTasks[0][new Date().getDay()].length - 1
+        ].notificationId = await schedulePushNotification(
+          setTasks[0][new Date().getDay()][
+            setTasks[0][new Date().getDay()].length - 1
+          ]
+        )
+      } else {
+        setTasks[0][new Date().getDay()][
+          setTasks[0][new Date().getDay()].length - 1
+        ].notification = ''
+      }
       if (event.location !== '') {
         setTasks[setTasks.length - 1].description +=
           ' At ' + event.location + '.'
