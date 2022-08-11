@@ -7,7 +7,6 @@ import React, { useEffect, useState } from 'react'
 import {
   StyleSheet,
   View,
-  Alert,
   ScrollView,
   Platform,
   useColorScheme,
@@ -94,19 +93,17 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
   const [notification, setNotification] = useState('')
   const [same, setSame] = useState(false)
   const [alert, setAlert] = useState({ show: false })
+  const [checked, setChecked] = useState(1)
 
   const theme = createTheme({
     lightColors: {
       primary: '#6a99e6',
       background: '#f2f2f2'
-      // grey1: '#f5f5f5'
     },
     darkColors: {
       primary: '#56a3db',
       white: '#606060',
-      // primary: '#6a99e6',
       background: '#222222'
-      // grey3: ''
     }
   })
   const [colors, setColors] = useState(theme.lightColors)
@@ -134,10 +131,12 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
       await getTheme()
       setReady(true)
     } catch (e) {
-      Alert.alert(
-        'Failed to get data!',
-        'Failed to get data! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
       console.log(e)
     }
   }
@@ -214,20 +213,32 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
     let token
     if (Device.isDevice) {
       const settings = await Notifications.getPermissionsAsync()
-      const existingStatus = settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+      const existingStatus =
+        settings.granted ||
+        settings.ios?.status ===
+          Notifications.IosAuthorizationStatus.PROVISIONAL
       let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync()
         finalStatus = status
       }
       if (finalStatus !== 'granted') {
-        Alert.alert('Failed to get push token for push notification!')
+        setAlert({
+          show: true,
+          title: 'Push notification permission denied!',
+          message: 'Please enable push notifications for this app.',
+          buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        })
         return
       }
       token = (await Notifications.getExpoPushTokenAsync()).data
-      // console.log(token)
     } else {
-      Alert.alert('Must use physical device for Push Notifications')
+      setAlert({
+        show: true,
+        title: 'Must use physical device for Push Notifications',
+        message: 'A physical device is neccesary for Push Notifications',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
     }
 
     if (Platform.OS === 'android') {
@@ -262,7 +273,8 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
         await AsyncStorage.removeItem('editName')
         for (let i = 0; i <= daysUsed.length - 1; i++) {
           if (
-            workTimes[0][i].findIndex((task) => task.name === editName) !== -1
+            workTimes[0][i].some((task) => task.name === editName) ||
+            (weekly && workTimes[1][i].some((task) => task.name === editName))
           ) {
             change.splice(i, 1, true)
           }
@@ -277,10 +289,12 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
         await setDaysUsed(change)
       }
     } catch (e) {
-      Alert.alert(
-        'Failed to get edit info!',
-        'Failed to get edit info! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting edit info!',
+        message: 'Please try again.',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
       console.log(e)
     }
   }
@@ -289,6 +303,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
     const task = workTimes[0][new Date().getDay()].find(
       (event) => event.name === editName
     )
+
     // check if state props are the same as task props
     return (
       task !== undefined &&
@@ -450,6 +465,103 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
     return false
   }
 
+  async function saveEvents (thisOrAll) {
+    // Put in task for all the days used
+    for (let i = 0; i <= daysUsed.length - 1; i++) {
+      if (daysUsed[i] === true) {
+        if (edit === true) {
+          if (
+            workTimes[0][i].findIndex((task) => task.name === editName) !== -1
+          ) {
+            if (
+              workTimes[0][i][
+                workTimes[0][i].findIndex((task) => task.name === editName)
+              ].notificationId != null
+            ) {
+              await Notifications.cancelScheduledNotificationAsync(
+                workTimes[0][i][
+                  workTimes[0][i].findIndex((task) => task.name === editName)
+                ].notificationId
+              )
+            }
+          }
+          workTimes[0][i].splice(
+            workTimes[0][i].findIndex((task) => task.name === editName),
+            1
+          )
+        }
+
+        workTimes[0][i].push({ ...selectedTask })
+        if (selectedTask.notification !== '') {
+          if (weekly) {
+            workTimes[0][i][workTimes[0][i].length - 1].notificationId =
+              await schedulePushNotification(selectedTask, i, true)
+          } else {
+            workTimes[0][i][workTimes[0][i].length - 1].notificationId =
+              await schedulePushNotification(selectedTask, i, false)
+          }
+        }
+
+        if (weekly === true) {
+          if (edit === true) {
+            workTimes[1][i].splice(
+              workTimes[1][i].findIndex((task) => task.name === editName),
+              1
+            )
+          }
+          workTimes[1][i].push({ ...selectedTask })
+          if (selectedTask.notification !== '') {
+            workTimes[1][i][workTimes[1][i].length - 1].notificationId =
+              workTimes[0][i][workTimes[0][i].length - 1].notificationId
+          }
+        }
+      } else if (thisOrAll !== 'none') {
+        if (workTimes[0][i].some((task) => task.name === selectedTask.name)) {
+          if (
+            workTimes[0][i][
+              workTimes[0][i].findIndex((task) => task.name === editName)
+            ].notificationId != null
+          ) {
+            await Notifications.cancelScheduledNotificationAsync(
+              workTimes[0][i][
+                workTimes[0][i].findIndex((task) => task.name === editName)
+              ].notificationId
+            )
+          }
+          workTimes[0][i].splice(
+            workTimes[0][i].findIndex(
+              (task) => task.name === selectedTask.name
+            ),
+            1
+          )
+        }
+        if (
+          thisOrAll === 'all' &&
+          workTimes[1][i].some((task) => task.name === selectedTask.name)
+        ) {
+          workTimes[1][i].splice(
+            workTimes[1][i].findIndex(
+              (task) => task.name === selectedTask.name
+            ),
+            1
+          )
+        }
+      }
+    }
+    setEmpty(false)
+
+    // save data
+    try {
+      const jsonValue = JSON.stringify(workTimes)
+      await AsyncStorage.setItem('setTasks', jsonValue)
+    } catch (e) {
+      console.log(e)
+    }
+
+    // Go back to home page
+    navigation.navigate('Home', { editName: selectedTask.name })
+  }
+
   const handleSave = async () => {
     let sameTime = false
     await isRepeating()
@@ -466,8 +578,8 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
       notificationId: null,
       notification
     }
-    // console.log(selectedTask.length)
-    // set sametime to true if the times overlap
+
+    // set sameTime to true if the times overlap
     sameTime = overlapingTime()
 
     // Check if valid
@@ -503,103 +615,81 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
       setAlert({
         show: true,
         title: 'Event Times Overlap',
-        message: 'The times that you have set for this event overlap with the times of another event.',
+        message:
+          'The times that you have set for this event overlap with the times of another event.',
         buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
     } else {
-      const remove = !newInfo()
-      // Put in task for all the days used
-      for (let i = 0; i <= daysUsed.length - 1; i++) {
-        if (daysUsed[i] === true) {
-          if (edit === true) {
-            if (
-              workTimes[0][i].findIndex((task) => task.name === editName) !== -1
-            ) {
-              if (
-                workTimes[0][i][
-                  workTimes[0][i].findIndex((task) => task.name === editName)
-                ].notificationId != null
-              ) {
-                await Notifications.cancelScheduledNotificationAsync(
-                  workTimes[0][i][
-                    workTimes[0][i].findIndex((task) => task.name === editName)
-                  ].notificationId
-                )
-              }
-            }
-            workTimes[0][i].splice(
-              workTimes[0][i].findIndex((task) => task.name === editName),
-              1
-            )
-          }
+      const remove = edit && !newInfo()
 
-          workTimes[0][i].push({ ...selectedTask })
-          if (selectedTask.notification !== '') {
-            if (weekly) {
-              workTimes[0][i][workTimes[0][i].length - 1].notificationId =
-                await schedulePushNotification(selectedTask, i, true)
-            } else {
-              workTimes[0][i][workTimes[0][i].length - 1].notificationId =
-                await schedulePushNotification(selectedTask, i, false)
-            }
-          }
-
-          if (weekly === true) {
-            if (edit === true) {
-              workTimes[1][i].splice(
-                workTimes[1][i].findIndex((task) => task.name === editName),
-                1
-              )
-            }
-            workTimes[1][i].push({ ...selectedTask })
-            if (selectedTask.notification !== '') {
-              workTimes[1][i][workTimes[1][i].length - 1].notificationId = workTimes[0][i][workTimes[0][i].length - 1].notificationId
-            }
-          }
-        } else if (remove) {
-          if (workTimes[0][i].some((task) => task.name === selectedTask.name)) {
-            if (
-              workTimes[0][i][
-                workTimes[0][i].findIndex((task) => task.name === editName)
-              ].notificationId != null
-            ) {
-              await Notifications.cancelScheduledNotificationAsync(
-                workTimes[0][i][
-                  workTimes[0][i].findIndex((task) => task.name === editName)
-                ].notificationId
-              )
-            }
-            workTimes[0][i].splice(
-              workTimes[0][i].findIndex(
-                (task) => task.name === selectedTask.name
-              ),
-              1
-            )
-          }
-          if (
-            weekly === true &&
-            workTimes[1][i].some((task) => task.name === selectedTask.name)
-          ) {
-            workTimes[1][i].splice(
-              workTimes[1][i].findIndex(
-                (task) => task.name === selectedTask.name
-              ),
-              1
-            )
+      if (remove) {
+        // check if event occurs in workTimes[1]
+        let occurs = false
+        for (let i = 0; i < workTimes[1].length; i++) {
+          if (workTimes[1][i].some((element) => element.name === editName)) {
+            occurs = true
           }
         }
-      }
-      setEmpty(false)
-      // save data
-      try {
-        const jsonValue = JSON.stringify(workTimes)
-        await AsyncStorage.setItem('setTasks', jsonValue)
-      } catch (e) {
-        console.log(e)
-      }
 
-      // Go back to home page
-      navigation.navigate('Home', { editName: selectedTask.name })
+        let secondOccurs = false
+
+        // check if event occurs in workTimes[0] but usedDays[i] is false
+        for (let i = 0; i < workTimes[0].length; i++) {
+          if (
+            workTimes[0][i].some((element) => element.name === editName) &&
+            !daysUsed[i]
+          ) {
+            secondOccurs = true
+          }
+        }
+
+        if (weekly) {
+          for (let i = 0; i < workTimes[1].length; i++) {
+            if (
+              workTimes[1][i].some((element) => element.name === editName) &&
+              !daysUsed[i]
+            ) {
+              secondOccurs = true
+            }
+          }
+        }
+
+        if (occurs && secondOccurs) {
+          setAlert({
+            show: true,
+            title: 'Delete recurring event',
+            content: ['This week', 'All weeks'].map((t, k) => (
+              <CheckBox
+                key={k}
+                title={t}
+                textStyle={{ color: colors.grey1 }}
+                containerStyle={{
+                  backgroundColor: colors.white,
+                  borderWidth: 0
+                }}
+                checkedIcon="dot-circle-o"
+                uncheckedIcon="circle-o"
+                checked={checked === k + 1}
+                onPress={() => setChecked(k + 1)}
+              />
+            )),
+            buttons: [
+              { title: 'Cancel', action: () => setAlert({ show: false }) },
+              {
+                title: 'OK',
+                action: () => {
+                  setAlert({ show: false })
+                  checked === 1 ? saveEvents('this') : saveEvents('all')
+                }
+              }
+            ]
+          })
+        } else {
+          saveEvents('none')
+        }
+      } else {
+        saveEvents('none')
+      }
     }
   }
 
@@ -652,11 +742,10 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
               onPress={() => navigation.goBack()}
             />
           }
-          // centerComponent=
         />
 
-{alert.show
-  ? (
+        {alert.show
+          ? (
           <Dialog
             overlayStyle={{ backgroundColor: colors.white }}
             onBackdropPress={() => setAlert({ show: false })}
@@ -666,6 +755,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
               titleStyle={{ color: colors.grey1 }}
             />
             <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+            {alert.content}
             <Dialog.Actions>
               {alert.buttons.map((l, i) => (
                 <Dialog.Button
@@ -677,8 +767,8 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
               ))}
             </Dialog.Actions>
           </Dialog>
-    )
-  : null}
+            )
+          : null}
 
         <ScrollView style={{ padding: 10 }}>
           <Text style={{ fontSize: 20, padding: 4, color: colors.grey1 }}>
@@ -699,11 +789,8 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                 labelStyle={{ color: colors.grey2 }}
                 contentStyle={{ borderColor: colors.grey2 }}
               >
-                {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
                 <Input
                   multiline
-                  // label="Name"
-                  // labelStyle={{ color: colors.grey2 }}
                   placeholder="Add Name"
                   placeholderTextColor={colors.grey2}
                   renderErrorMessage={false}
@@ -749,8 +836,6 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
               >
                 <Input
                   multiline
-                  // label="Description"
-                  // labelStyle={{ color: colors.grey2 }}
                   placeholder="Add Description"
                   placeholderTextColor={colors.grey2}
                   renderErrorMessage={false}
@@ -826,6 +911,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                   />
                 </Section>
               </View>
+
               {/* start picker */}
               {startShow && (
                 <DateTimePicker
@@ -847,21 +933,20 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                   onChange={onEndChange}
                 />
               )}
-
             </View>
             {start != null &&
-              end != null &&
-              roundTime(end) - roundTime(start) <= 0
+            end != null &&
+            roundTime(end) - roundTime(start) <= 0
               ? (
-                <Text style={{ fontSize: 13, color: colors.error, left: '17%' }}>
-                  Events need to be at least 1 minute long!
-                </Text>
+              <Text style={{ fontSize: 13, color: colors.error, left: '17%' }}>
+                Events need to be at least 1 minute long!
+              </Text>
                 )
               : overlapingTime()
                 ? (
-                <Text style={{ fontSize: 13, color: colors.error, left: '17%' }}>
-                  Overlaping times!
-                </Text>
+              <Text style={{ fontSize: 13, color: colors.error, left: '17%' }}>
+                Overlaping times!
+              </Text>
                   )
                 : null}
             <View style={styles.section}>
@@ -878,8 +963,6 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                 contentStyle={{ borderColor: colors.grey2 }}
               >
                 <Input
-                  // label="Notifications"
-                  // labelStyle={{ color: colors.grey2 }}
                   placeholder="None"
                   placeholderTextColor={colors.grey2}
                   keyboardType="numeric"
@@ -898,7 +981,6 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             </View>
           </View>
 
-          {/* <Text h1 h1Style={{ fontSize:16, color:'#8a939c'}}> Use for:</Text> */}
           <View style={styles.section}>
             <Icon
               name="replay"
@@ -969,7 +1051,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             </Section>
           </View>
           <Button
-          containerStyle={{ marginTop: 10 }}
+            containerStyle={{ marginTop: 10 }}
             title="Save"
             titleStyle={{ color: colors.white }}
             buttonStyle={{
@@ -1014,6 +1096,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 15,
     marginBottom: 5
-
   }
 })

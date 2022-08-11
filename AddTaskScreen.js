@@ -6,9 +6,7 @@ import {
   StyleSheet,
   View,
   ScrollView,
-  Alert,
   useColorScheme,
-  Appearance,
   SafeAreaView
 } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
@@ -26,7 +24,6 @@ import {
   Header,
   Dialog
 } from '@rneui/themed'
-// import { DateTimePicker } from 'react-native-ui-lib'
 import Section from './Section'
 
 let savedTasks
@@ -78,9 +75,7 @@ export default function AddTaskScreen ({ route, navigation }) {
     darkColors: {
       primary: '#56a3db',
       white: '#606060',
-      // primary: '#6a99e6',
       background: '#222222'
-      // grey3: ''
     }
   })
 
@@ -90,11 +85,8 @@ export default function AddTaskScreen ({ route, navigation }) {
   // Get data
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      // console.log('hello')
       getData()
     })
-    // console.log('hello')
-    // getData()
 
     return unsubscribe
   }, [])
@@ -110,10 +102,12 @@ export default function AddTaskScreen ({ route, navigation }) {
       await getTheme()
       setReady(true)
     } catch (e) {
-      Alert.alert(
-        'Failed to get data!',
-        'Failed to get data! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
       console.log(e)
     }
   }
@@ -164,10 +158,10 @@ export default function AddTaskScreen ({ route, navigation }) {
 
         setDueImportance(selectedTask.dueImportance)
         setDescription(selectedTask.description)
-        // await AsyncStorage.removeItem('editName')
         for (let i = 0; i <= daysUsed.length - 1; i++) {
           if (
-            savedTasks[0][i].findIndex((task) => task.name === editName) !== -1
+            savedTasks[0][i].some((task) => task.name === editName) ||
+            (weekly && savedTasks[1][i].some((task) => task.name === editName))
           ) {
             change.splice(i, 1, true)
           }
@@ -183,11 +177,12 @@ export default function AddTaskScreen ({ route, navigation }) {
         }
       }
     } catch (e) {
-      // await AsyncStorage.removeItem('editName')
-      Alert.alert(
-        'Failed to get edit info!',
-        'Failed to get edit info! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
       console.log(e)
     }
   }
@@ -196,6 +191,7 @@ export default function AddTaskScreen ({ route, navigation }) {
     const task = savedTasks[0][new Date().getDay()].find(
       (task) => task.name === editName
     )
+
     // check if state props are the same as task props
     return (
       task !== undefined &&
@@ -266,10 +262,7 @@ export default function AddTaskScreen ({ route, navigation }) {
 
   // Saving/Processing
   const handleSave = async () => {
-    // await editInfo()
-    // console.log(edit)
     let d
-    // ((((importance*8)/100)*(length))/((6-dueImportance)*30))*24*60*60*1000
     if (daysUsed[new Date().getDay()]) {
       d = new Date().setHours(0, 0, 0, 0)
     } else {
@@ -307,8 +300,6 @@ export default function AddTaskScreen ({ route, navigation }) {
       dueIncrease,
       description
     }
-    // console.log(selectedTask.length)
-    // Same name
 
     // Check if valid
     if (name === '' || importance === 0 || length === 0) {
@@ -320,7 +311,6 @@ export default function AddTaskScreen ({ route, navigation }) {
         buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
     } else if ((await sameName(name)) === true) {
-      // setSame(true)
       setAlert({
         show: true,
         title: 'Name Taken',
@@ -374,6 +364,7 @@ export default function AddTaskScreen ({ route, navigation }) {
         }
       }
       setEmpty(false)
+
       // save data
       try {
         const jsonValue = JSON.stringify(savedTasks)
@@ -394,7 +385,6 @@ export default function AddTaskScreen ({ route, navigation }) {
     for (let i = 0; i < daysUsed.length; i++) {
       if (daysUsed[i]) {
         if ((edit === true && name !== editName) || edit === false) {
-          // console.log(edit)
           if (
             workTimes[0][i].some((element) => element.name === name) ||
             (weekly &&
@@ -434,7 +424,9 @@ export default function AddTaskScreen ({ route, navigation }) {
 
   if (!ready) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]} />
+      <View
+        style={[styles.container, { backgroundColor: colors.background }]}
+      />
     )
   }
   return (
@@ -461,7 +453,6 @@ export default function AddTaskScreen ({ route, navigation }) {
               onPress={() => navigation.goBack()}
             />
           }
-          // centerComponent=
         />
 
         {alert.show ? (
@@ -489,7 +480,6 @@ export default function AddTaskScreen ({ route, navigation }) {
 
         <ScrollView>
           <View style={{ flex: 1 }}>
-            {/* <View style={styles.section}> */}
             <View style={styles.section}>
               <Icon
                 name="label"
@@ -501,14 +491,15 @@ export default function AddTaskScreen ({ route, navigation }) {
                 labelContainerStyle={{ backgroundColor: colors.background }}
                 label="Name"
                 labelStyle={{ color: colors.grey2 }}
-                contentStyle={{ borderColor: colors.grey2, paddingTop: 7, paddingBottom: 3 }}
+                contentStyle={{
+                  borderColor: colors.grey2,
+                  paddingTop: 7,
+                  paddingBottom: 3
+                }}
               >
-                {/* <Text style={{ fontSize: 17, padding:3}}>Name:</Text> */}
                 <Input
                   multiline
                   inputContainerStyle={{ borderBottomWidth: 0 }}
-                  // label="Name"
-                  // labelStyle={{ color: colors.grey2 }}
                   placeholder="Add Name"
                   placeholderTextColor={colors.grey2}
                   renderErrorMessage={false}
@@ -516,7 +507,6 @@ export default function AddTaskScreen ({ route, navigation }) {
                   onChangeText={async (name) => {
                     setName(name)
                     await sameName(name)
-                    // console.log(same)
                   }}
                   value={name}
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
@@ -524,17 +514,20 @@ export default function AddTaskScreen ({ route, navigation }) {
                 />
               </Section>
             </View>
-              {(empty && name === '') || same
-                ? <Text
-                  style={{
-                    fontSize: 13,
-                    color: colors.error,
-                    alignSelf: 'flex-start',
-                    left: '17%'
-                  }}
-                >
-                  {empty && name === '' ? 'Enter a name' : 'Another task or event already has this name'}
-                </Text> : null}
+            {(empty && name === '') || same ? (
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: colors.error,
+                  alignSelf: 'flex-start',
+                  left: '17%'
+                }}
+              >
+                {empty && name === ''
+                  ? 'Enter a name'
+                  : 'Another task or event already has this name'}
+              </Text>
+            ) : null}
             <View style={styles.section}>
               <Icon
                 name="info"
@@ -546,11 +539,14 @@ export default function AddTaskScreen ({ route, navigation }) {
                 labelContainerStyle={{ backgroundColor: colors.background }}
                 label="Description (Optional)"
                 labelStyle={{ color: colors.grey2 }}
-                contentStyle={{ borderColor: colors.grey2, paddingTop: 7, paddingBottom: 3 }}
+                contentStyle={{
+                  borderColor: colors.grey2,
+                  paddingTop: 7,
+                  paddingBottom: 3
+                }}
               >
                 <Input
                   multiline
-                  // label="Description"
                   placeholder="Add Description"
                   placeholderTextColor={colors.grey2}
                   renderErrorMessage={false}
@@ -562,13 +558,6 @@ export default function AddTaskScreen ({ route, navigation }) {
                 />
               </Section>
             </View>
-            {/* </View> */}
-            {/* <Section
-              labelContainerStyle={{ backgroundColor: colors.background }}
-              label="Length (min)"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-            > */}
             <View style={styles.section}>
               <Icon
                 name="timer"
@@ -589,10 +578,7 @@ export default function AddTaskScreen ({ route, navigation }) {
                   }}
                   containerStyle={{ flex: 3, marginRight: 5 }}
                 >
-                  {/* <Text style={{ fontSize: 17,padding:3}}>Length (min):</Text> */}
                   <Input
-                    // label="Length (min)"
-                    // labelStyle={{ color: colors.grey2 }}
                     placeholder="Hours"
                     placeholderTextColor={colors.grey2}
                     keyboardType="numeric"
@@ -604,7 +590,9 @@ export default function AddTaskScreen ({ route, navigation }) {
                       setHours(hours)
                       setLength(hours * 60 + minutes)
                     }}
-                    value={hours !== 0 && !isNaN(hours) ? hours.toString() : null}
+                    value={
+                      hours !== 0 && !isNaN(hours) ? hours.toString() : null
+                    }
                     inputStyle={{ color: colors.grey1, fontSize: 17 }}
                     renderErrorMessage={false}
                     inputContainerStyle={{ borderBottomWidth: 0 }}
@@ -624,8 +612,6 @@ export default function AddTaskScreen ({ route, navigation }) {
                   containerStyle={{ flex: 3, marginRight: 5 }}
                 >
                   <Input
-                    // label="Length (min)"
-                    // labelStyle={{ color: colors.grey2 }}
                     placeholder="Minutes"
                     placeholderTextColor={colors.grey2}
                     renderErrorMessage={false}
@@ -640,7 +626,9 @@ export default function AddTaskScreen ({ route, navigation }) {
                       setLength(hours * 60 + minutes)
                     }}
                     value={
-                      minutes !== 0 && !isNaN(minutes) ? minutes.toString() : null
+                      minutes !== 0 && !isNaN(minutes)
+                        ? minutes.toString()
+                        : null
                     }
                     inputStyle={{ color: colors.grey1, fontSize: 17 }}
                     inputContainerStyle={{ borderBottomWidth: 0 }}
@@ -649,17 +637,18 @@ export default function AddTaskScreen ({ route, navigation }) {
                 </Section>
               </View>
             </View>
-            {empty && length === 0
-              ? <Text
-                  style={{
-                    fontSize: 13,
-                    color: colors.error,
-                    alignSelf: 'flex-start',
-                    left: '17%'
-                  }}
-                >
-                  {'Enter a non-zero task length'}
-                </Text> : null}
+            {empty && length === 0 ? (
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: colors.error,
+                  alignSelf: 'flex-start',
+                  left: '17%'
+                }}
+              >
+                {'Enter a non-zero task length'}
+              </Text>
+            ) : null}
             <View style={styles.section}>
               <Icon
                 name="exclamation-triangle"
@@ -668,61 +657,55 @@ export default function AddTaskScreen ({ route, navigation }) {
                 size={20}
                 style={{ marginLeft: 3 }}
               />
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.background }}
-              label="Importance"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
-              {/* <Text style={{ fontSize: 17,padding:3}}>Importance:</Text> */}
-              {/* <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
-                {' '}
-                Importance
-              </Text> */}
-              <View style={{ marginTop: 10, marginLeft: 7 }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <Text style={{ fontSize: 13, color: colors.grey2 }}>
-                    Least
-                  </Text>
-                  <Text style={{ fontSize: 13, color: colors.grey2 }}>
-                    Most
-                  </Text>
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Importance"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2 }}
+              >
+                <View style={{ marginTop: 10, marginLeft: 7 }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, color: colors.grey2 }}>
+                      Least
+                    </Text>
+                    <Text style={{ fontSize: 13, color: colors.grey2 }}>
+                      Most
+                    </Text>
+                  </View>
+                  <Slider
+                    thumbStyle={{ width: 25, height: 25 }}
+                    trackStyle={{ width: '100%' }}
+                    minimumTrackTintColor={colors.grey2}
+                    maximumTrackTintColor={colors.grey4}
+                    value={importance}
+                    allowTouchTrack={true}
+                    onValueChange={(importance) => setImportance(importance)}
+                    minimumValue={1}
+                    maximumValue={10}
+                    thumbTintColor={colors.primary}
+                    thumbProps={{
+                      children: (
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            padding: 3,
+                            alignSelf: 'center',
+                            color: colors.white
+                          }}
+                        >
+                          {importance}
+                        </Text>
+                      )
+                    }}
+                    step={1}
+                  />
                 </View>
-                <Slider
-                  thumbStyle={{ width: 25, height: 25 }}
-                  trackStyle={{ width: '100%' }}
-                  minimumTrackTintColor={colors.grey2}
-                  maximumTrackTintColor={colors.grey4}
-                  value={importance}
-                  // animateTransitions={true}
-                  allowTouchTrack={true}
-                  onValueChange={(importance) => setImportance(importance)}
-                  minimumValue={1}
-                  maximumValue={10}
-                  thumbTintColor={colors.primary}
-                  thumbProps={{
-                    children: (
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          padding: 3,
-                          alignSelf: 'center',
-                          color: colors.white
-                        }}
-                      >
-                        {importance}
-                      </Text>
-                    )
-                  }}
-                  step={1}
-                />
-              </View>
-            </Section>
+              </Section>
             </View>
             <View style={styles.section}>
               <Icon
@@ -731,201 +714,181 @@ export default function AddTaskScreen ({ route, navigation }) {
                 color={colors.grey1}
                 size={30}
               />
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.background }}
-              label="Due Date"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
-              {/* <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
-                {' '}
-                Due Date:
-              </Text> */}
-              <View
-                style={{ flexDirection: 'row', marginLeft: 5, marginTop: 10 }}
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Due Date"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2 }}
               >
-                <View style={{ padding: 3 }}>
-                  <Button
-                    title={displayDate(date)}
-                    titleStyle={{ color: colors.white }}
-                    buttonStyle={{
-                      backgroundColor: colors.primary,
-                      borderRadius: 5
-                    }}
-                    onPress={() => showDatepicker()}
-                  />
+                <View
+                  style={{ flexDirection: 'row', marginLeft: 5, marginTop: 10 }}
+                >
+                  <View style={{ padding: 3 }}>
+                    <Button
+                      title={displayDate(date)}
+                      titleStyle={{ color: colors.white }}
+                      buttonStyle={{
+                        backgroundColor: colors.primary,
+                        borderRadius: 5
+                      }}
+                      onPress={() => showDatepicker()}
+                    />
+                  </View>
+                  <View style={{ padding: 3 }}>
+                    <Button
+                      title={displayTime(date)}
+                      titleStyle={{ color: colors.white }}
+                      buttonStyle={{
+                        backgroundColor: colors.primary,
+                        borderRadius: 5
+                      }}
+                      onPress={() => showTimepicker()}
+                    />
+                  </View>
                 </View>
-                <View style={{ padding: 3 }}>
-                  <Button
-                    title={displayTime(date)}
-                    titleStyle={{ color: colors.white }}
-                    buttonStyle={{
-                      backgroundColor: colors.primary,
-                      borderRadius: 5
-                    }}
-                    onPress={() => showTimepicker()}
-                  />
-                </View>
-              </View>
 
-            {show && (
-              <DateTimePicker
-                testID="dateTimePicker"
-                value={new Date(date)}
-                mode={mode}
-                // display="default"
-                onChange={onChange}
-                style={{ width: '100%', backgroundColor: colors.background }}
-                textColor={colors.white}
-                themeVariant={colorScheme}
-              />
-            )}
-            </Section>
+                {show && (
+                  <DateTimePicker
+                    testID="dateTimePicker"
+                    value={new Date(date)}
+                    mode={mode}
+                    onChange={onChange}
+                    style={{
+                      width: '100%',
+                      backgroundColor: colors.background
+                    }}
+                    textColor={colors.white}
+                    themeVariant={colorScheme}
+                  />
+                )}
+              </Section>
             </View>
             <View style={styles.section}>
               <Icon
-                name='calendar-alert'
-                type='material-community'
+                name="calendar-alert"
+                type="material-community"
                 color={colors.grey1}
                 size={35}
               />
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.background }}
-              label="Due Date's Importance"
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
-              {/* <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
-                {' '}
-                Due Date&apos;s Importance:
-              </Text> */}
-              <View style={{ marginTop: 10, marginLeft: 7 }}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <Text style={{ fontSize: 13, color: colors.grey2 }}>
-                    Least
-                  </Text>
-                  <Text style={{ fontSize: 13, color: colors.grey2 }}>
-                    Most
-                  </Text>
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Due Date's Importance"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2 }}
+              >
+                <View style={{ marginTop: 10, marginLeft: 7 }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, color: colors.grey2 }}>
+                      Least
+                    </Text>
+                    <Text style={{ fontSize: 13, color: colors.grey2 }}>
+                      Most
+                    </Text>
+                  </View>
+                  <Slider
+                    thumbStyle={{ width: 25, height: 25 }}
+                    trackStyle={{ width: '100%' }}
+                    minimumTrackTintColor={colors.grey2}
+                    maximumTrackTintColor={colors.grey4}
+                    value={dueImportance}
+                    onValueChange={(dueImportance) =>
+                      setDueImportance(dueImportance)
+                    }
+                    minimumValue={1}
+                    maximumValue={5}
+                    allowTouchTrack={true}
+                    thumbTintColor={colors.primary}
+                    thumbProps={{
+                      children: (
+                        <Text
+                          style={{
+                            fontSize: 15,
+                            padding: 3,
+                            alignSelf: 'center',
+                            color: colors.white
+                          }}
+                        >
+                          {dueImportance}
+                        </Text>
+                      )
+                    }}
+                    step={1}
+                  />
                 </View>
-                <Slider
-                  // style={{}}
-                  thumbStyle={{ width: 25, height: 25 }}
-                  trackStyle={{ width: '100%' }}
-                  minimumTrackTintColor={colors.grey2}
-                  maximumTrackTintColor={colors.grey4}
-                  value={dueImportance}
-                  onValueChange={(dueImportance) =>
-                    setDueImportance(dueImportance)
-                  }
-                  minimumValue={1}
-                  maximumValue={5}
-                  allowTouchTrack={true}
-                  thumbTintColor={colors.primary}
-                  thumbProps={{
-                    children: (
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          padding: 3,
-                          alignSelf: 'center',
-                          color: colors.white
-                        }}
-                      >
-                        {dueImportance}
-                      </Text>
-                    )
-                  }}
-                  step={1}
-                />
-              </View>
-            </Section>
+              </Section>
             </View>
             <View style={styles.section}>
               <Icon
-                name='replay'
-                type='material'
+                name="replay"
+                type="material"
                 color={colors.grey1}
                 size={30}
               />
-            <Section
-              labelContainerStyle={{ backgroundColor: colors.background }}
-              label={newInfo() ? 'Edit on' : 'Repeat on'}
-              labelStyle={{ color: colors.grey2 }}
-              contentStyle={{ borderColor: colors.grey2 }}
-            >
-              {/* {newInfo() ? (
-                <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
-                  {' '}
-                  Edit on:
-                </Text>
-              ) : (
-                <Text h1 h1Style={[styles.label, { color: colors.grey2 }]}>
-                  {' '}
-                  Repeat on:
-                </Text>
-              )} */}
-
-              <CheckBox
-                containerStyle={{
-                  backgroundColor: 'rgba(0,0,0,0)',
-                  borderWidth: 0
-                }}
-                title="Weekly"
-                textStyle={{ color: colors.grey2 }}
-                checked={weekly}
-                uncheckedColor={colors.grey2}
-                onPress={() => setWeekly(!weekly)}
-              />
-
-              <View
-                style={{
-                  padding: 8,
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                  // alignSelf: 'stretch'
-                }}
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label={newInfo() ? 'Edit on' : 'Repeat on'}
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2 }}
               >
-                {daysUsed.map((day, i) => {
-                  return (
-                    <Avatar
-                      key={i}
-                      containerStyle={
-                        day === true
-                          ? { backgroundColor: colors.primary, margin: 1 }
-                          : { backgroundColor: colors.grey2, margin: 1 }
-                      }
-                      size="small"
-                      rounded
-                      title={days[i].slice(0, 1)}
-                      titleStyle={
-                        day === true
-                          ? { color: colors.white }
-                          : { color: colors.grey4 }
-                      }
-                      onPress={() => changeDay(i)}
-                    />
-                  )
-                })}
-              </View>
-              {daysUsed.includes(true) === false ? (
-                <Text
+                <CheckBox
+                  containerStyle={{
+                    backgroundColor: 'rgba(0,0,0,0)',
+                    borderWidth: 0
+                  }}
+                  title="Weekly"
+                  textStyle={{ color: colors.grey2 }}
+                  checked={weekly}
+                  uncheckedColor={colors.grey2}
+                  onPress={() => setWeekly(!weekly)}
+                />
+
+                <View
                   style={{
-                    fontSize: 13,
-                    color: colors.error,
-                    alignSelf: 'center'
+                    padding: 8,
+                    flexDirection: 'row',
+                    justifyContent: 'center',
+                    alignItems: 'center'
                   }}
                 >
-                  Nothing is selected!
-                </Text>
-              ) : null}
-            </Section>
+                  {daysUsed.map((day, i) => {
+                    return (
+                      <Avatar
+                        key={i}
+                        containerStyle={
+                          day === true
+                            ? { backgroundColor: colors.primary, margin: 1 }
+                            : { backgroundColor: colors.grey2, margin: 1 }
+                        }
+                        size="small"
+                        rounded
+                        title={days[i].slice(0, 1)}
+                        titleStyle={
+                          day === true
+                            ? { color: colors.white }
+                            : { color: colors.grey4 }
+                        }
+                        onPress={() => changeDay(i)}
+                      />
+                    )
+                  })}
+                </View>
+                {daysUsed.includes(true) === false ? (
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      color: colors.error,
+                      alignSelf: 'center'
+                    }}
+                  >
+                    Nothing is selected!
+                  </Text>
+                ) : null}
+              </Section>
             </View>
             <Button
               title="Save"
@@ -952,7 +915,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'stretch',
     padding: 10
-    // justifyContent: 'center',
   },
   button: {
     backgroundColor: '#152075',

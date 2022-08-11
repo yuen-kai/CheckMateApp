@@ -43,13 +43,10 @@ import taskScreen from './assets/TaskScreen.png'
 import homeScreen from './assets/HomeScreen.png'
 import syncScreen from './assets/SyncScreen.png'
 import top from './assets/Top.png'
-// import { SpeedDial } from "@rneui/themed";
 import DraggableFlatList, {
   ScaleDecorator
 } from 'react-native-draggable-flatlist'
 import * as Calendar from 'expo-calendar'
-import ConfettiCannon from 'react-native-confetti-cannon'
-// import Confetti from 'react-confetti'
 import Confetti from 'react-native-confetti'
 
 let tasks = []
@@ -79,9 +76,7 @@ export default function HomeScreen ({ route, navigation }) {
       primary: '#56a3db',
       white: '#444444',
       green: '#039603',
-      // primary: '#6a99e6',
       background: '#222222'
-      // grey3: ''
     }
   })
 
@@ -159,6 +154,7 @@ export default function HomeScreen ({ route, navigation }) {
   const [first, setFirst] = useState(false)
   const [removal, setRemoval] = useState(false)
   const [alert, setAlert] = useState({ show: false })
+  const [firstOpen, setFirstOpen] = useState(-1)
 
   // get data
   useEffect(() => {
@@ -172,10 +168,23 @@ export default function HomeScreen ({ route, navigation }) {
   }, [route.params, navigation])
 
   useEffect(() => {
-    if (!removal) {
+    if (!removal && firstOpen === 0) {
+      const newCombined = [...makeCombined()]
+      if (editName !== '') {
+        if (newCombined.some((task) => task.name === editName)) {
+          setTaskIndex(newCombined.findIndex((task) => task.name === editName))
+        } else {
+          setTaskIndex(0)
+        }
+      } else {
+        setTaskIndex(0)
+      }
+      setReady(true)
+      setFirstOpen(1)
+    } else if (firstOpen === 1) {
       makeCombined()
     }
-  }, [progress, taskIndex, removal])
+  }, [progress, taskIndex, removal, firstOpen])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -213,20 +222,32 @@ export default function HomeScreen ({ route, navigation }) {
     let token
     if (Device.isDevice) {
       const settings = await Notifications.getPermissionsAsync()
-      const existingStatus = settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+      const existingStatus =
+        settings.granted ||
+        settings.ios?.status ===
+          Notifications.IosAuthorizationStatus.PROVISIONAL
       let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync()
         finalStatus = status
       }
       if (finalStatus !== 'granted') {
-        Alert.alert('Failed to get push token for push notification!')
+        setAlert({
+          show: true,
+          title: 'Push notification permission denied!',
+          message: 'Please enable push notifications for this app.',
+          buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        })
         return
       }
       token = (await Notifications.getExpoPushTokenAsync()).data
-      // console.log(token)
     } else {
-      Alert.alert('Must use physical device for Push Notifications')
+      setAlert({
+        show: true,
+        title: 'Must use physical device for Push Notifications',
+        message: 'A physical device is neccesary for Push Notifications',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
     }
 
     if (Platform.OS === 'android') {
@@ -243,6 +264,7 @@ export default function HomeScreen ({ route, navigation }) {
 
   const getData = async () => {
     try {
+      setFirstOpen(-1)
       const promises = []
       promises.push(new Promise(getTheme))
       promises.push(new Promise(savedTasks))
@@ -253,21 +275,7 @@ export default function HomeScreen ({ route, navigation }) {
         await async function () {
           await changeDay()
           await getSelectable()
-          // fulfillment
-          const newCombined = [...makeCombined()]
-          if (editName !== '') {
-            if (newCombined.some((task) => task.name === editName)) {
-              setTaskIndex(
-                newCombined.findIndex((task) => task.name === editName)
-              )
-            } else {
-              setTaskIndex(0)
-            }
-          } else {
-            setTaskIndex(0)
-          }
-
-          setReady(true)
+          setFirstOpen(0)
         },
         () => {
           // rejection
@@ -275,10 +283,12 @@ export default function HomeScreen ({ route, navigation }) {
         }
       )
     } catch (e) {
-      Alert.alert(
-        'Failed to get data!',
-        'Failed to get data! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
       console.log(e)
     }
   }
@@ -333,7 +343,21 @@ export default function HomeScreen ({ route, navigation }) {
   async function getSyncEvents (edit) {
     const { status } = await Calendar.requestCalendarPermissionsAsync()
     if (status === 'granted') {
-      manageSyncEvents(edit)
+      await manageSyncEvents(edit)
+    } else {
+      setAlert({
+        show: true,
+        title: 'Calendar permission denied!',
+        message: 'Please enable calendar permissions for this app.',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => {
+              setAlert({ show: false })
+            }
+          }
+        ]
+      })
     }
   }
 
@@ -354,6 +378,21 @@ export default function HomeScreen ({ route, navigation }) {
       events = events.filter(
         (event) => time(event.endDate).getTime() > time(new Date()).getTime()
       )
+    } else {
+      setAlert({
+        show: true,
+        title: 'Calendar permission denied!',
+        message: 'Please enable calendar permissions for this app.',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => {
+              setAlert({ show: false })
+            }
+          }
+        ]
+      })
+      return
     }
 
     navigation.navigate('SyncEvents', {
@@ -367,15 +406,17 @@ export default function HomeScreen ({ route, navigation }) {
       const jsonValue = JSON.stringify(syncedEvents)
       await AsyncStorage.setItem('syncEvents5', jsonValue)
       if (syncedEvents === 'always') {
-        syncEvents()
+        await syncEvents()
       } else if (syncedEvents === 'review') {
         reviewEvents()
       }
     } catch (e) {
-      Alert.alert(
-        'Failed to get data!',
-        'Failed to get data! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
       console.log(e)
     }
   }
@@ -389,7 +430,6 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   function checkEvents (events) {
-    // console.log(events)
     const newEvents = events.filter((event) => {
       const a = setTasks.findIndex((setTask) => event.title === setTask.name)
       return (
@@ -442,6 +482,20 @@ export default function HomeScreen ({ route, navigation }) {
       events = events.filter(
         (event) => time(event.endDate).getTime() > time(new Date()).getTime()
       )
+    } else {
+      setAlert({
+        show: true,
+        title: 'Calendar permission denied!',
+        message: 'Please enable calendar permissions for this app.',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => {
+              setAlert({ show: false })
+            }
+          }
+        ]
+      })
     }
     return events
   }
@@ -462,6 +516,21 @@ export default function HomeScreen ({ route, navigation }) {
       events = events.filter(
         (event) => time(event.endDate).getTime() > time(new Date()).getTime()
       )
+    } else {
+      setAlert({
+        show: true,
+        title: 'Calendar permission denied!',
+        message: 'Please enable calendar permissions for this app.',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => {
+              setAlert({ show: false })
+            }
+          }
+        ]
+      })
+      return
     }
     let newEvents = checkEvents(events)
     const originalNewEvents = []
@@ -480,20 +549,12 @@ export default function HomeScreen ({ route, navigation }) {
         description: event.notes
       })
       if (event.alarms[0] != null) {
-        setTasks[0][new Date().getDay()][
-          setTasks[0][new Date().getDay()].length - 1
-        ].notification = event.alarms[0].relativeOffset * -1
-        setTasks[0][new Date().getDay()][
-          setTasks[0][new Date().getDay()].length - 1
-        ].notificationId = await schedulePushNotification(
-          setTasks[0][new Date().getDay()][
-            setTasks[0][new Date().getDay()].length - 1
-          ]
-        )
+        setTasks[setTasks.length - 1].notification =
+          event.alarms[0].relativeOffset * -1
+        setTasks[setTasks.length - 1].notificationId =
+          await schedulePushNotification(setTasks[setTasks.length - 1])
       } else {
-        setTasks[0][new Date().getDay()][
-          setTasks[0][new Date().getDay()].length - 1
-        ].notification = ''
+        setTasks[setTasks.length - 1].notification = ''
       }
       if (event.location !== '') {
         setTasks[setTasks.length - 1].description +=
@@ -502,6 +563,7 @@ export default function HomeScreen ({ route, navigation }) {
       i--
       newEvents = checkEvents(events)
     }
+
     // add events in Events but not in newEvents to reviewEvents
     const reviewEvents = events.filter((event) => {
       return !originalNewEvents.some(
@@ -513,7 +575,6 @@ export default function HomeScreen ({ route, navigation }) {
     }
     sortTimes()
     saveTasks()
-    makeCombined()
   }
 
   const firstTime = async (resolve, reject) => {
@@ -530,10 +591,19 @@ export default function HomeScreen ({ route, navigation }) {
       resolve(true)
     } catch (e) {
       reject(e)
-      Alert.alert(
-        'Failed to get data!',
-        'Failed to get data! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => {
+              setAlert({ show: false })
+            }
+          }
+        ]
+      })
       console.log(e)
     }
   }
@@ -555,6 +625,7 @@ export default function HomeScreen ({ route, navigation }) {
       }
 
       let needUpdate = false
+
       // Set up savedTask
       if (savedTask == null) {
         needUpdate = true
@@ -565,6 +636,7 @@ export default function HomeScreen ({ route, navigation }) {
           }
         })
       }
+
       // If it is a new day
       if (
         day != null &&
@@ -572,6 +644,7 @@ export default function HomeScreen ({ route, navigation }) {
           new Date(day).getTime()
       ) {
         oldTasks = [...savedTask[0][new Date(day).getDay()]]
+
         // If it is a new week, set the week's tasks to the weekly ones
         if (
           new Date(new Date().setHours(0, 0, 0, 0)).getTime() -
@@ -589,6 +662,7 @@ export default function HomeScreen ({ route, navigation }) {
             e.sortValue = updateSortValue(e)
           }
         })
+
         // Remove or edit recuring tasks
         for (let i = 0; i < oldTasks.length; i++) {
           const newIndex = savedTask[0][new Date().getDay()].findIndex(
@@ -602,7 +676,6 @@ export default function HomeScreen ({ route, navigation }) {
         tasks = oldTasks.concat(savedTask[0][new Date().getDay()])
         savedTask[0][new Date().getDay()] = [...tasks]
       } else {
-        // console.log(savedTask[0][new Date().getDay()])
         tasks = savedTask[0][new Date().getDay()]
       }
 
@@ -617,17 +690,25 @@ export default function HomeScreen ({ route, navigation }) {
       resolve(true)
     } catch (e) {
       reject(e)
-      Alert.alert(
-        'Failed to get data!',
-        'Failed to get data! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => {
+              setAlert({ show: false })
+            }
+          }
+        ]
+      })
       console.log(e)
     }
   }
 
   const savedSetTasks = async (resolve, reject) => {
     try {
-      // await AsyncStorage.removeItem('setTasks', jsonValue)
       const JsonValue = await AsyncStorage.getItem('firsty')
       const first = JsonValue != null ? JSON.parse(JsonValue) : true
       const dayJsonValue = await AsyncStorage.getItem('day')
@@ -642,6 +723,7 @@ export default function HomeScreen ({ route, navigation }) {
       }
 
       let needUpdate = false
+
       // Set up savedTask
       if (savedTask == null) {
         needUpdate = true
@@ -652,6 +734,7 @@ export default function HomeScreen ({ route, navigation }) {
           }
         })
       }
+
       // If it is a new day
       if (
         day != null &&
@@ -700,10 +783,19 @@ export default function HomeScreen ({ route, navigation }) {
       resolve(true)
     } catch (e) {
       reject(e)
-      Alert.alert(
-        'Failed to get data!',
-        'Failed to get data! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.',
+        buttons: [
+          {
+            text: 'OK',
+            onPress: () => {
+              setAlert({ show: false })
+            }
+          }
+        ]
+      })
       console.log(e)
     }
   }
@@ -780,7 +872,6 @@ export default function HomeScreen ({ route, navigation }) {
   function makeCombined () {
     let setIndex = 0
     let tempAvaliable = 0
-    // var splitTask = false
     const tempC = []
     sortSetTasks()
     if (tasks.length > 0 || setTasks.length > 0) {
@@ -810,7 +901,7 @@ export default function HomeScreen ({ route, navigation }) {
           setTasks.length > 0 &&
           tempTime.getTime() === time(new Date(setTasks[0].start)).getTime()
         ) {
-          setSelectable(true)
+          pause()
         } else if (tasks.length > 0) {
           tasks[0].length -=
             (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
@@ -836,7 +927,6 @@ export default function HomeScreen ({ route, navigation }) {
             time(setTasks[setIndex].start).getTime()
           ) {
             // Add set task
-            // console.log("Add set task: "+setTasks[setIndex].name)
             tempTime = setTasks[setIndex].end
             tempC.push({ ...setTasks[setIndex] })
             tempAvaliable +=
@@ -854,7 +944,6 @@ export default function HomeScreen ({ route, navigation }) {
             )
           ) {
             // Task length <= time until set task -> add task
-            // console.log("Task length <= time until set task -> add task: "+tasks[i].name)
             tasks[i].start = tempTime
             if (tasks[i].tLength != null) {
               tasks[i].end =
@@ -880,7 +969,6 @@ export default function HomeScreen ({ route, navigation }) {
             ) > 0
           ) {
             // Split Task
-            // console.log("Split Task: "+tasks[i].name)
             tasks[i].start = tempTime
             tasks[i].end = time(setTasks[setIndex].start)
             tasks[i].tLength =
@@ -922,7 +1010,6 @@ export default function HomeScreen ({ route, navigation }) {
               name: 'Break'
             })
           }
-          // console.log("last setTask: "+setTasks[setIndex].name)
           tempTime = setTasks[setIndex].end
           tempC.push({ ...setTasks[setIndex] })
           tempAvaliable +=
@@ -933,7 +1020,6 @@ export default function HomeScreen ({ route, navigation }) {
         }
         if (setIndex === setTasks.length) {
           // no more set tasks -> Add task
-          // console.log("no more set tasks -> Add task: "+tasks[i].name)
           tasks[i].start = tempTime
           if (tasks[i].tLength != null) {
             tasks[i].end =
@@ -961,6 +1047,7 @@ export default function HomeScreen ({ route, navigation }) {
           i -= 1
         }
       }
+
       // Add remaining setTasks
       for (setIndex; setIndex < setTasks.length; setIndex++) {
         if (
@@ -985,6 +1072,7 @@ export default function HomeScreen ({ route, navigation }) {
           (1000 * 60)
       }
     }
+
     // Round avaliable time to the nearest whole number
     setAvaliableTime(Math.round(tempAvaliable))
     setCombined(tempC)
@@ -1051,7 +1139,6 @@ export default function HomeScreen ({ route, navigation }) {
     const isActive = item.isActive
     item = item.item
 
-    // if (item.break == null) {
     return (
       <ScaleDecorator>
         {index === 0 ? (
@@ -1071,12 +1158,6 @@ export default function HomeScreen ({ route, navigation }) {
           </Text>
           <TouchableOpacity
             style={{ flexGrow: 1, marginBottom: 15, marginLeft: 15 }}
-            // onLongPress={
-            //   item.sortValue != null &&
-            //   item.name.substring(item.name.length - 8) !== ' (cont.)'
-            //     ? drag
-            //     : null
-            // }
             disabled={isActive || item.break != null}
             onPress={() =>
               item.name.substring(item.name.length - 8) !== ' (cont.)'
@@ -1135,17 +1216,23 @@ export default function HomeScreen ({ route, navigation }) {
             >
               <ListItem.Content>
                 <View
-                  style={item.break == null ? {
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignSelf: 'stretch'
-                  } : {
-                    flexDirection: 'row',
-                    justifyContent: 'center',
-                    alignSelf: 'stretch'
-                  }}
+                  style={
+                    item.break == null
+                      ? {
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignSelf: 'stretch'
+                        }
+                      : {
+                          flexDirection: 'row',
+                          justifyContent: 'center',
+                          alignSelf: 'stretch'
+                        }
+                  }
                 >
-                  <View style={item.break != null ? { alignItems: 'center' } : null}>
+                  <View
+                    style={item.break != null ? { alignItems: 'center' } : null}
+                  >
                     <View
                       style={{ flexDirection: 'row', alignItems: 'center' }}
                     >
@@ -1187,15 +1274,6 @@ export default function HomeScreen ({ route, navigation }) {
                         />
                           ) : null}
                     </View>
-                    {/* <ListItem.Subtitle
-                      style={
-                        taskIndex === index ? { color: 'white' } : null
-                      }
-                    >
-                      {displayTime(item.start) +
-                        ' - ' +
-                        displayTime(item.end)}
-                    </ListItem.Subtitle> */}
                     {item.sortValue != null ? (
                       <ListItem.Subtitle
                         style={
@@ -1242,7 +1320,6 @@ export default function HomeScreen ({ route, navigation }) {
                         onPress={() => move('up')}
                         color={colors.grey3}
                         size={20}
-
                         style={{ marginBottom: 5 }}
                       />
                         ) : null}
@@ -1277,17 +1354,12 @@ export default function HomeScreen ({ route, navigation }) {
         task.sortValue != null &&
         task.name.substring(task.name.length - 8) !== ' (cont.)'
     )
-    // console.log("setData "+tasks[0].name)
     makeCombined()
   }
 
   // Task controls
   function start () {
     if (combined[taskIndex].sortValue == null) {
-      // Alert.alert(
-      //   "Events can't be started",
-      //   'They will automatically start once it is the starting time.'
-      // )
       setAlert({
         show: true,
         title: "Events can't be started",
@@ -1298,10 +1370,6 @@ export default function HomeScreen ({ route, navigation }) {
       setTasks.length > 0 &&
       time(new Date()).getTime() >= time(setTasks[0].start).getTime()
     ) {
-      // Alert.alert(
-      //   'Event in progress',
-      //   'You can start this task when the event has finished.'
-      // )
       setAlert({
         show: true,
         title: 'Event in progress',
@@ -1309,9 +1377,9 @@ export default function HomeScreen ({ route, navigation }) {
         buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
     } else {
-      // console.log("in")
       setSelectable(false)
       const selectedTask = combined[taskIndex]
+
       // remove selectedTask from tasks
       tasks.splice(
         tasks.findIndex((task) => task.name === selectedTask.name),
@@ -1324,7 +1392,6 @@ export default function HomeScreen ({ route, navigation }) {
       saveTasks()
       saveSelectable()
       setReady(true)
-      // console.log("start"+ tasks[0].name)
       makeCombined()
     }
   }
@@ -1339,15 +1406,6 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   function stop () {
-    // Alert.alert(
-    //   'Are you sure?',
-    //   'This task/event will be removed permanently.',
-    //   [
-    //     { text: 'Cancel', style: 'cancel' },
-    //     { text: 'Continue', onPress: () => remove() }
-    //   ],
-    //   { cancelable: true }
-    // )
     setAlert({
       show: true,
       title: 'Are you sure?',
@@ -1375,7 +1433,6 @@ export default function HomeScreen ({ route, navigation }) {
           confettiView.startConfetti()
         }
         removeSelectable()
-        // console.log(combined[taskIndex])
         if (combined[taskIndex].sortValue != null) {
           // remove combined[taskIndex] from tasks
           tasks.splice(
@@ -1384,7 +1441,10 @@ export default function HomeScreen ({ route, navigation }) {
           )
         } else {
           // remove combined[taskIndex] from setTasks
-          if (!combined[taskIndex].weekly && combined[taskIndex].notificationId != null) {
+          if (
+            !combined[taskIndex].weekly &&
+            combined[taskIndex].notificationId != null
+          ) {
             await Notifications.cancelScheduledNotificationAsync(
               combined[taskIndex].notificationId
             )
@@ -1397,7 +1457,6 @@ export default function HomeScreen ({ route, navigation }) {
           )
         }
         saveTasks()
-        // explosion && explosion.start()
         setTaskIndex(0)
 
         setReady(true)
@@ -1430,7 +1489,6 @@ export default function HomeScreen ({ route, navigation }) {
   // Save tasks
   async function saveTasks () {
     try {
-      // console.log("saveTasks1 "+tasks[0].name)
       const savedTaskJsonValue = await AsyncStorage.getItem('tasks')
       let savedTask =
         savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) : null
@@ -1446,8 +1504,6 @@ export default function HomeScreen ({ route, navigation }) {
       savedTask[0][new Date().getDay()] = [...setTasks]
       const setJsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('setTasks', setJsonValue)
-      // console.log("saveTasks2 "+tasks[0].name)
-      // makeCombined()
     } catch (e) {
       console.log(e)
     }
@@ -1455,7 +1511,6 @@ export default function HomeScreen ({ route, navigation }) {
 
   // Sort tasks
   function sortTask () {
-    // console.log("sortTask "+tasks[0].name)
     const beforeTask = [...combined][taskIndex]
 
     tasks.sort(function (a, b) {
@@ -1473,8 +1528,6 @@ export default function HomeScreen ({ route, navigation }) {
     setTasks.sort(function (a, b) {
       return new Date(a.start).getTime() - new Date(b.start).getTime()
     })
-    // console.log("sortTimes "+tasks[0].name)
-    makeCombined()
   }
 
   // Get task information
@@ -1506,18 +1559,10 @@ export default function HomeScreen ({ route, navigation }) {
     return month + '/' + day
   }
 
-  // function taskName () {
-  //   if (combined.length > 0) {
-  //     return combined[taskIndex].name
-  //   }
-  //   return 'Add a Task'
-  // }
-
   // Editing
   async function editTask () {
     try {
       saveTasks()
-      // console.log(combined[taskIndex])
       if (
         combined[taskIndex].sortValue !== undefined &&
         combined[taskIndex].sortValue != null
@@ -1529,10 +1574,12 @@ export default function HomeScreen ({ route, navigation }) {
         })
       }
     } catch (e) {
-      Alert.alert(
-        'Error getting task edit info!',
-        'Failed to get task edit info! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting task/event edit info!',
+        message: 'Please try again.',
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
+      })
       console.log(e)
     }
   }
@@ -1543,7 +1590,7 @@ export default function HomeScreen ({ route, navigation }) {
       return a.sortValue - b.sortValue
     })
     tasks = [...original]
-    // saveTasks()
+
     // Check if tasks and temp are identical arrays
     return JSON.stringify(tasks) !== JSON.stringify(temp)
   }
@@ -1556,7 +1603,6 @@ export default function HomeScreen ({ route, navigation }) {
     )
   }
   return (
-    // null
     <ThemeProvider theme={theme}>
       <SafeAreaView
         style={[styles.container, { backgroundColor: colors.background }]}
@@ -1580,9 +1626,7 @@ export default function HomeScreen ({ route, navigation }) {
                 type="font-awesome-5"
                 size={23}
                 onPress={() => setInstructionIndex(0)}
-                // solid={true}
                 color={colors.grey1}
-                // style={{ marginLeft: 15 }}
               />
               <View>
                 {!error ? (
@@ -1620,7 +1664,6 @@ export default function HomeScreen ({ route, navigation }) {
               />
             </View>
           }
-          // centerComponent=
         />
 
         {alert.show ? (
@@ -1753,7 +1796,6 @@ export default function HomeScreen ({ route, navigation }) {
             ) : null}
             <DraggableFlatList
               containerStyle={{ flex: 10, margin: 3, marginBottom: 5 }}
-              // debug={true}
               data={combined}
               onDragEnd={(data) => setData(data)}
               keyExtractor={(item, index) => {
@@ -1773,22 +1815,19 @@ export default function HomeScreen ({ route, navigation }) {
                   raised
                   color={colors.primary}
                   iconStyle={{ color: colors.white }}
-                  // buttonStyle={{ backgroundColor: theme.darkColors.primary }}
                   onPress={() => sortTask()}
                 />
               </View>
             </View>
           ) : null}
           <SpeedDial
-            // containerStyle={resetOrder() ? { marginBottom: 30 } : null}
             isOpen={open}
             icon={{ name: 'add', color: colors.white }}
             openIcon={{ name: 'close', color: colors.white }}
             onOpen={() => setOpen(!open)}
             onClose={() => setOpen(!open)}
             color={colors.primary}
-            // make overlay transparent
-            overlayColor="rgba(0,0,0,0)"
+            overlayColor="rgba(0,0,0,0)" // make overlay transparent
             transitionDuration={40}
           >
             <Tooltip
@@ -1806,7 +1845,6 @@ export default function HomeScreen ({ route, navigation }) {
                   type: 'feather'
                 }}
                 title="Task"
-                // titleStyle={{ color: colors.grey1 }}
                 containerStyle={{ backgroundColor: colors.white }}
                 onPress={() => {
                   setOpen(false)
@@ -1816,7 +1854,6 @@ export default function HomeScreen ({ route, navigation }) {
               />
             </Tooltip>
             <Tooltip
-              // toggleAction="onLongPress"
               height={60}
               popover={
                 <Text style={{ color: colors.grey1 }}>
@@ -1827,7 +1864,6 @@ export default function HomeScreen ({ route, navigation }) {
               <SpeedDial.Action
                 icon={{ name: 'clock', color: colors.white, type: 'feather' }}
                 title="Event"
-                // titleStyle={{ color: colors.grey1 }}
                 onPress={() => {
                   setOpen(false)
                   navigation.navigate('AddWorkTime', { editName: '' })
@@ -1928,17 +1964,12 @@ export default function HomeScreen ({ route, navigation }) {
 
         {/* Task controls display */}
         <View style={styles.selectView}>
-          {/* <View style={styles.inSelection}>
-        <Text style={{ fontSize: 20}}>{taskName()}</Text>
-        <Icon color={selectable==false||combined.length==0?'gray':'black'} name="pencil-alt" type='font-awesome-5' onPress={selectable==false||combined.length==0?null:() => editTask()}/>
-      </View> */}
           <View style={styles.inSelection}>
             {selectable === true ? (
               <Icon
                 name="play-circle"
                 type="font-awesome"
                 size={30}
-                // color={'white'}
                 onPress={() => start()}
                 disabled={combined.length <= 0}
                 color={colors.grey1}
@@ -1949,7 +1980,6 @@ export default function HomeScreen ({ route, navigation }) {
                 name="pause-circle"
                 size={30}
                 type="font-awesome"
-                // color={"white"}
                 onPress={() => pause()}
                 color={colors.grey1}
                 disabled={combined.length <= 0}
@@ -2013,11 +2043,8 @@ const styles = StyleSheet.create({
     flexDirection: 'column'
   },
   top: {
-    // alignItems: 'center',
     justifyContent: 'flex-end',
     flexDirection: 'row'
-    // flex: 0.5,
-    // padding: 8
   },
   selectView: {
     flex: 1,
@@ -2027,7 +2054,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   inSelection: {
-    // flex: 2,
     marginTop: 5,
     alignItems: 'center',
     flexDirection: 'row',

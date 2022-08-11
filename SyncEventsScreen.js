@@ -6,7 +6,6 @@ import React, { useState, useEffect } from 'react'
 import {
   StyleSheet,
   ScrollView,
-  Alert,
   SafeAreaView,
   Platform,
   useColorScheme,
@@ -17,12 +16,11 @@ import {
   Button,
   ListItem,
   Text,
-  CheckBox,
   ThemeProvider,
   createTheme,
   Header,
   Icon,
-  Divider
+  Dialog
 } from '@rneui/themed'
 
 Notifications.setNotificationHandler({
@@ -47,23 +45,20 @@ export default function SyncEventsScreen ({ route, navigation }) {
       listItemBg: '#g9g9g9',
       disabledBg: '#dbdbdb',
       background: '#f2f2f2'
-      // grey1: '#f5f5f5'
     },
     darkColors: {
       primary: '#56a3db',
       white: '#606060',
-      // primary: '#6a99e6',
       listItemBg: '#272727',
       disabledBg: '#333333',
       background: '#222222'
-      // grey3: ''
     }
   })
 
   const [colors, setColors] = useState(theme.lightColors)
   const [colorScheme, setColorScheme] = useState(useColorScheme())
 
-  // const checkEvents = []
+  const [alert, setAlert] = useState({ show: false })
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -71,7 +66,6 @@ export default function SyncEventsScreen ({ route, navigation }) {
       registerForPushNotificationsAsync().then()
     })
 
-    // getData()
     return () => {
       unsubscribe
     }
@@ -87,10 +81,12 @@ export default function SyncEventsScreen ({ route, navigation }) {
       await getTheme()
       setReady(true)
     } catch (e) {
-      Alert.alert(
-        'Failed to get data!',
-        'Failed to get data! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
       console.log(e)
     }
   }
@@ -141,20 +137,32 @@ export default function SyncEventsScreen ({ route, navigation }) {
     let token
     if (Device.isDevice) {
       const settings = await Notifications.getPermissionsAsync()
-      const existingStatus = settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+      const existingStatus =
+        settings.granted ||
+        settings.ios?.status ===
+          Notifications.IosAuthorizationStatus.PROVISIONAL
       let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync()
         finalStatus = status
       }
       if (finalStatus !== 'granted') {
-        Alert.alert('Failed to get push token for push notification!')
+        setAlert({
+          show: true,
+          title: 'Push notification permission denied!',
+          message: 'Please enable push notifications for this app.',
+          buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        })
         return
       }
       token = (await Notifications.getExpoPushTokenAsync()).data
-      // console.log(token)
     } else {
-      Alert.alert('Must use physical device for Push Notifications')
+      setAlert({
+        show: true,
+        title: 'Must use physical device for Push Notifications',
+        message: 'A physical device is neccesary for Push Notifications',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
     }
 
     if (Platform.OS === 'android') {
@@ -280,7 +288,9 @@ export default function SyncEventsScreen ({ route, navigation }) {
 
   if (!ready) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]} />
+      <View
+        style={[styles.container, { backgroundColor: colors.background }]}
+      />
     )
   }
   return (
@@ -307,8 +317,32 @@ export default function SyncEventsScreen ({ route, navigation }) {
               onPress={() => navigation.goBack()}
             />
           }
-          // centerComponent=
         />
+        {alert.show
+          ? (
+          <Dialog
+            overlayStyle={{ backgroundColor: colors.white }}
+            onBackdropPress={() => setAlert({ show: false })}
+          >
+            <Dialog.Title
+              title={alert.title}
+              titleStyle={{ color: colors.grey1 }}
+            />
+            <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+            <Dialog.Actions>
+              {alert.buttons.map((l, i) => (
+                <Dialog.Button
+                  key={i}
+                  title={l.title}
+                  titleStyle={{ color: colors.grey1 }}
+                  onPress={() => l.action()}
+                />
+              ))}
+            </Dialog.Actions>
+          </Dialog>
+            )
+          : null}
+
         {events.length === 0
           ? (
           <Text
@@ -322,85 +356,75 @@ export default function SyncEventsScreen ({ route, navigation }) {
         <ScrollView>
           {events.map((event, index) => {
             return (
-                <ListItem
-                  key={index}
-                  containerStyle={{
-                    backgroundColor: reviewEvents(event) ? colors.disabledBg : colors.listItemBg,
-                    paddingVertical: 20,
-                    borderWidth: 2,
-                    borderRadius: 5,
-                    borderColor: colors.grey4,
-                    margin: 5
-                  }}
-                >
-                  {refresh || !refresh
+              <ListItem
+                key={index}
+                containerStyle={{
+                  backgroundColor: reviewEvents(event)
+                    ? colors.disabledBg
+                    : colors.listItemBg,
+                  paddingVertical: 20,
+                  borderWidth: 2,
+                  borderRadius: 5,
+                  borderColor: colors.grey4,
+                  margin: 5
+                }}
+              >
+                {refresh || !refresh
+                  ? (
+                  <ListItem.CheckBox
+                    containerStyle={{
+                      backgroundColor: reviewEvents(event)
+                        ? colors.disabledBg
+                        : colors.listItemBg,
+                      borderRadius: 5,
+                      marginLeft: 3,
+                      padding: 10
+                    }}
+                    size={18}
+                    checked={use[index]}
+                    onPress={() => {
+                      if (!use[index]) {
+                        checkEvents.push(event)
+                      } else {
+                        checkEvents.splice(checkEvents.indexOf(event), 1)
+                      }
+                      setUseArr(index)
+                    }}
+                    disabled={reviewEvents(event)}
+                    uncheckedColor={colors.grey3}
+                  />
+                    )
+                  : null}
+                <ListItem.Content>
+                  <ListItem.Title
+                    style={
+                      reviewEvents(event)
+                        ? {
+                            color: colors.grey3,
+                            fontSize: 16,
+                            fontWeight: 'bold'
+                          }
+                        : {
+                            color: colors.grey1,
+                            fontSize: 16,
+                            fontWeight: 'bold'
+                          }
+                    }
+                  >
+                    {event.title}
+                  </ListItem.Title>
+                  <ListItem.Subtitle
+                    style={
+                      reviewEvents(event)
+                        ? { color: colors.grey3, fontSize: 13 }
+                        : { color: colors.grey1, fontSize: 13 }
+                    }
+                  >
+                    {displayTime(event.startDate)} -{' '}
+                    {displayTime(event.endDate)}
+                  </ListItem.Subtitle>
+                  {event.notes !== '' || event.location !== ''
                     ? (
-                    <ListItem.CheckBox
-                      containerStyle={{
-                        backgroundColor: reviewEvents(event) ? colors.disabledBg : colors.listItemBg,
-                        borderRadius: 5,
-                        marginLeft: 3,
-                        padding: 10
-                      }}
-                      size={18}
-                      checked={use[index]}
-                      onPress={() => {
-                        if (!use[index]) {
-                          checkEvents.push(event)
-                        } else {
-                          checkEvents.splice(checkEvents.indexOf(event), 1)
-                        }
-                        setUseArr(index)
-                      }}
-                      disabled={reviewEvents(event)}
-                      uncheckedColor={colors.grey3}
-                    />
-                      )
-                    : null}
-                  <ListItem.Content>
-                    <ListItem.Title
-                      style={
-                        reviewEvents(event)
-                          ? {
-                              color: colors.grey3,
-                              fontSize: 16,
-                              fontWeight: 'bold'
-                            }
-                          : {
-                              color: colors.grey1,
-                              fontSize: 16,
-                              fontWeight: 'bold'
-                            }
-                      }
-                    >
-                      {event.title}
-                    </ListItem.Title>
-                    <ListItem.Subtitle
-                      style={
-                        reviewEvents(event)
-                          ? { color: colors.grey3, fontSize: 13 }
-                          : { color: colors.grey1, fontSize: 13 }
-                      }
-                    >
-                      {displayTime(event.startDate)} -{' '}
-                      {displayTime(event.endDate)}
-                    </ListItem.Subtitle>
-                    {event.notes !== '' || event.location !== ''
-                      ? (
-                      <ListItem.Subtitle
-                        style={
-                          reviewEvents(event)
-                            ? { color: colors.grey3 }
-                            : { color: colors.grey1 }
-                        }
-                      >
-                        {event.notes +
-                          (event.location !== ''
-                            ? ' At ' + event.location + '.'
-                            : '')}
-                      </ListItem.Subtitle>
-                        )
-                      : null}
                     <ListItem.Subtitle
                       style={
                         reviewEvents(event)
@@ -408,14 +432,28 @@ export default function SyncEventsScreen ({ route, navigation }) {
                           : { color: colors.grey1 }
                       }
                     >
-                      {event.alarms[0] != null
-                        ? 'Notify ' +
-                          event.alarms[0].relativeOffset * -1 +
-                          ' min before.'
-                        : "Doesn't notify"}
+                      {event.notes +
+                        (event.location !== ''
+                          ? ' At ' + event.location + '.'
+                          : '')}
                     </ListItem.Subtitle>
-                  </ListItem.Content>
-                </ListItem>
+                      )
+                    : null}
+                  <ListItem.Subtitle
+                    style={
+                      reviewEvents(event)
+                        ? { color: colors.grey3 }
+                        : { color: colors.grey1 }
+                    }
+                  >
+                    {event.alarms[0] != null
+                      ? 'Notify ' +
+                        event.alarms[0].relativeOffset * -1 +
+                        ' min before.'
+                      : "Doesn't notify"}
+                  </ListItem.Subtitle>
+                </ListItem.Content>
+              </ListItem>
             )
           })}
           <Button
@@ -442,7 +480,6 @@ export default function SyncEventsScreen ({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor: '#3A3B3C',
     alignItems: 'stretch',
     justifyContent: 'flex-start',
     flexDirection: 'column'

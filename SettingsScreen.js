@@ -8,7 +8,6 @@ import React, { useState, useEffect } from 'react'
 import {
   StyleSheet,
   ScrollView,
-  Alert,
   View,
   Platform,
   TouchableOpacity,
@@ -70,10 +69,8 @@ export default function SettingsScreen ({ navigation }) {
     darkColors: {
       primary: '#56a3db',
       white: '#606060',
-      // primary: '#6a99e6',
       background: '#222222',
       grey4: '#272727'
-      // grey3: ''
     }
   })
 
@@ -81,6 +78,7 @@ export default function SettingsScreen ({ navigation }) {
   const [colorScheme, setColorScheme] = useState(useColorScheme())
   const [themePref, setThemePref] = useState('system')
   const [checkedT, setCheckedT] = useState(1)
+  const [alert, setAlert] = useState({ show: false })
 
   const list = [
     {
@@ -106,7 +104,6 @@ export default function SettingsScreen ({ navigation }) {
       registerForPushNotificationsAsync().then()
     })
 
-    // getData()
     return () => {
       unsubscribe
     }
@@ -114,18 +111,17 @@ export default function SettingsScreen ({ navigation }) {
 
   const getData = async () => {
     try {
-      // setReady(false)
-
       await getSyncPref()
       await getNotiPref()
       await getThemePref()
 
       setReady(true)
     } catch (e) {
-      Alert.alert(
-        'Failed to get data!',
-        'Failed to get data! Please try again.'
-      )
+      setAlert({
+        show: true,
+        title: 'Error getting data!',
+        message: 'Please try again.'
+      })
       console.log(e)
     }
   }
@@ -308,20 +304,32 @@ export default function SettingsScreen ({ navigation }) {
     let token
     if (Device.isDevice) {
       const settings = await Notifications.getPermissionsAsync()
-      const existingStatus = settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+      const existingStatus =
+        settings.granted ||
+        settings.ios?.status ===
+          Notifications.IosAuthorizationStatus.PROVISIONAL
       let finalStatus = existingStatus
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync()
         finalStatus = status
       }
       if (finalStatus !== 'granted') {
-        Alert.alert('Failed to get push token for push notification!')
+        setAlert({
+          show: true,
+          title: 'Push notification permission denied!',
+          message: 'Please enable push notifications for this app.',
+          buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        })
         return
       }
       token = (await Notifications.getExpoPushTokenAsync()).data
-      // console.log(token)
     } else {
-      Alert.alert('Must use physical device for Push Notifications')
+      setAlert({
+        show: true,
+        title: 'Must use physical device for Push Notifications',
+        message: 'A physical device is neccesary for Push Notifications',
+        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+      })
     }
 
     if (Platform.OS === 'android') {
@@ -341,9 +349,14 @@ export default function SettingsScreen ({ navigation }) {
     for (let i = 0; i < notiPref.length; i++) {
       const notification = notiPref[i]
       for (let j = 0; j < 7; j++) {
-        if (notification.weekly || new Date(
-          new Date(notification.time).setDate(new Date().getDate() + (j - new Date().getDay()))
-        ) > new Date()) {
+        if (
+          notification.weekly ||
+          new Date(
+            new Date(notification.time).setDate(
+              new Date().getDate() + (j - new Date().getDay())
+            )
+          ) > new Date()
+        ) {
           if (notification.days[j].notiID !== '') {
             await Notifications.cancelScheduledNotificationAsync(
               notification.days[j].notiID
@@ -372,36 +385,63 @@ export default function SettingsScreen ({ navigation }) {
 
   if (!ready) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]} />
+      <View
+        style={[styles.container, { backgroundColor: colors.background }]}
+      />
     )
   }
   return (
     <ThemeProvider theme={theme}>
       <StatusBar style={colorScheme === 'light' ? 'dark' : 'light'} />
-      <Header
-        backgroundColor={colors.background}
-        placement="left"
-        centerComponent={{
-          text: 'Settings',
-          style: {
-            color: colors.grey1,
-            fontSize: 19,
-            fontWeight: 'bold'
-          }
-        }}
-        leftComponent={
-          <Icon
-            name="arrow-back"
-            type="material"
-            color={colors.grey1}
-            onPress={() => navigation.goBack()}
-          />
-        }
-        // centerComponent=
-      />
+
       <SafeAreaView
         style={[styles.container, { backgroundColor: colors.background }]}
       >
+        <Header
+          backgroundColor={colors.background}
+          placement="left"
+          centerComponent={{
+            text: 'Settings',
+            style: {
+              color: colors.grey1,
+              fontSize: 19,
+              fontWeight: 'bold'
+            }
+          }}
+          leftComponent={
+            <Icon
+              name="arrow-back"
+              type="material"
+              color={colors.grey1}
+              onPress={() => navigation.goBack()}
+            />
+          }
+        />
+        {alert.show
+          ? (
+          <Dialog
+            overlayStyle={{ backgroundColor: colors.white }}
+            onBackdropPress={() => setAlert({ show: false })}
+          >
+            <Dialog.Title
+              title={alert.title}
+              titleStyle={{ color: colors.grey1 }}
+            />
+            <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+            <Dialog.Actions>
+              {alert.buttons.map((l, i) => (
+                <Dialog.Button
+                  key={i}
+                  title={l.title}
+                  titleStyle={{ color: colors.grey1 }}
+                  onPress={() => l.action()}
+                />
+              ))}
+            </Dialog.Actions>
+          </Dialog>
+            )
+          : null}
+
         <Dialog
           isVisible={syncView}
           onBackdropPress={() => setSyncView(false)}
@@ -457,8 +497,6 @@ export default function SettingsScreen ({ navigation }) {
               <View key={i} style={{ flexDirection: 'row', marginVertical: 5 }}>
                 <View style={{ borderWidth: 1, borderRadius: 10 }}>
                   <Button
-                    // title={displayTime(l.time)}
-                    // titleStyle={{ color: colors.white }}
                     buttonStyle={{
                       backgroundColor: colors.primary,
                       borderTopLeftRadius: 10,
@@ -483,7 +521,6 @@ export default function SettingsScreen ({ navigation }) {
                       testID="dateTimePicker"
                       value={new Date(l.time)}
                       mode={'time'}
-                      // display="default"
                       onChange={(event, selectedDate) =>
                         onChange(event, selectedDate, i)
                       }
@@ -695,7 +732,6 @@ export default function SettingsScreen ({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor: '#3A3B3C',
     alignItems: 'stretch',
     justifyContent: 'flex-start',
     flexDirection: 'column'
