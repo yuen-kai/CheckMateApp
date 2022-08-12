@@ -66,6 +66,7 @@ export default function AddTaskScreen ({ route, navigation }) {
   const [edit, setEdit] = useState(false)
   const [same, setSame] = useState(false)
   const [alert, setAlert] = useState({ show: false })
+  const [checked, setChecked] = useState(1)
 
   const theme = createTheme({
     lightColors: {
@@ -106,7 +107,7 @@ export default function AddTaskScreen ({ route, navigation }) {
         show: true,
         title: 'Error getting data!',
         message: 'Please try again.',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
       console.log(e)
     }
@@ -181,7 +182,7 @@ export default function AddTaskScreen ({ route, navigation }) {
         show: true,
         title: 'Error getting data!',
         message: 'Please try again.',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
       console.log(e)
     }
@@ -260,8 +261,7 @@ export default function AddTaskScreen ({ route, navigation }) {
     isRepeating()
   }
 
-  // Saving/Processing
-  const handleSave = async () => {
+  async function saveTasks (thisOrAll) {
     let d
     if (daysUsed[new Date().getDay()]) {
       d = new Date().setHours(0, 0, 0, 0)
@@ -298,9 +298,68 @@ export default function AddTaskScreen ({ route, navigation }) {
       dueImportance,
       repeating: isRepeating(),
       dueIncrease,
-      description
+      description,
+      weekly
     }
 
+    // Put in event for all the days used
+    for (let i = 0; i <= daysUsed.length - 1; i++) {
+      if (daysUsed[i] === true) {
+        if (edit === true) {
+          savedTasks[0][i].splice(
+            savedTasks[0][i].findIndex((task) => task.name === editName),
+            1
+          )
+        }
+        savedTasks[0][i].push({ ...selectedTask })
+
+        if (weekly === true) {
+          if (edit === true) {
+            savedTasks[1][i].splice(
+              savedTasks[1][i].findIndex((task) => task.name === editName),
+              1
+            )
+          }
+          savedTasks[1][i].push({ ...selectedTask })
+        }
+      } else if (thisOrAll !== 'none') {
+        if (savedTasks[0][i].some((task) => task.name === selectedTask.name)) {
+          savedTasks[0][i].splice(
+            savedTasks[0][i].findIndex(
+              (task) => task.name === selectedTask.name
+            ),
+            1
+          )
+        }
+        if (
+          thisOrAll === 'all' &&
+          savedTasks[1][i].some((task) => task.name === selectedTask.name)
+        ) {
+          savedTasks[1][i].splice(
+            savedTasks[1][i].findIndex(
+              (task) => task.name === selectedTask.name
+            ),
+            1
+          )
+        }
+      }
+    }
+    setEmpty(false)
+
+    // save data
+    try {
+      const jsonValue = JSON.stringify(savedTasks)
+      await AsyncStorage.setItem('tasks', jsonValue)
+    } catch (e) {
+      console.log(e)
+    }
+
+    // Go back to home page
+    navigation.navigate('Home', { editName: selectedTask.name })
+  }
+
+  // Saving/Processing
+  const handleSave = async () => {
     // Check if valid
     if (name === '' || importance === 0 || length === 0) {
       setEmpty(true)
@@ -318,77 +377,68 @@ export default function AddTaskScreen ({ route, navigation }) {
         buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
     } else {
-      // Put in task for all the days used
-      for (let i = 0; i <= daysUsed.length - 1; i++) {
-        if (daysUsed[i] === true) {
-          if (edit === true) {
-            savedTasks[0][i].splice(
-              savedTasks[0][i].findIndex((task) => task.name === editName),
-              1
-            )
-          }
-          savedTasks[0][i].push(selectedTask)
-
-          if (weekly === true) {
-            if (edit === true) {
-              savedTasks[1][i].splice(
-                savedTasks[1][i].findIndex((task) => task.name === editName),
-                1
-              )
-            }
-
-            savedTasks[1][i].push(selectedTask)
-          }
-        } else if (!newInfo()) {
-          if (
-            savedTasks[0][i].some((task) => task.name === selectedTask.name)
-          ) {
-            savedTasks[0][i].splice(
-              savedTasks[0][i].findIndex(
-                (task) => task.name === selectedTask.name
-              ),
-              1
-            )
-          }
-          if (
-            weekly === true &&
-            savedTasks[1][i].some((task) => task.name === selectedTask.name)
-          ) {
-            savedTasks[1][i].splice(
-              savedTasks[1][i].findIndex(
-                (task) => task.name === selectedTask.name
-              ),
-              1
-            )
+      if (!newInfo()) {
+        // check if task occurs in savedTasks[1]
+        let occurs = false
+        for (let i = 0; i < savedTasks[1].length; i++) {
+          if (savedTasks[1][i].some((element) => element.name === editName)) {
+            occurs = true
           }
         }
-      }
-      setEmpty(false)
 
-      // save data
-      try {
-        const jsonValue = JSON.stringify(savedTasks)
-        await AsyncStorage.setItem('tasks', jsonValue)
-      } catch (e) {
-        console.log(e)
-      }
+        let secondOccurs = false
 
-      // Go back to home page
-      navigation.navigate('Home', { editName: selectedTask.name })
+        // check if task occurs in savedTasks[0] but usedDays[i] is false
+        for (let i = 0; i < savedTasks[0].length; i++) {
+          if (
+            savedTasks[0][i].some((element) => element.name === editName) &&
+            !daysUsed[i]
+          ) {
+            secondOccurs = true
+          }
+        }
+
+        // check if task occurs in savedTasks[1] but usedDays[i] is false
+        if (weekly) {
+          for (let i = 0; i < savedTasks[1].length; i++) {
+            if (
+              savedTasks[1][i].some((element) => element.name === editName) &&
+              !daysUsed[i]
+            ) {
+              secondOccurs = true
+            }
+          }
+        }
+
+        if (occurs && secondOccurs) {
+          setAlert({
+            show: true,
+            title: 'Delete recurring event',
+            message: 'reccuring',
+            buttons: [
+              { title: 'Cancel', action: () => setAlert({ show: false }) }
+            ]
+          })
+        } else {
+          saveTasks('none')
+        }
+      } else {
+        saveTasks('none')
+      }
     }
   }
 
   async function sameName (name) {
     const savedTaskJsonValue = await AsyncStorage.getItem('setTasks')
-    const workTimes =
+    const savedTasks =
       savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) : null
     for (let i = 0; i < daysUsed.length; i++) {
       if (daysUsed[i]) {
         if ((edit === true && name !== editName) || edit === false) {
           if (
-            workTimes[0][i].some((element) => element.name === name) ||
+            savedTasks[0][i].some((element) => element.name === name) ||
             (weekly &&
-              workTimes[1][i].some((element) => element.name === name)) ||
+              savedTasks[1][i].some((element) => element.name === name)) ||
             savedTasks[0][i].some((element) => element.name === name) ||
             (weekly &&
               savedTasks[1][i].some((element) => element.name === name))
@@ -464,8 +514,36 @@ export default function AddTaskScreen ({ route, navigation }) {
               title={alert.title}
               titleStyle={{ color: colors.grey1 }}
             />
-            <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+            {alert.message !== 'reccuring' ? (
+              <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+            ) : (
+              ['This week', 'All weeks'].map((t, k) => (
+                <CheckBox
+                  key={k}
+                  title={t}
+                  textStyle={{ color: colors.grey1 }}
+                  containerStyle={{
+                    backgroundColor: colors.white,
+                    borderWidth: 0
+                  }}
+                  checkedIcon="dot-circle-o"
+                  uncheckedIcon="circle-o"
+                  checked={checked === k + 1}
+                  onPress={() => setChecked(k + 1)}
+                />
+              ))
+            )}
             <Dialog.Actions>
+              {alert.message === 'reccuring' ? (
+                <Dialog.Button
+                  title="OK"
+                  titleStyle={{ color: colors.grey1 }}
+                  onPress={() => {
+                    setAlert({ show: false })
+                    checked === 1 ? saveTasks('this') : saveTasks('all')
+                  }}
+                />
+              ) : null}
               {alert.buttons.map((l, i) => (
                 <Dialog.Button
                   key={i}

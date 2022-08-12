@@ -135,7 +135,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
         show: true,
         title: 'Error getting data!',
         message: 'Please try again.',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
       console.log(e)
     }
@@ -190,7 +190,8 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
           weekday: i + 1,
           hour: triggerTime.getHours(),
           minute: triggerTime.getMinutes(),
-          repeats: true
+          repeats: true,
+          channelId: 'Events'
         }
       })
     } else {
@@ -204,7 +205,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             '.\n' +
             event.description
         },
-        trigger: triggerTime
+        trigger: { triggerTime, channelId: 'Events' }
       })
     }
   }
@@ -227,7 +228,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
           show: true,
           title: 'Push notification permission denied!',
           message: 'Please enable push notifications for this app.',
-          buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+          buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
         })
         return
       }
@@ -237,17 +238,19 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
         show: true,
         title: 'Must use physical device for Push Notifications',
         message: 'A physical device is neccesary for Push Notifications',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
     }
 
     if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
+      Notifications.setNotificationChannelAsync('Events', {
+        name: 'Events',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C'
+        lightColor: '#FF231F7C',
+        bypassDnd: true
       })
+      Notifications.deleteNotificationChannelAsync('default')
     }
 
     return token
@@ -274,7 +277,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
         for (let i = 0; i <= daysUsed.length - 1; i++) {
           if (
             workTimes[0][i].some((task) => task.name === editName) ||
-            (weekly && workTimes[1][i].some((task) => task.name === editName))
+            workTimes[1][i].some((task) => task.name === editName)
           ) {
             change.splice(i, 1, true)
           }
@@ -293,7 +296,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
         show: true,
         title: 'Error getting edit info!',
         message: 'Please try again.',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
       console.log(e)
     }
@@ -466,7 +469,20 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
   }
 
   async function saveEvents (thisOrAll) {
-    // Put in task for all the days used
+    selectedTask = {
+      name,
+      pStart: roundTime(start),
+      pEnd: roundTime(end),
+      start: roundTime(start),
+      end: roundTime(end),
+      length: (roundTime(end) - roundTime(start)) / (60 * 1000),
+      repeating,
+      description,
+      notificationId: null,
+      notification
+    }
+
+    // Put in event for all the days used
     for (let i = 0; i <= daysUsed.length - 1; i++) {
       if (daysUsed[i] === true) {
         if (edit === true) {
@@ -658,30 +674,9 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
           setAlert({
             show: true,
             title: 'Delete recurring event',
-            content: ['This week', 'All weeks'].map((t, k) => (
-              <CheckBox
-                key={k}
-                title={t}
-                textStyle={{ color: colors.grey1 }}
-                containerStyle={{
-                  backgroundColor: colors.white,
-                  borderWidth: 0
-                }}
-                checkedIcon="dot-circle-o"
-                uncheckedIcon="circle-o"
-                checked={checked === k + 1}
-                onPress={() => setChecked(k + 1)}
-              />
-            )),
+            message: 'reccuring',
             buttons: [
-              { title: 'Cancel', action: () => setAlert({ show: false }) },
-              {
-                title: 'OK',
-                action: () => {
-                  setAlert({ show: false })
-                  checked === 1 ? saveEvents('this') : saveEvents('all')
-                }
-              }
+              { title: 'Cancel', action: () => setAlert({ show: false }) }
             ]
           })
         } else {
@@ -754,9 +749,40 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
               title={alert.title}
               titleStyle={{ color: colors.grey1 }}
             />
-            <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
-            {alert.content}
+            {alert.message !== 'reccuring'
+              ? (
+              <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+                )
+              : (
+                  ['This week', 'All weeks'].map((t, k) => (
+                <CheckBox
+                  key={k}
+                  title={t}
+                  textStyle={{ color: colors.grey1 }}
+                  containerStyle={{
+                    backgroundColor: colors.white,
+                    borderWidth: 0
+                  }}
+                  checkedIcon="dot-circle-o"
+                  uncheckedIcon="circle-o"
+                  checked={checked === k + 1}
+                  onPress={() => setChecked(k + 1)}
+                />
+                  ))
+                )}
             <Dialog.Actions>
+              {alert.message === 'reccuring'
+                ? (
+                <Dialog.Button
+                  title="OK"
+                  titleStyle={{ color: colors.grey1 }}
+                  onPress={() => {
+                    setAlert({ show: false })
+                    checked === 1 ? saveEvents('this') : saveEvents('all')
+                  }}
+                />
+                  )
+                : null}
               {alert.buttons.map((l, i) => (
                 <Dialog.Button
                   key={i}

@@ -85,7 +85,7 @@ export default function SyncEventsScreen ({ route, navigation }) {
         show: true,
         title: 'Error getting data!',
         message: 'Please try again.',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
       console.log(e)
     }
@@ -127,9 +127,12 @@ export default function SyncEventsScreen ({ route, navigation }) {
           '.\n' +
           event.description
       },
-      trigger: time(
-        new Date(event.pStart).getTime() - event.notification * 1000 * 60
-      )
+      trigger: {
+        date: time(
+          new Date(event.pStart).getTime() - event.notification * 1000 * 60
+        ),
+        channelId: 'Events'
+      }
     })
   }
 
@@ -151,7 +154,7 @@ export default function SyncEventsScreen ({ route, navigation }) {
           show: true,
           title: 'Push notification permission denied!',
           message: 'Please enable push notifications for this app.',
-          buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+          buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
         })
         return
       }
@@ -161,17 +164,19 @@ export default function SyncEventsScreen ({ route, navigation }) {
         show: true,
         title: 'Must use physical device for Push Notifications',
         message: 'A physical device is neccesary for Push Notifications',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
     }
 
     if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
+      Notifications.setNotificationChannelAsync('Events', {
+        name: 'Events',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C'
+        lightColor: '#FF231F7C',
+        bypassDnd: true
       })
+      Notifications.deleteNotificationChannelAsync('default')
     }
 
     return token

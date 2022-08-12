@@ -285,7 +285,8 @@ export default function SettingsScreen ({ navigation }) {
           weekday: i + 1,
           hour: new Date(time).getHours(),
           minute: new Date(time).getMinutes(),
-          repeats: true
+          repeats: true,
+          channelId: 'Productivity Reminders'
         }
       })
     }
@@ -294,9 +295,12 @@ export default function SettingsScreen ({ navigation }) {
         title: 'Time to start working!',
         body: 'Time to be productive!'
       },
-      trigger: new Date(
-        new Date(time).setDate(new Date().getDate() + (i - new Date().getDay()))
-      )
+      trigger: {
+        date: new Date(
+          new Date(time).setDate(new Date().getDate() + (i - new Date().getDay()))
+        ),
+        channelId: 'Productivity Reminders'
+      }
     })
   }
 
@@ -318,7 +322,7 @@ export default function SettingsScreen ({ navigation }) {
           show: true,
           title: 'Push notification permission denied!',
           message: 'Please enable push notifications for this app.',
-          buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+          buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
         })
         return
       }
@@ -328,17 +332,18 @@ export default function SettingsScreen ({ navigation }) {
         show: true,
         title: 'Must use physical device for Push Notifications',
         message: 'A physical device is neccesary for Push Notifications',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
     }
 
     if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
+      Notifications.setNotificationChannelAsync('Productivity Reminders', {
+        name: 'Productivity Reminders',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C'
       })
+      Notifications.deleteNotificationChannelAsync('default')
     }
 
     return token

@@ -181,7 +181,7 @@ export default function HomeScreen ({ route, navigation }) {
       }
       setReady(true)
       setFirstOpen(1)
-    } else if (firstOpen === 1) {
+    } else if (!removal && firstOpen === 1) {
       makeCombined()
     }
   }, [progress, taskIndex, removal, firstOpen])
@@ -204,17 +204,22 @@ export default function HomeScreen ({ route, navigation }) {
           '.\n' +
           event.description
       },
-      trigger: new Date(
-        new Date(
+      trigger: {
+        date: new Date(
           new Date(
-            new Date().setDate(new Date().getDate() + (i - new Date().getDay()))
-          ).setHours(
-            new Date(event.start).getHours(),
-            new Date(event.start).getMinutes()
-          )
-        ).getTime() -
-          event.notification * 60 * 1000
-      )
+            new Date(
+              new Date().setDate(
+                new Date().getDate() + (i - new Date().getDay())
+              )
+            ).setHours(
+              new Date(event.start).getHours(),
+              new Date(event.start).getMinutes()
+            )
+          ).getTime() -
+            event.notification * 60 * 1000
+        ),
+        channelId: 'Events'
+      }
     })
   }
 
@@ -236,7 +241,7 @@ export default function HomeScreen ({ route, navigation }) {
           show: true,
           title: 'Push notification permission denied!',
           message: 'Please enable push notifications for this app.',
-          buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+          buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
         })
         return
       }
@@ -246,17 +251,19 @@ export default function HomeScreen ({ route, navigation }) {
         show: true,
         title: 'Must use physical device for Push Notifications',
         message: 'A physical device is neccesary for Push Notifications',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
     }
 
     if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
+      Notifications.setNotificationChannelAsync('Events', {
+        name: 'Events',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C'
+        lightColor: '#FF231F7C',
+        bypassDnd: true
       })
+      Notifications.deleteNotificationChannelAsync('default')
     }
 
     return token
@@ -287,7 +294,7 @@ export default function HomeScreen ({ route, navigation }) {
         show: true,
         title: 'Error getting data!',
         message: 'Please try again.',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
       console.log(e)
     }
@@ -351,8 +358,8 @@ export default function HomeScreen ({ route, navigation }) {
         message: 'Please enable calendar permissions for this app.',
         buttons: [
           {
-            text: 'OK',
-            onPress: () => {
+            title: 'OK',
+            action: () => {
               setAlert({ show: false })
             }
           }
@@ -385,8 +392,8 @@ export default function HomeScreen ({ route, navigation }) {
         message: 'Please enable calendar permissions for this app.',
         buttons: [
           {
-            text: 'OK',
-            onPress: () => {
+            title: 'OK',
+            action: () => {
               setAlert({ show: false })
             }
           }
@@ -415,7 +422,7 @@ export default function HomeScreen ({ route, navigation }) {
         show: true,
         title: 'Error getting data!',
         message: 'Please try again.',
-        buttons: [{ text: 'OK', onPress: () => setAlert({ show: false }) }]
+        buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
       console.log(e)
     }
@@ -489,8 +496,8 @@ export default function HomeScreen ({ route, navigation }) {
         message: 'Please enable calendar permissions for this app.',
         buttons: [
           {
-            text: 'OK',
-            onPress: () => {
+            title: 'OK',
+            action: () => {
               setAlert({ show: false })
             }
           }
@@ -523,8 +530,8 @@ export default function HomeScreen ({ route, navigation }) {
         message: 'Please enable calendar permissions for this app.',
         buttons: [
           {
-            text: 'OK',
-            onPress: () => {
+            title: 'OK',
+            action: () => {
               setAlert({ show: false })
             }
           }
@@ -581,11 +588,34 @@ export default function HomeScreen ({ route, navigation }) {
     try {
       const JsonValue = await AsyncStorage.getItem('firsty')
       const first = JsonValue != null ? JSON.parse(JsonValue) : null
+      const removeJsonValue = await AsyncStorage.getItem('removeNotifications')
+      const removeNotifications =
+        removeJsonValue != null ? JSON.parse(removeJsonValue) : null
       if (first == null) {
         setInstructionIndex(0)
         const jsonValue = JSON.stringify(false)
         await AsyncStorage.setItem('firsty', jsonValue)
+        await AsyncStorage.setItem('removeNotifications', jsonValue)
         setFirst(true)
+      } else if (removeNotifications == null) {
+        Notifications.cancelAllScheduledNotificationsAsync()
+        setAlert({
+          show: true,
+          title: 'Notification Changes',
+          message: 'noti',
+          buttons: [
+            {
+              title: 'OK',
+              action: async () => {
+                setAlert({ show: false })
+                await AsyncStorage.setItem(
+                  'removeNotifications',
+                  JSON.stringify(true)
+                )
+              }
+            }
+          ]
+        })
       }
 
       resolve(true)
@@ -597,8 +627,8 @@ export default function HomeScreen ({ route, navigation }) {
         message: 'Please try again.',
         buttons: [
           {
-            text: 'OK',
-            onPress: () => {
+            title: 'OK',
+            action: () => {
               setAlert({ show: false })
             }
           }
@@ -696,8 +726,8 @@ export default function HomeScreen ({ route, navigation }) {
         message: 'Please try again.',
         buttons: [
           {
-            text: 'OK',
-            onPress: () => {
+            title: 'OK',
+            action: () => {
               setAlert({ show: false })
             }
           }
@@ -789,8 +819,8 @@ export default function HomeScreen ({ route, navigation }) {
         message: 'Please try again.',
         buttons: [
           {
-            text: 'OK',
-            onPress: () => {
+            title: 'OK',
+            action: () => {
               setAlert({ show: false })
             }
           }
@@ -1669,13 +1699,40 @@ export default function HomeScreen ({ route, navigation }) {
         {alert.show ? (
           <Dialog
             overlayStyle={{ backgroundColor: colors.white }}
-            onBackdropPress={() => setAlert({ show: false })}
+            onBackdropPress={async () => {
+              alert.message === 'noti'
+                ? await AsyncStorage.setItem(
+                  'removeNotifications',
+                  JSON.stringify(true)
+                )
+                : null
+              setAlert({ show: false })
+            }}
           >
             <Dialog.Title
               title={alert.title}
               titleStyle={{ color: colors.grey1 }}
             />
-            <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+            {alert.message === 'noti' ? (
+              <Text>
+                <Text style={{ color: colors.grey1 }}>
+                  CheckMate has recieved bug fixes and other changes relating to
+                  notifications. However, this requires
+                </Text>
+                <Text style={{ fontWeight: 'bold', color: colors.grey1 }}>
+                  {' '}
+                  existing notifications to be deleted; You will need to add
+                  them back manually.
+                </Text>
+                <Text style={{ color: colors.grey1 }}>
+                  {' '}
+                  We are very sorry for the inconvenience.
+                </Text>
+              </Text>
+            ) : (
+              <Text style={{ color: colors.grey1 }}>{alert.message}</Text>
+            )}
+            {alert.content}
             <Dialog.Actions>
               {alert.buttons.map((l, i) => (
                 <Dialog.Button
