@@ -169,12 +169,10 @@ export default function AddTaskScreen ({ route, navigation }) {
         }
         await setDaysUsed(change)
         isRepeating()
-        if (
-          savedTasks[1][new Date().getDay()].findIndex(
-            (task) => task.name === editName
-          ) !== -1
-        ) {
-          setWeekly(true)
+        for (let i = 0; i < savedTasks[1].length; i++) {
+          if (savedTasks[1][i].some((task) => task.name === editName)) {
+            setWeekly(true)
+          }
         }
       }
     } catch (e) {
@@ -430,15 +428,15 @@ export default function AddTaskScreen ({ route, navigation }) {
 
   async function sameName (name) {
     const savedTaskJsonValue = await AsyncStorage.getItem('setTasks')
-    const savedTasks =
+    const events =
       savedTaskJsonValue != null ? JSON.parse(savedTaskJsonValue) : null
     for (let i = 0; i < daysUsed.length; i++) {
       if (daysUsed[i]) {
         if ((edit === true && name !== editName) || edit === false) {
           if (
-            savedTasks[0][i].some((element) => element.name === name) ||
+            events[0][i].some((element) => element.name === name) ||
             (weekly &&
-              savedTasks[1][i].some((element) => element.name === name)) ||
+              events[1][i].some((element) => element.name === name)) ||
             savedTasks[0][i].some((element) => element.name === name) ||
             (weekly &&
               savedTasks[1][i].some((element) => element.name === name))

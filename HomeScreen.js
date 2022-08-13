@@ -37,6 +37,8 @@ import {
   Header
 } from '@rneui/themed'
 import logo from './assets/Icon.png'
+import lightLogo from './assets/FadedIconLight.png'
+import darkLogo from './assets/FadedIconDark.png'
 import controls from './assets/Controls.png'
 import eventScreen from './assets/EventScreen.png'
 import taskScreen from './assets/TaskScreen.png'
@@ -1832,19 +1834,22 @@ export default function HomeScreen ({ route, navigation }) {
             {combined.length === 0 ? (
               <View
                 style={{
-                  margin: 20,
-                  alignSelf: 'center',
+                  height: '100%',
+                  // marginTop: 100,
+                  alignSelf: 'stretch',
                   justifyContent: 'center',
                   alignItems: 'center'
                 }}
               >
-                <Image style={{ width: 200, height: 200 }} source={logo} />
+                {/* <Image style={{ width: 150, height: 150 }} source={colorScheme === 'light' ? lightLogo : darkLogo} /> */}
                 <Text
                   h3
                   h3Style={{
                     fontWeight: 'normal',
                     textAlign: 'center',
-                    color: colors.grey1
+                    color: colors.grey1,
+                    fontSize: 20,
+                    marginBottom: 20
                   }}
                 >
                   No tasks or events currently.
@@ -2026,7 +2031,7 @@ export default function HomeScreen ({ route, navigation }) {
               <Icon
                 name="play-circle"
                 type="font-awesome"
-                size={30}
+                size={35}
                 onPress={() => start()}
                 disabled={combined.length <= 0}
                 color={colors.grey1}
@@ -2035,7 +2040,7 @@ export default function HomeScreen ({ route, navigation }) {
             ) : (
               <Icon
                 name="pause-circle"
-                size={30}
+                size={35}
                 type="font-awesome"
                 onPress={() => pause()}
                 color={colors.grey1}
@@ -2046,7 +2051,7 @@ export default function HomeScreen ({ route, navigation }) {
             <Icon
               name="stop-circle"
               type="font-awesome"
-              size={30}
+              size={35}
               onPress={() => stop()}
               color={colors.grey1}
               disabled={combined.length <= 0}
@@ -2055,7 +2060,7 @@ export default function HomeScreen ({ route, navigation }) {
             <Icon
               name="pencil-circle"
               type="material-community"
-              size={30}
+              size={35}
               onPress={() => editTask()}
               color={colors.grey1}
               disabled={selectable === false || combined.length === 0}

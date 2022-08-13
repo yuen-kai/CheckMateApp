@@ -282,14 +282,11 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             change.splice(i, 1, true)
           }
         }
-        if (
-          workTimes[1][new Date().getDay()].findIndex(
-            (task) => task.name === editName
-          ) !== -1
-        ) {
-          setWeekly(true)
+        for (let i = 0; i < workTimes[1].length; i++) {
+          if (workTimes[1][i].some((task) => task.name === editName)) {
+            setWeekly(true)
+          }
         }
-        await setDaysUsed(change)
       }
     } catch (e) {
       setAlert({
