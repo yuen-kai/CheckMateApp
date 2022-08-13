@@ -1829,8 +1829,8 @@ export default function HomeScreen ({ route, navigation }) {
           </Dialog>
         ))}
 
-        <View style={{ flex: 9 }}>
-          <View style={{ flex: 10, marginHorizontal: 20, marginTop: 10 }}>
+        <View style={{ flexGrow: 1 }}>
+          <View style={{ flex: 1, marginHorizontal: 20, marginTop: 10 }}>
             {combined.length === 0 ? (
               <View
                 style={{
@@ -2031,7 +2031,7 @@ export default function HomeScreen ({ route, navigation }) {
               <Icon
                 name="play-circle"
                 type="font-awesome"
-                size={35}
+                size={33}
                 onPress={() => start()}
                 disabled={combined.length <= 0}
                 color={colors.grey1}
@@ -2040,7 +2040,7 @@ export default function HomeScreen ({ route, navigation }) {
             ) : (
               <Icon
                 name="pause-circle"
-                size={35}
+                size={33}
                 type="font-awesome"
                 onPress={() => pause()}
                 color={colors.grey1}
@@ -2051,7 +2051,7 @@ export default function HomeScreen ({ route, navigation }) {
             <Icon
               name="stop-circle"
               type="font-awesome"
-              size={35}
+              size={33}
               onPress={() => stop()}
               color={colors.grey1}
               disabled={combined.length <= 0}
@@ -2060,7 +2060,7 @@ export default function HomeScreen ({ route, navigation }) {
             <Icon
               name="pencil-circle"
               type="material-community"
-              size={35}
+              size={33}
               onPress={() => editTask()}
               color={colors.grey1}
               disabled={selectable === false || combined.length === 0}
@@ -2070,7 +2070,6 @@ export default function HomeScreen ({ route, navigation }) {
           {avaliableTime > 0 ? (
             <Text
               style={{
-                flex: 1,
                 textAlign: 'center',
                 flexDirection: 'row',
                 justifyContent: 'space-around',
@@ -2079,7 +2078,7 @@ export default function HomeScreen ({ route, navigation }) {
                 color: colors.grey1
               }}
             >
-              {displayTimeLeft(avaliableTime)} left
+              {displayTimeLeft(avaliableTime)}of work left
             </Text>
           ) : null}
         </View>
@@ -2109,8 +2108,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row'
   },
   selectView: {
-    flex: 1,
-    padding: 3,
+    // flex: 1,
+    paddingBottom: 10,
     alignItems: 'stretch',
     flexDirection: 'column',
     justifyContent: 'center'
