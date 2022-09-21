@@ -3,6 +3,7 @@
 /* eslint-disable react/prop-types */
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
+import * as Linking from 'expo-linking'
 import { StatusBar } from 'expo-status-bar'
 import React, { useState, useEffect } from 'react'
 import {
@@ -13,7 +14,8 @@ import {
   TouchableOpacity,
   Appearance,
   useColorScheme,
-  SafeAreaView
+  SafeAreaView,
+  Share
 } from 'react-native'
 import DateTimePicker from '@react-native-community/datetimepicker'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -95,8 +97,48 @@ export default function SettingsScreen ({ navigation }) {
       name: 'Theme',
       icon: <Icon name="color-lens" type="material" color={colors.grey1} />,
       onPress: () => setThemeView(true)
+    },
+    {
+      name: 'Review',
+      icon: <Icon name="rate-review" type="material" color={colors.grey1} />,
+      onPress: () => review()
+    },
+    {
+      name: 'Share',
+      icon: <Icon name="share" type="material" color={colors.grey1} />,
+      onPress: () => share()
     }
   ]
+
+  const review = async () => {
+    if (Platform.OS === 'android') {
+      const androidPackageName = 'com.yuenkai.CheckMate'
+      Linking.openURL(`market://details?id=${androidPackageName}&showAllReviews=true`)
+    } else if (Platform.OS === 'ios') {
+      Linking.openURL(
+        `itms-apps://itunes.apple.com/app/viewContentsUserReviews/id${1570727502}?action=write-review`
+      )
+    }
+  }
+
+  const share = async () => {
+    try {
+      await Share.share(
+        {
+          message:
+            'Try CheckMate, a free productivity app. Download here: https://tinyurl.com/CheckMate-Schedule',
+          url: 'https://tinyurl.com/CheckMate-Schedule',
+          title: 'Download CheckMate'
+        },
+        {
+          subject: 'Download CheckMate',
+          tintColor: '#6a99e6'
+        }
+      )
+    } catch (error) {
+      alert(error.message)
+    }
+  }
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -297,7 +339,9 @@ export default function SettingsScreen ({ navigation }) {
       },
       trigger: {
         date: new Date(
-          new Date(time).setDate(new Date().getDate() + (i - new Date().getDay()))
+          new Date(time).setDate(
+            new Date().getDate() + (i - new Date().getDay())
+          )
         ),
         channelId: 'Productivity Reminders'
       }

@@ -282,6 +282,8 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             change.splice(i, 1, true)
           }
         }
+        setDaysUsed(change)
+        isRepeating()
         for (let i = 0; i < workTimes[1].length; i++) {
           if (workTimes[1][i].some((task) => task.name === editName)) {
             setWeekly(true)

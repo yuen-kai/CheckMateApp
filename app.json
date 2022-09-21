@@ -2,7 +2,7 @@
   "expo": {
     "name": "CheckMate",
     "slug": "CheckMate",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "orientation": "portrait",
     "icon": "./assets/Icon.png",
     "userInterfaceStyle": "automatic",
@@ -12,13 +12,16 @@
       "backgroundColor": "#6a99e6"
     },
     "updates": {
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/3b3f319e-e798-4109-8eff-d06a7eb8f6b4"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.yuenkai.CheckMate",
-      "buildNumber": "2.0.1",
+      "buildNumber": "2.0.2",
       "infoPlist": {
         "NSRemindersUsageDescription": "This app reads events from the device's calendar and adds them into the user's schedule in the app."
       }
@@ -32,7 +35,7 @@
       "icon": "./assets/Icon.png",
       "softwareKeyboardLayoutMode": "pan",
       "package": "com.yuenkai.CheckMate",
-      "versionCode": 3
+      "versionCode": 6
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -42,9 +45,17 @@
         "expo-notifications",
         {
           "icon": "./assets/NotificationIcon.png",
-          "color": "#ffffff"
+          "color": "#6a99e6"
         }
       ]
-    ]
+    ],
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3b3f319e-e798-4109-8eff-d06a7eb8f6b4"
+      }
+    }
   }
 }

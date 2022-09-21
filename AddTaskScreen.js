@@ -22,7 +22,8 @@ import {
   ThemeProvider,
   createTheme,
   Header,
-  Dialog
+  Dialog,
+  Divider
 } from '@rneui/themed'
 import Section from './Section'
 
@@ -606,36 +607,6 @@ export default function AddTaskScreen ({ route, navigation }) {
             ) : null}
             <View style={styles.section}>
               <Icon
-                name="info"
-                type="material"
-                color={colors.grey1}
-                size={30}
-              />
-              <Section
-                labelContainerStyle={{ backgroundColor: colors.background }}
-                label="Description (Optional)"
-                labelStyle={{ color: colors.grey2 }}
-                contentStyle={{
-                  borderColor: colors.grey2,
-                  paddingTop: 7,
-                  paddingBottom: 3
-                }}
-              >
-                <Input
-                  multiline
-                  placeholder="Add Description"
-                  placeholderTextColor={colors.grey2}
-                  renderErrorMessage={false}
-                  onChangeText={(description) => setDescription(description)}
-                  value={description}
-                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
-                  inputContainerStyle={{ borderBottomWidth: 0 }}
-                  selectionColor={colors.primary}
-                />
-              </Section>
-            </View>
-            <View style={styles.section}>
-              <Icon
                 name="timer"
                 type="material"
                 color={colors.grey1}
@@ -727,6 +698,93 @@ export default function AddTaskScreen ({ route, navigation }) {
             ) : null}
             <View style={styles.section}>
               <Icon
+                name="calendar-today"
+                type="material"
+                color={colors.grey1}
+                size={30}
+              />
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Due Date"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{ borderColor: colors.grey2 }}
+              >
+                <View
+                  style={{ flexDirection: 'row', marginLeft: 5, marginTop: 10 }}
+                >
+                  <View style={{ padding: 3 }}>
+                    <Button
+                      title={displayDate(date)}
+                      titleStyle={{ color: colors.white }}
+                      buttonStyle={{
+                        backgroundColor: colors.primary,
+                        borderRadius: 5
+                      }}
+                      onPress={() => showDatepicker()}
+                    />
+                  </View>
+                  <View style={{ padding: 3 }}>
+                    <Button
+                      title={displayTime(date)}
+                      titleStyle={{ color: colors.white }}
+                      buttonStyle={{
+                        backgroundColor: colors.primary,
+                        borderRadius: 5
+                      }}
+                      onPress={() => showTimepicker()}
+                    />
+                  </View>
+                </View>
+
+                {show && (
+                  <DateTimePicker
+                    testID="dateTimePicker"
+                    value={new Date(date)}
+                    mode={mode}
+                    onChange={onChange}
+                    style={{
+                      width: '100%',
+                      backgroundColor: colors.background
+                    }}
+                    textColor={colors.white}
+                    themeVariant={colorScheme}
+                  />
+                )}
+              </Section>
+            </View>
+            <Divider color={colors.grey2} subHeader="Optional" subHeaderStyle={{ color: colors.grey2, fontSize: 17 }} style={{ paddingTop: 20 }}/>
+            <View style={styles.section}>
+              <Icon
+                name="info"
+                type="material"
+                color={colors.grey1}
+                size={30}
+              />
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.background }}
+                label="Description"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{
+                  borderColor: colors.grey2,
+                  paddingTop: 7,
+                  paddingBottom: 3
+                }}
+              >
+                <Input
+                  multiline
+                  placeholder="Add Description"
+                  placeholderTextColor={colors.grey2}
+                  renderErrorMessage={false}
+                  onChangeText={(description) => setDescription(description)}
+                  value={description}
+                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
+                  selectionColor={colors.primary}
+                />
+              </Section>
+            </View>
+            <View style={styles.section}>
+              <Icon
                 name="exclamation-triangle"
                 type="font-awesome-5"
                 color={colors.grey1}
@@ -781,62 +839,6 @@ export default function AddTaskScreen ({ route, navigation }) {
                     step={1}
                   />
                 </View>
-              </Section>
-            </View>
-            <View style={styles.section}>
-              <Icon
-                name="calendar-today"
-                type="material"
-                color={colors.grey1}
-                size={30}
-              />
-              <Section
-                labelContainerStyle={{ backgroundColor: colors.background }}
-                label="Due Date"
-                labelStyle={{ color: colors.grey2 }}
-                contentStyle={{ borderColor: colors.grey2 }}
-              >
-                <View
-                  style={{ flexDirection: 'row', marginLeft: 5, marginTop: 10 }}
-                >
-                  <View style={{ padding: 3 }}>
-                    <Button
-                      title={displayDate(date)}
-                      titleStyle={{ color: colors.white }}
-                      buttonStyle={{
-                        backgroundColor: colors.primary,
-                        borderRadius: 5
-                      }}
-                      onPress={() => showDatepicker()}
-                    />
-                  </View>
-                  <View style={{ padding: 3 }}>
-                    <Button
-                      title={displayTime(date)}
-                      titleStyle={{ color: colors.white }}
-                      buttonStyle={{
-                        backgroundColor: colors.primary,
-                        borderRadius: 5
-                      }}
-                      onPress={() => showTimepicker()}
-                    />
-                  </View>
-                </View>
-
-                {show && (
-                  <DateTimePicker
-                    testID="dateTimePicker"
-                    value={new Date(date)}
-                    mode={mode}
-                    onChange={onChange}
-                    style={{
-                      width: '100%',
-                      backgroundColor: colors.background
-                    }}
-                    textColor={colors.white}
-                    themeVariant={colorScheme}
-                  />
-                )}
               </Section>
             </View>
             <View style={styles.section}>

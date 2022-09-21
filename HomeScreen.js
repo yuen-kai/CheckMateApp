@@ -5,6 +5,8 @@
 /* eslint-disable no-unused-expressions */
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
+import * as StoreReview from 'expo-store-review'
+import * as Linking from 'expo-linking'
 import { StatusBar } from 'expo-status-bar'
 import React, { useEffect, useState, useRef } from 'react'
 import {
@@ -160,8 +162,8 @@ export default function HomeScreen ({ route, navigation }) {
 
   // get data
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      getData()
+    const unsubscribe = navigation.addListener('focus', async () => {
+      await getData()
       registerForPushNotificationsAsync().then()
       Calendar.requestCalendarPermissionsAsync().then()
     })
@@ -595,7 +597,7 @@ export default function HomeScreen ({ route, navigation }) {
         removeJsonValue != null ? JSON.parse(removeJsonValue) : null
       if (first == null) {
         setInstructionIndex(0)
-        const jsonValue = JSON.stringify(false)
+        const jsonValue = JSON.stringify(0)
         await AsyncStorage.setItem('firsty', jsonValue)
         await AsyncStorage.setItem('removeNotifications', jsonValue)
         setFirst(true)
@@ -855,9 +857,58 @@ export default function HomeScreen ({ route, navigation }) {
         const jsonValue = JSON.stringify(day)
         await AsyncStorage.setItem('day', jsonValue)
         const JsonValue = await AsyncStorage.getItem('firsty')
-        const first = JsonValue != null ? JSON.parse(JsonValue) : null
+        await AsyncStorage.setItem('firsty', JSON.stringify(JsonValue + 1))
+        const first = JsonValue != null ? (JSON.parse(JsonValue) === false ? 0 : JSON.parse(JsonValue)) : null
+        await AsyncStorage.setItem('firsty', JSON.stringify(first + 1))
         if (first != null) {
-          await getSyncEvents(false)
+          const today = new Date().setHours(0, 0, 0, 0)
+          if (first === false || first % 5 === 0) {
+            if (await StoreReview.isAvailableAsync() && await StoreReview.hasAction()) {
+              await StoreReview.requestReview()
+            } else {
+              if (Platform.OS === 'android') {
+                const androidPackageName = 'com.yuenkai.CheckMate'
+                Linking.openURL(`market://details?id=${androidPackageName}&showAllReviews=true`)
+              } else if (Platform.OS === 'ios') {
+                Linking.openURL(
+                  `itms-apps://itunes.apple.com/app/viewContentsUserReviews/id${1570727502}?action=write-review`
+                )
+              }
+            }
+          }
+
+          const { status } = await Calendar.requestCalendarPermissionsAsync()
+          if (status === 'granted') {
+            const calendars = await Calendar.getCalendarsAsync(
+              Calendar.EntityTypes.EVENT
+            )
+            const calendarIds = calendars.map((calendar) => calendar.id)
+            let events = await Calendar.getEventsAsync(
+              calendarIds,
+              new Date(new Date().setHours(0, 0, 0, 0)),
+              new Date(new Date().setHours(23, 59, 59, 999))
+            )
+            events = events.filter(
+              (event) => time(event.endDate).getTime() > time(new Date()).getTime()
+            )
+            if (events.length > 0) {
+              await getSyncEvents(false)
+            }
+          } else {
+            setAlert({
+              show: true,
+              title: 'Calendar permission denied!',
+              message: 'Please enable calendar permissions for this app.',
+              buttons: [
+                {
+                  title: 'OK',
+                  action: () => {
+                    setAlert({ show: false })
+                  }
+                }
+              ]
+            })
+          }
         }
       }
     } catch (e) {
@@ -935,9 +986,15 @@ export default function HomeScreen ({ route, navigation }) {
         ) {
           pause()
         } else if (tasks.length > 0) {
-          tasks[0].length -=
+          if (
             (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
-            (1000 * 60)
+              (1000 * 60) >
+            0
+          ) {
+            tasks[0].length -=
+              (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
+              (1000 * 60)
+          }
           saveTasks()
           if (tasks[0].length <= 0) {
             tasks[0].length = 10
@@ -2078,7 +2135,7 @@ export default function HomeScreen ({ route, navigation }) {
                 color: colors.grey1
               }}
             >
-              {displayTimeLeft(avaliableTime)}of work left
+              {displayTimeLeft(avaliableTime)} of work left
             </Text>
           ) : null}
         </View>
