@@ -861,10 +861,11 @@ export default function HomeScreen ({ route, navigation }) {
         const first = JsonValue != null ? (JSON.parse(JsonValue) === false ? 0 : JSON.parse(JsonValue)) : null
         await AsyncStorage.setItem('firsty', JSON.stringify(first + 1))
         if (first != null) {
-          const today = new Date().setHours(0, 0, 0, 0)
-          if (first === false || first % 5 === 0) {
+          console.log(first)
+          if (first === false || (first >= 5 && first % 5 === 0)) {
             if (await StoreReview.isAvailableAsync() && await StoreReview.hasAction()) {
-              await StoreReview.requestReview()
+              await StoreReview.requestReview().then(function (response) {
+              })
             } else {
               if (Platform.OS === 'android') {
                 const androidPackageName = 'com.yuenkai.CheckMate'

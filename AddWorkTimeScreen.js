@@ -911,6 +911,16 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                     }}
                     onPress={() => showTimepicker('start')}
                   />
+                  {/* start picker */}
+                  {startShow && (
+                  <DateTimePicker
+                    testID="startDateTimePicker"
+                    value={new Date(start)}
+                    mode={'time'}
+                    display="default"
+                    onChange={onStartChange}
+                  />
+                  )}
                 </Section>
                 <Section
                   containerStyle={{ flex: 1, marginLeft: 5 }}
@@ -934,30 +944,19 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                     }}
                     onPress={() => showTimepicker('end')}
                   />
+                  {/* end picker */}
+                {endShow && (
+                  <DateTimePicker
+                    testID="endDateTimePicker"
+                    value={new Date(end)}
+                    mode={'time'}
+                    display="default"
+                    onChange={onEndChange}
+                  />
+                )}
                 </Section>
+
               </View>
-
-              {/* start picker */}
-              {startShow && (
-                <DateTimePicker
-                  testID="startDateTimePicker"
-                  value={new Date(start)}
-                  mode={'time'}
-                  display="default"
-                  onChange={onStartChange}
-                />
-              )}
-
-              {/* end picker */}
-              {endShow && (
-                <DateTimePicker
-                  testID="endDateTimePicker"
-                  value={new Date(end)}
-                  mode={'time'}
-                  display="default"
-                  onChange={onEndChange}
-                />
-              )}
             </View>
             {start != null &&
             end != null &&
