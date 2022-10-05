@@ -90,7 +90,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
   const [description, setDescription] = useState('')
   const [empty, setEmpty] = useState(false)
   const [edit, setEdit] = useState(false)
-  const [notification, setNotification] = useState('')
+  const [notification, setNotification] = useState(30)
   const [same, setSame] = useState(false)
   const [alert, setAlert] = useState({ show: false })
   const [checked, setChecked] = useState(1)
@@ -205,7 +205,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
             '.\n' +
             event.description
         },
-        trigger: { triggerTime, channelId: 'Events' }
+        trigger: { date: triggerTime, channelId: 'Events' }
       })
     }
   }
@@ -913,13 +913,13 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                   />
                   {/* start picker */}
                   {startShow && (
-                  <DateTimePicker
-                    testID="startDateTimePicker"
-                    value={new Date(start)}
-                    mode={'time'}
-                    display="default"
-                    onChange={onStartChange}
-                  />
+                    <DateTimePicker
+                      testID="startDateTimePicker"
+                      value={new Date(start)}
+                      mode={'time'}
+                      display="default"
+                      onChange={onStartChange}
+                    />
                   )}
                 </Section>
                 <Section
@@ -945,17 +945,16 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                     onPress={() => showTimepicker('end')}
                   />
                   {/* end picker */}
-                {endShow && (
-                  <DateTimePicker
-                    testID="endDateTimePicker"
-                    value={new Date(end)}
-                    mode={'time'}
-                    display="default"
-                    onChange={onEndChange}
-                  />
-                )}
+                  {endShow && (
+                    <DateTimePicker
+                      testID="endDateTimePicker"
+                      value={new Date(end)}
+                      mode={'time'}
+                      display="default"
+                      onChange={onEndChange}
+                    />
+                  )}
                 </Section>
-
               </View>
             </View>
             {start != null &&
