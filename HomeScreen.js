@@ -153,6 +153,7 @@ export default function HomeScreen ({ route, navigation }) {
   const [error, setError] = useState(false)
   const [checked, setChecked] = useState(2)
   const [progress, setProgress] = useState(0)
+  const [totalTaskTime, setTotalTaskTime] = useState(0)
   const [colors, setColors] = useState(theme.lightColors)
   const [colorScheme, setColorScheme] = useState(useColorScheme())
   const [first, setFirst] = useState(false)
@@ -188,14 +189,14 @@ export default function HomeScreen ({ route, navigation }) {
     } else if (!removal && firstOpen === 1) {
       makeCombined()
     }
-  }, [progress, taskIndex, removal, firstOpen])
+  }, [progress, taskIndex, removal, firstOpen, totalTaskTime])
 
   useEffect(() => {
     const timer = setInterval(() => {
       makeCombined()
     }, 5000)
     return () => clearInterval(timer)
-  }, [selectable, progress])
+  }, [selectable, progress, totalTaskTime])
 
   async function schedulePushNotification (event, i) {
     return await Notifications.scheduleNotificationAsync({
@@ -858,17 +859,26 @@ export default function HomeScreen ({ route, navigation }) {
         await AsyncStorage.setItem('day', jsonValue)
         const JsonValue = await AsyncStorage.getItem('firsty')
         await AsyncStorage.setItem('firsty', JSON.stringify(JsonValue + 1))
-        const first = JsonValue != null ? (JSON.parse(JsonValue) === false ? 0 : JSON.parse(JsonValue)) : null
+        const first =
+          JsonValue != null
+            ? JSON.parse(JsonValue) === false
+              ? 0
+              : JSON.parse(JsonValue)
+            : null
         await AsyncStorage.setItem('firsty', JSON.stringify(first + 1))
         if (first != null) {
           if (first === false || (first >= 5 && first % 5 === 0)) {
-            if (await StoreReview.isAvailableAsync() && await StoreReview.hasAction()) {
-              await StoreReview.requestReview().then(function (response) {
-              })
+            if (
+              (await StoreReview.isAvailableAsync()) &&
+              (await StoreReview.hasAction())
+            ) {
+              await StoreReview.requestReview().then(function (response) {})
             } else {
               if (Platform.OS === 'android') {
                 const androidPackageName = 'com.yuenkai.CheckMate'
-                Linking.openURL(`market://details?id=${androidPackageName}&showAllReviews=true`)
+                Linking.openURL(
+                  `market://details?id=${androidPackageName}&showAllReviews=true`
+                )
               } else if (Platform.OS === 'ios') {
                 Linking.openURL(
                   `itms-apps://itunes.apple.com/app/viewContentsUserReviews/id${1570727502}?action=write-review`
@@ -889,7 +899,8 @@ export default function HomeScreen ({ route, navigation }) {
               new Date(new Date().setHours(23, 59, 59, 999))
             )
             events = events.filter(
-              (event) => time(event.endDate).getTime() > time(new Date()).getTime()
+              (event) =>
+                time(event.endDate).getTime() > time(new Date()).getTime()
             )
             if (events.length > 0) {
               await getSyncEvents(false)
@@ -922,6 +933,8 @@ export default function HomeScreen ({ route, navigation }) {
       const selectable1 = JsonValue != null ? JSON.parse(JsonValue) : true
       setSelectable(selectable1)
       setProgress(1 - tasks[0].length / tasks.pLength)
+      const TotalTimeJsonValue = await AsyncStorage.getItem('totalTaskTime')
+      setTotalTaskTime(TotalTimeJsonValue != null ? JSON.parse(TotalTimeJsonValue) : 0)
     }
   }
 
@@ -994,6 +1007,11 @@ export default function HomeScreen ({ route, navigation }) {
             tasks[0].length -=
               (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
               (1000 * 60)
+            setTotalTaskTime(
+              totalTaskTime +
+                (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
+                  (1000 * 60)
+            )
           }
           saveTasks()
           if (tasks[0].length <= 0) {
@@ -1467,6 +1485,7 @@ export default function HomeScreen ({ route, navigation }) {
       })
     } else {
       setSelectable(false)
+
       const selectedTask = combined[taskIndex]
 
       // remove selectedTask from tasks
@@ -1486,12 +1505,11 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   function pause () {
-    setReady(true)
     setSelectable(true)
+    removeSelectable()
     tasks[0].sortValue = updateSortValue(tasks[0])
     saveTasks()
-    removeSelectable()
-    makeCombined()
+    setReady(true)
   }
 
   function stop () {
@@ -1515,6 +1533,7 @@ export default function HomeScreen ({ route, navigation }) {
   function remove () {
     setRemoval(true)
     setProgress(1)
+    const taskLength = combined[0].pLength
     setTimeout(
       async function () {
         setSelectable(true)
@@ -1551,6 +1570,23 @@ export default function HomeScreen ({ route, navigation }) {
         setReady(true)
         setRemoval(false)
         makeCombined()
+
+        if (combined[taskIndex].sortValue != null && totalTaskTime > 0 && (totalTaskTime > taskLength + 30 || totalTaskTime < taskLength - 30)) {
+          setAlert({
+            show: true,
+            title: 'Note:',
+            message: 'You have spent ' + totalTaskTime + ' out of ' + taskLength + ' minutes on the task.',
+            buttons: [
+              {
+                title: 'OK',
+                action: () => {
+                  setAlert({ show: false })
+                }
+              }
+            ]
+          })
+          setTotalTaskTime(0)
+        }
       },
       selectable === false ? 2000 : 0
     )
@@ -1561,6 +1597,7 @@ export default function HomeScreen ({ route, navigation }) {
     try {
       const jsonValue = JSON.stringify(false)
       await AsyncStorage.setItem('selectable', jsonValue)
+      await AsyncStorage.setItem('totalTaskTime', JSON.stringify(totalTaskTime))
     } catch (e) {
       console.log(e)
     }
