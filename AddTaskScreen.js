@@ -58,6 +58,7 @@ export default function AddTaskScreen ({ route, navigation }) {
   const [importance, setImportance] = useState(5)
   const [dueImportance, setDueImportance] = useState(3)
   const [length, setLength] = useState(0)
+  const [originalLength, setOriginalLength] = useState(0)
   const [hours, setHours] = useState(0)
   const [minutes, setMinutes] = useState(0)
   const [weekly, setWeekly] = useState(false)
@@ -67,6 +68,7 @@ export default function AddTaskScreen ({ route, navigation }) {
   const [same, setSame] = useState(false)
   const [alert, setAlert] = useState({ show: false })
   const [checked, setChecked] = useState(1)
+  const [timeUsed, setTimeUsed] = useState(0)
 
   const theme = createTheme({
     lightColors: {
@@ -153,6 +155,13 @@ export default function AddTaskScreen ({ route, navigation }) {
         setName(selectedTask.name)
         setImportance(selectedTask.importance)
         setLength(selectedTask.length)
+
+        if (selectedTask.originalLength != null) {
+          setOriginalLength(selectedTask.originalLength)
+        }
+        if (selectedTask.timeUsed != null) {
+          setTimeUsed(selectedTask.timeUsed)
+        }
 
         setHours(Math.floor(selectedTask.length / 60))
         setMinutes(selectedTask.length % 60)
@@ -289,6 +298,8 @@ export default function AddTaskScreen ({ route, navigation }) {
         parseInt(length) / 10,
       length: parseInt(length),
       pLength: parseInt(length),
+      originalLength: originalLength > 0 ? originalLength : length,
+      timeUsed,
       date,
       start: new Date(),
       end: new Date(),
@@ -310,6 +321,9 @@ export default function AddTaskScreen ({ route, navigation }) {
           )
         }
         savedTasks[0][i].push({ ...selectedTask })
+        if (i !== new Date().getDay()) {
+          savedTasks[0][i][savedTasks[0][i].length - 1].timeUsed = 0
+        }
 
         if (weekly === true) {
           if (edit === true) {
@@ -319,6 +333,7 @@ export default function AddTaskScreen ({ route, navigation }) {
             )
           }
           savedTasks[1][i].push({ ...selectedTask })
+          savedTasks[1][i][savedTasks[1][i].length - 1].timeUsed = 0
         }
       } else if (thisOrAll !== 'none') {
         if (savedTasks[0][i].some((task) => task.name === selectedTask.name)) {

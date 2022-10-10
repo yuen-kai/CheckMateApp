@@ -74,13 +74,15 @@ export default function HomeScreen ({ route, navigation }) {
       primary: '#6a99e6',
       green: '#00b300',
       background: '#f2f2f2',
-      white: '#dbdbdb'
+      white: '#dbdbdb',
+      action: '#f5f5f5'
     },
     darkColors: {
       primary: '#56a3db',
       white: '#444444',
       green: '#039603',
-      background: '#222222'
+      background: '#222222',
+      action: '#444444'
     }
   })
 
@@ -153,7 +155,6 @@ export default function HomeScreen ({ route, navigation }) {
   const [error, setError] = useState(false)
   const [checked, setChecked] = useState(2)
   const [progress, setProgress] = useState(0)
-  const [totalTaskTime, setTotalTaskTime] = useState(0)
   const [colors, setColors] = useState(theme.lightColors)
   const [colorScheme, setColorScheme] = useState(useColorScheme())
   const [first, setFirst] = useState(false)
@@ -189,14 +190,14 @@ export default function HomeScreen ({ route, navigation }) {
     } else if (!removal && firstOpen === 1) {
       makeCombined()
     }
-  }, [progress, taskIndex, removal, firstOpen, totalTaskTime])
+  }, [progress, taskIndex, removal, firstOpen])
 
   useEffect(() => {
     const timer = setInterval(() => {
       makeCombined()
     }, 5000)
     return () => clearInterval(timer)
-  }, [selectable, progress, totalTaskTime])
+  }, [selectable, progress])
 
   async function schedulePushNotification (event, i) {
     return await Notifications.scheduleNotificationAsync({
@@ -714,6 +715,16 @@ export default function HomeScreen ({ route, navigation }) {
         tasks = savedTask[0][new Date().getDay()]
       }
 
+      // transition to timeUsed and originalLength changes
+      tasks.forEach((element) => {
+        if (element.timeUsed == null) {
+          element.timeUsed = 0
+        }
+        if (element.originalLength == null) {
+          element.originalLength = element.pLength
+        }
+      })
+
       if (first && !needUpdate) {
         tasks.forEach((element) => {
           element.sortValue = updateSortValue(element)
@@ -933,8 +944,6 @@ export default function HomeScreen ({ route, navigation }) {
       const selectable1 = JsonValue != null ? JSON.parse(JsonValue) : true
       setSelectable(selectable1)
       setProgress(1 - tasks[0].length / tasks.pLength)
-      const TotalTimeJsonValue = await AsyncStorage.getItem('totalTaskTime')
-      setTotalTaskTime(TotalTimeJsonValue != null ? JSON.parse(TotalTimeJsonValue) : 0)
     }
   }
 
@@ -1007,11 +1016,9 @@ export default function HomeScreen ({ route, navigation }) {
             tasks[0].length -=
               (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
               (1000 * 60)
-            setTotalTaskTime(
-              totalTaskTime +
-                (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
-                  (1000 * 60)
-            )
+            tasks[0].timeUsed +=
+              (time(new Date()).getTime() - time(tasks[0].start).getTime()) /
+              (1000 * 60)
           }
           saveTasks()
           if (tasks[0].length <= 0) {
@@ -1207,6 +1214,8 @@ export default function HomeScreen ({ route, navigation }) {
     }
     if (hours === '') {
       return minutes
+    } else if (minutes === '') {
+      return hours
     }
     return hours + ' ' + minutes
   }
@@ -1533,9 +1542,38 @@ export default function HomeScreen ({ route, navigation }) {
   function remove () {
     setRemoval(true)
     setProgress(1)
-    const taskLength = combined[0].pLength
+    const tempTask = combined[taskIndex]
     setTimeout(
       async function () {
+        if (
+          tempTask.sortValue != null &&
+          tempTask.timeUsed != null &&
+          tempTask.originalLength != null &&
+          tempTask.timeUsed > 0 &&
+          (tempTask.timeUsed >= tempTask.originalLength + 30 ||
+            tempTask.timeUsed <= tempTask.originalLength - 30)
+        ) {
+          setAlert({
+            show: true,
+            title: 'Note:',
+            message:
+              'You have spent ' +
+              displayTimeLeft(tempTask.timeUsed) +
+              ' out of ' +
+              displayTimeLeft(tempTask.originalLength) +
+              ' on ' +
+              tempTask.name +
+              '.',
+            buttons: [
+              {
+                title: 'OK',
+                action: () => {
+                  setAlert({ show: false })
+                }
+              }
+            ]
+          })
+        }
         setSelectable(true)
         if (confettiView) {
           confettiView.startConfetti()
@@ -1570,23 +1608,6 @@ export default function HomeScreen ({ route, navigation }) {
         setReady(true)
         setRemoval(false)
         makeCombined()
-
-        if (combined[taskIndex].sortValue != null && totalTaskTime > 0 && (totalTaskTime > taskLength + 30 || totalTaskTime < taskLength - 30)) {
-          setAlert({
-            show: true,
-            title: 'Note:',
-            message: 'You have spent ' + totalTaskTime + ' out of ' + taskLength + ' minutes on the task.',
-            buttons: [
-              {
-                title: 'OK',
-                action: () => {
-                  setAlert({ show: false })
-                }
-              }
-            ]
-          })
-          setTotalTaskTime(0)
-        }
       },
       selectable === false ? 2000 : 0
     )
@@ -1597,7 +1618,6 @@ export default function HomeScreen ({ route, navigation }) {
     try {
       const jsonValue = JSON.stringify(false)
       await AsyncStorage.setItem('selectable', jsonValue)
-      await AsyncStorage.setItem('totalTaskTime', JSON.stringify(totalTaskTime))
     } catch (e) {
       console.log(e)
     }
@@ -1970,7 +1990,7 @@ export default function HomeScreen ({ route, navigation }) {
                   reverse
                   raised
                   color={colors.primary}
-                  iconStyle={{ color: colors.white }}
+                  iconStyle={{ color: colors.action }}
                   onPress={() => sortTask()}
                 />
               </View>
@@ -1978,8 +1998,8 @@ export default function HomeScreen ({ route, navigation }) {
           ) : null}
           <SpeedDial
             isOpen={open}
-            icon={{ name: 'add', color: colors.white }}
-            openIcon={{ name: 'close', color: colors.white }}
+            icon={{ name: 'add', color: colors.action }}
+            openIcon={{ name: 'close', color: colors.action }}
             onOpen={() => setOpen(!open)}
             onClose={() => setOpen(!open)}
             color={colors.primary}
@@ -1997,7 +2017,7 @@ export default function HomeScreen ({ route, navigation }) {
               <SpeedDial.Action
                 icon={{
                   name: 'check-square',
-                  color: colors.white,
+                  color: colors.action,
                   type: 'feather'
                 }}
                 title="Task"
@@ -2018,7 +2038,7 @@ export default function HomeScreen ({ route, navigation }) {
               }
             >
               <SpeedDial.Action
-                icon={{ name: 'clock', color: colors.white, type: 'feather' }}
+                icon={{ name: 'clock', color: colors.action, type: 'feather' }}
                 title="Event"
                 onPress={() => {
                   setOpen(false)
