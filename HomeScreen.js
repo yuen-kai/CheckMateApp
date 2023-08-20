@@ -3,6 +3,7 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
 /* eslint-disable no-unused-expressions */
+
 import * as Device from 'expo-device'
 import * as Notifications from 'expo-notifications'
 import * as StoreReview from 'expo-store-review'
@@ -48,7 +49,8 @@ import homeScreen from './assets/HomeScreen.png'
 import syncScreen from './assets/SyncScreen.png'
 import top from './assets/Top.png'
 import DraggableFlatList, {
-  ScaleDecorator
+  ScaleDecorator,
+  RenderItemParams
 } from 'react-native-draggable-flatlist'
 import * as Calendar from 'expo-calendar'
 import Confetti from 'react-native-confetti'
@@ -114,7 +116,7 @@ export default function HomeScreen ({ route, navigation }) {
     {
       title: '3. Syncing With Calendar',
       content:
-        'Would you like events from your calendar to be added to your schedule? You can always change these preferences in settings. Clicking the sync button at the top of the home screen will allow you to review and add your calendar events.',
+        'Would you like events from your calendar to be added to your schedule? You can always change these preferences in settings. Clicking the sync button at the top of the home screen will allow you to review and add your calendar events regardless of this preference.',
       image: syncScreen,
       width: 200,
       height: 206.12
@@ -130,7 +132,7 @@ export default function HomeScreen ({ route, navigation }) {
     {
       title: '5. Using the Schedule',
       content:
-        'Work at your own pace by selecting a task and using the buttons at the bottom of the screen to start, pause, finish, or edit it. Events will automatically be started when the time is right. Use the arrows beside the selected task to move it up or down. Press the button near the bottom right to optimize your schedule.',
+        'Work at your own pace by selecting a task and using the buttons at the bottom of the screen to start, pause, finish, or edit it. Events will automatically be started when the time is right. Drag a task to reorder it. Press the button near the bottom right to optimize your schedule.',
       image: controls,
       width: 200,
       height: 397.93
@@ -597,6 +599,8 @@ export default function HomeScreen ({ route, navigation }) {
       const removeJsonValue = await AsyncStorage.getItem('removeNotifications')
       const removeNotifications =
         removeJsonValue != null ? JSON.parse(removeJsonValue) : null
+      const dragJsonValue = await AsyncStorage.getItem('drag')
+      const drag = dragJsonValue != null ? JSON.parse(dragJsonValue) : null
       if (first == null) {
         setInstructionIndex(0)
         const jsonValue = JSON.stringify(0)
@@ -622,6 +626,24 @@ export default function HomeScreen ({ route, navigation }) {
             }
           ]
         })
+      } else if (drag == null) {
+        setAlert({
+          show: true,
+          title: 'New update',
+          message: 'To change the order of tasks, you now drag and drop tasks.',
+          buttons: [
+            {
+              title: 'OK',
+              action: async () => {
+                setAlert({ show: false })
+                await AsyncStorage.setItem(
+                  'drag',
+                  JSON.stringify(true)
+                )
+              }
+            }
+          ]
+        })
       }
 
       resolve(true)
@@ -641,6 +663,15 @@ export default function HomeScreen ({ route, navigation }) {
         ]
       })
       console.log(e)
+    }
+  }
+
+  function printSavedTasks (savedTasks) {
+    for (let i = 0; i < savedTasks.length; i++) {
+      console.log('-----------' + days[i] + '--------------')
+      for (let j = 0; j < savedTasks[i].length; j++) {
+        console.log(savedTasks[i][j].name)
+      }
     }
   }
 
@@ -690,6 +721,8 @@ export default function HomeScreen ({ route, navigation }) {
           savedTask[0] = [...savedTask[1]]
         }
 
+        // printSavedTasks(savedTask[0])
+
         // Shift due dates
         savedTask[0][new Date().getDay()].forEach((e) => {
           if (e.repeating === true) {
@@ -728,7 +761,6 @@ export default function HomeScreen ({ route, navigation }) {
       if (first && !needUpdate) {
         tasks.forEach((element) => {
           element.sortValue = updateSortValue(element)
-          element.repeating = false
         })
       }
       const jsonValue = JSON.stringify(savedTask)
@@ -818,11 +850,6 @@ export default function HomeScreen ({ route, navigation }) {
         setTasks = savedTask[0][new Date().getDay()]
       }
 
-      if (first && !needUpdate) {
-        setTasks.forEach((element) => {
-          element.repeating = false
-        })
-      }
       sortTimes()
       const jsonValue = JSON.stringify(savedTask)
       await AsyncStorage.setItem('setTasks', jsonValue)
@@ -1250,14 +1277,14 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   function renderItem (item) {
-    const index = item.index
+    const index = item.getIndex
     const drag = item.drag
     const isActive = item.isActive
     item = item.item
 
     return (
       <ScaleDecorator>
-        {index === 0 ? (
+        {index() === 0 ? (
           <Text
             style={{
               alignSelf: 'flex-start',
@@ -1274,10 +1301,18 @@ export default function HomeScreen ({ route, navigation }) {
           </Text>
           <TouchableOpacity
             style={{ flexGrow: 1, marginBottom: 15, marginLeft: 15 }}
-            disabled={isActive || item.break != null}
+            disabled={isActive}
+            onLongPress={() => {
+              if (
+                item.sortValue != null &&
+                item.name.substring(item.name.length - 8) !== ' (cont.)'
+              ) {
+                drag()
+              }
+            }}
             onPress={() =>
               item.name.substring(item.name.length - 8) !== ' (cont.)'
-                ? setTaskIndex(index)
+                ? setTaskIndex(index())
                 : setTaskIndex(
                   combined.findIndex(
                     (task) =>
@@ -1289,7 +1324,7 @@ export default function HomeScreen ({ route, navigation }) {
           >
             <ListItem
               containerStyle={
-                taskIndex === index
+                taskIndex === index()
                   ? {
                       borderColor:
                         colorScheme === 'light' ? colors.primary : '#55a1d9',
@@ -1342,7 +1377,8 @@ export default function HomeScreen ({ route, navigation }) {
                       : {
                           flexDirection: 'row',
                           justifyContent: 'center',
-                          alignSelf: 'stretch'
+                          alignSelf: 'stretch',
+                          alignItems: 'center'
                         }
                   }
                 >
@@ -1354,7 +1390,7 @@ export default function HomeScreen ({ route, navigation }) {
                     >
                       <ListItem.Title
                         style={
-                          taskIndex !== index
+                          taskIndex !== index()
                             ? item.break == null
                               ? {
                                   fontWeight: 'bold',
@@ -1374,7 +1410,7 @@ export default function HomeScreen ({ route, navigation }) {
                               }
                         }
                       >
-                        {item.name}
+                        {item.name !== null ? item.name : ' '}
                       </ListItem.Title>
                       {item.sortValue <
                       new Date(new Date().setHours(24, 0, 0, 0)).getTime() /
@@ -1393,7 +1429,7 @@ export default function HomeScreen ({ route, navigation }) {
                     {item.sortValue != null ? (
                       <ListItem.Subtitle
                         style={
-                          taskIndex === index
+                          taskIndex === index()
                             ? { color: colors.grey1 }
                             : { color: colors.grey1 }
                         }
@@ -1412,7 +1448,7 @@ export default function HomeScreen ({ route, navigation }) {
                     (item.sortValue == null && item.length >= 30) ? (
                       <ListItem.Subtitle
                         style={
-                          taskIndex === index
+                          taskIndex === index()
                             ? { color: colors.grey1 }
                             : { color: colors.grey1 }
                         }
@@ -1424,37 +1460,6 @@ export default function HomeScreen ({ route, navigation }) {
                       </ListItem.Subtitle>
                         ) : null}
                   </View>
-                  <View style={{ alignSelf: 'center', marginLeft: 5 }}>
-                    {item.break == null &&
-                    item.sortValue != null &&
-                    index === taskIndex &&
-                    tasks.findIndex(
-                      (task) => task.name === combined[taskIndex].name
-                    ) > 0 ? (
-                      <Icon
-                        name="arrow-upward"
-                        onPress={() => move('up')}
-                        color={colors.grey3}
-                        size={20}
-                        style={{ marginBottom: 5 }}
-                      />
-                        ) : null}
-                    {item.break == null &&
-                    item.sortValue != null &&
-                    index === taskIndex &&
-                    tasks.findIndex(
-                      (task) => task.name === combined[taskIndex].name
-                    ) <
-                      tasks.length - 1 ? (
-                      <Icon
-                        name="arrow-downward"
-                        onPress={() => move('down')}
-                        color={colors.grey3}
-                        size={20}
-                        style={{ marginTop: 5 }}
-                      />
-                        ) : null}
-                  </View>
                 </View>
               </ListItem.Content>
             </ListItem>
@@ -1464,7 +1469,7 @@ export default function HomeScreen ({ route, navigation }) {
     )
   }
 
-  function setData (data) {
+  function setData (data, from, to) {
     tasks = data.data.filter(
       (task) =>
         task.sortValue != null &&
@@ -1550,8 +1555,8 @@ export default function HomeScreen ({ route, navigation }) {
           tempTask.timeUsed != null &&
           tempTask.originalLength != null &&
           tempTask.timeUsed > 0 &&
-          (tempTask.timeUsed >= tempTask.originalLength + 30 ||
-            tempTask.timeUsed <= tempTask.originalLength - 30)
+          (tempTask.timeUsed >= tempTask.originalLength + 15 ||
+            tempTask.timeUsed <= tempTask.originalLength - 15)
         ) {
           setAlert({
             show: true,
@@ -1969,18 +1974,19 @@ export default function HomeScreen ({ route, navigation }) {
                   No tasks or events currently.
                 </Text>
               </View>
-            ) : null}
-            <DraggableFlatList
-              containerStyle={{ flex: 10, margin: 3, marginBottom: 5 }}
-              data={combined}
-              onDragEnd={(data) => setData(data)}
-              keyExtractor={(item, index) => {
-                item.name != null
-                  ? item.name + '' + index.toString()
-                  : index.toString()
-              }}
-              renderItem={(item) => renderItem(item)}
-            />
+            ) : (
+              <DraggableFlatList
+                containerStyle={{ flex: 10, margin: 3, marginBottom: 5 }}
+                data={combined}
+                onDragEnd={(data, from, to) => {
+                  setData(data, from, to)
+                }}
+                keyExtractor={(item, index) => {
+                  return `${item.name}`
+                }}
+                renderItem={(item) => renderItem(item)}
+              />
+            )}
           </View>
           {resetOrder() && !open ? (
             <View style={{ bottom: 65, right: 5, position: 'absolute' }}>
