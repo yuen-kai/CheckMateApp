@@ -499,11 +499,11 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
                 ].notificationId
               )
             }
+            workTimes[0][i].splice(
+              workTimes[0][i].findIndex((task) => task.name === editName),
+              1
+            )
           }
-          workTimes[0][i].splice(
-            workTimes[0][i].findIndex((task) => task.name === editName),
-            1
-          )
         }
 
         workTimes[0][i].push({ ...selectedTask })
@@ -518,7 +518,7 @@ export default function AddWorkTimeScreen ({ route, navigation }) {
         }
 
         if (weekly === true) {
-          if (edit === true) {
+          if (edit === true && workTimes[1][i].some((task) => task.name === editName)) {
             workTimes[1][i].splice(
               workTimes[1][i].findIndex((task) => task.name === editName),
               1

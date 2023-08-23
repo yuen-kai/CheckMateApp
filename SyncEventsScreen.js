@@ -428,7 +428,7 @@ export default function SyncEventsScreen ({ route, navigation }) {
                     {displayTime(event.startDate)} -{' '}
                     {displayTime(event.endDate)}
                   </ListItem.Subtitle>
-                  {event.notes !== '' || event.location !== ''
+                  {(event.notes !== '' && event.notes !== null) || (event.location !== '' && event.location !== undefined)
                     ? (
                     <ListItem.Subtitle
                       style={

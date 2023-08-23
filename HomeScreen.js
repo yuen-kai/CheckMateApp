@@ -552,6 +552,7 @@ export default function HomeScreen ({ route, navigation }) {
     for (let i = 0; i < newEvents.length; i++) {
       const event = newEvents[i]
       originalNewEvents.push(event)
+      const description = event.notes != null ? event.notes : ''
       setTasks.push({
         name: event.title,
         pStart: time(event.startDate),
@@ -561,7 +562,7 @@ export default function HomeScreen ({ route, navigation }) {
         length:
           (time(event.endDate).getTime() - time(event.startDate).getTime()) /
           (1000 * 60),
-        description: event.notes
+        description
       })
       if (event.alarms[0] != null) {
         setTasks[setTasks.length - 1].notification =
@@ -571,7 +572,7 @@ export default function HomeScreen ({ route, navigation }) {
       } else {
         setTasks[setTasks.length - 1].notification = ''
       }
-      if (event.location !== '') {
+      if (event.location !== '' && event.location !== undefined) {
         setTasks[setTasks.length - 1].description +=
           ' At ' + event.location + '.'
       }
@@ -667,6 +668,7 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   function printSavedTasks (savedTasks) {
+    console.log('||||||||||||||||||||||||||||||||||||||||')
     for (let i = 0; i < savedTasks.length; i++) {
       console.log('-----------' + days[i] + '--------------')
       for (let j = 0; j < savedTasks[i].length; j++) {
@@ -721,7 +723,7 @@ export default function HomeScreen ({ route, navigation }) {
           savedTask[0] = [...savedTask[1]]
         }
 
-        // printSavedTasks(savedTask[0])
+        printSavedTasks(savedTask[0])
 
         // Shift due dates
         savedTask[0][new Date().getDay()].forEach((e) => {
@@ -1614,7 +1616,7 @@ export default function HomeScreen ({ route, navigation }) {
         setRemoval(false)
         makeCombined()
       },
-      selectable === false ? 2000 : 0
+      selectable === false ? 1500 : 0
     )
   }
 

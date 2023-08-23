@@ -171,7 +171,7 @@ export default function AddTaskScreen ({ route, navigation }) {
         for (let i = 0; i <= daysUsed.length - 1; i++) {
           if (
             savedTasks[0][i].some((task) => task.name === editName) ||
-            (weekly && savedTasks[1][i].some((task) => task.name === editName))
+            savedTasks[1][i].some((task) => task.name === editName)
           ) {
             change.splice(i, 1, true)
           }
@@ -268,6 +268,16 @@ export default function AddTaskScreen ({ route, navigation }) {
     isRepeating()
   }
 
+  function printSavedTasks (savedTasks) {
+    console.log('||||||||||||||||||||||||||||||||||||||||')
+    for (let i = 0; i < savedTasks.length; i++) {
+      console.log('-----------' + days[i] + '--------------')
+      for (let j = 0; j < savedTasks[i].length; j++) {
+        console.log(savedTasks[i][j].name)
+      }
+    }
+  }
+
   async function saveTasks (thisOrAll) {
     let d
     if (daysUsed[new Date().getDay()]) {
@@ -314,7 +324,7 @@ export default function AddTaskScreen ({ route, navigation }) {
     // Put in event for all the days used
     for (let i = 0; i <= daysUsed.length - 1; i++) {
       if (daysUsed[i] === true) {
-        if (edit === true) {
+        if (edit === true && savedTasks[0][i].some((task) => task.name === editName)) {
           savedTasks[0][i].splice(
             savedTasks[0][i].findIndex((task) => task.name === editName),
             1
@@ -326,7 +336,7 @@ export default function AddTaskScreen ({ route, navigation }) {
         }
 
         if (weekly === true) {
-          if (edit === true) {
+          if (edit === true && savedTasks[1][i].some((task) => task.name === editName)) {
             savedTasks[1][i].splice(
               savedTasks[1][i].findIndex((task) => task.name === editName),
               1
@@ -357,6 +367,7 @@ export default function AddTaskScreen ({ route, navigation }) {
         }
       }
     }
+    printSavedTasks(savedTasks[0])
     setEmpty(false)
 
     // save data
