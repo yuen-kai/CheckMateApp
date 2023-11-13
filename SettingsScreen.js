@@ -29,7 +29,8 @@ import {
   Avatar,
   createTheme,
   ThemeProvider,
-  Header
+  Header,
+  Switch
 } from '@rneui/themed'
 
 Notifications.setNotificationHandler({
@@ -46,6 +47,7 @@ export default function SettingsScreen ({ navigation }) {
   const [syncView, setSyncView] = useState(false)
   const [notiView, setNotiView] = useState(false)
   const [themeView, setThemeView] = useState(false)
+  const [taskNotiView, setTaskNotiView] = useState(false)
 
   const [syncPref, setSyncPref] = useState(false)
   const [checked, setChecked] = useState(2)
@@ -82,11 +84,18 @@ export default function SettingsScreen ({ navigation }) {
   const [checkedT, setCheckedT] = useState(1)
   const [alert, setAlert] = useState({ show: false })
 
+  const [taskNotiOn, setTaskNotiOn] = useState(false) // TODO: use saved settings
+
   const list = [
     {
       name: 'Sync w/ Calendar Preferences',
       icon: <Icon name="sync" type="material" color={colors.grey1} />,
       onPress: () => setSyncView(true)
+    },
+    {
+      name: 'Task Notification Preferences',
+      icon: <Icon name="notifications" type="material" color={colors.grey1} />,
+      onPress: () => setTaskNotiView(true)
     },
     {
       name: 'Notification Preferences',
@@ -527,6 +536,32 @@ export default function SettingsScreen ({ navigation }) {
                 }
                 setSyncView(false)
               }}
+            />
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog
+          isVisible={taskNotiView}
+          onBackdropPress={() => setTaskNotiView(false)}
+          overlayStyle={{ backgroundColor: colors.white }}
+        >
+          <Dialog.Title
+            title="Task Notification settings"
+            titleStyle={{ color: colors.grey1 }}
+          />
+
+          <ListItem>
+            <ListItem.Title>Default:</ListItem.Title>
+            <Switch
+              value={taskNotiOn}
+              onValueChange={() => setTaskNotiOn(!taskNotiOn)}
+            />
+          </ListItem>
+          <Dialog.Actions>
+            <Dialog.Button
+              title="CONFIRM"
+              titleStyle={{ color: colors.grey1 }}
+              onPress={() => {}} // insert function here
             />
           </Dialog.Actions>
         </Dialog>

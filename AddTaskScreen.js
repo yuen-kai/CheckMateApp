@@ -367,7 +367,7 @@ export default function AddTaskScreen ({ route, navigation }) {
         }
       }
     }
-    printSavedTasks(savedTasks[0])
+    // printSavedTasks(savedTasks[0])
     setEmpty(false)
 
     // save data

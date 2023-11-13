@@ -163,6 +163,7 @@ export default function HomeScreen ({ route, navigation }) {
   const [removal, setRemoval] = useState(false)
   const [alert, setAlert] = useState({ show: false })
   const [firstOpen, setFirstOpen] = useState(-1)
+  const [taskNotifcationToggle, setTaskNotificationToggle] = useState(false)
 
   // get data
   useEffect(() => {
@@ -227,6 +228,59 @@ export default function HomeScreen ({ route, navigation }) {
             event.notification * 60 * 1000
         ),
         channelId: 'Events'
+      }
+    })
+  }
+
+  async function getTaskNoticationSettings (task, overrideDefault) {
+    const JsonValue = await AsyncStorage.getItem('taskNotificationSettings')
+    const taskNotificationSettings =
+      JsonValue != null ? JSON.parse(JsonValue) : { times: 4, min: 1, max: 30, default: false }
+    if (overrideDefault || taskNotificationSettings.default === true) {
+      const lengthBetweenNotifications = Math.max(
+        Math.min(
+          task.length / taskNotificationSettings.times,
+          taskNotificationSettings.max
+        ),
+        taskNotificationSettings.min
+      )
+      scheduleAllTaskNotifications(task, lengthBetweenNotifications)
+    }
+  }
+
+  async function scheduleAllTaskNotifications (
+    task,
+    lengthBetweenNotifications
+  ) {
+    const taskNotifications = []
+    for (
+      let timeLeft = task.length - lengthBetweenNotifications;
+      timeLeft > 0;
+      timeLeft -= lengthBetweenNotifications
+    ) {
+      taskNotifications.push(await scheduleTaskNotification(task, timeLeft))
+    }
+    taskNotifications.push(await scheduleTaskNotification(task, 0))
+    await AsyncStorage.setItem(
+      'taskNotifications',
+      JSON.stringify(taskNotifications)
+    )
+  }
+
+  async function scheduleTaskNotification (task, timeLeft) {
+    return await Notifications.scheduleNotificationAsync({
+      content: {
+        title:
+          task.name + ': ' + Math.round((1 - timeLeft / task.length) * 100) + '% done',
+        body: displayTimeLeft(timeLeft) + ' left'
+      },
+      trigger: {
+        date: new Date(
+          new Date(task.start).getTime() +
+            task.length * 60 * 1000 -
+            timeLeft * 60 * 1000
+        ),
+        channelId: 'Tasks'
       }
     })
   }
@@ -637,10 +691,7 @@ export default function HomeScreen ({ route, navigation }) {
               title: 'OK',
               action: async () => {
                 setAlert({ show: false })
-                await AsyncStorage.setItem(
-                  'drag',
-                  JSON.stringify(true)
-                )
+                await AsyncStorage.setItem('drag', JSON.stringify(true))
               }
             }
           ]
@@ -723,7 +774,7 @@ export default function HomeScreen ({ route, navigation }) {
           savedTask[0] = [...savedTask[1]]
         }
 
-        printSavedTasks(savedTask[0])
+        // printSavedTasks(savedTask[0])
 
         // Shift due dates
         savedTask[0][new Date().getDay()].forEach((e) => {
@@ -972,7 +1023,7 @@ export default function HomeScreen ({ route, navigation }) {
       const JsonValue = await AsyncStorage.getItem('selectable')
       const selectable1 = JsonValue != null ? JSON.parse(JsonValue) : true
       setSelectable(selectable1)
-      setProgress(1 - tasks[0].length / tasks.pLength)
+      setProgress(tasks[0].timeUsed / tasks.pLength)
     }
   }
 
@@ -1053,10 +1104,7 @@ export default function HomeScreen ({ route, navigation }) {
           if (tasks[0].length <= 0) {
             tasks[0].length = 10
           }
-          if (tasks[0].length > tasks[0].pLength) {
-            tasks[0].pLength = tasks[0].length
-          }
-          setProgress(1 - tasks[0].length / tasks[0].pLength)
+          setProgress(tasks[0].timeUsed / tasks[0].pLength)
         }
       }
       for (let i = 0; i <= tasks.length - 1; i++) {
@@ -1234,7 +1282,7 @@ export default function HomeScreen ({ route, navigation }) {
         hours = Math.floor(time / 60) + ' hours'
       }
     }
-    if (time % 60 > 0) {
+    if ((Math.floor(time / 60) > 0 && time % 60 > 0) || (Math.floor(time / 60) === 0 && time % 60 >= 0)) {
       if (Math.floor(time % 60) === 1) {
         minutes = '1 minute'
       } else {
@@ -1511,6 +1559,7 @@ export default function HomeScreen ({ route, navigation }) {
       )
       setTaskIndex(0)
       tasks.splice(0, 0, selectedTask)
+      getTaskNoticationSettings(selectedTask, false)
       tasks[0].start = Date.now()
       setProgress(0)
       saveTasks()
@@ -1521,11 +1570,22 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   function pause () {
+    cancelTaskNotifications()
     setSelectable(true)
     removeSelectable()
     tasks[0].sortValue = updateSortValue(tasks[0])
     saveTasks()
     setReady(true)
+  }
+
+  async function cancelTaskNotifications () {
+    const JsonValue = await AsyncStorage.getItem('taskNotifications')
+    const taskNotifications = JsonValue != null ? JSON.parse(JsonValue) : []
+    for (const notification of taskNotifications) {
+      await Notifications.dismissNotificationAsync(notification)
+      await Notifications.cancelScheduledNotificationAsync(notification)
+    }
+    await AsyncStorage.setItem('taskNotifications', JSON.stringify([]))
   }
 
   function stop () {
@@ -1547,6 +1607,7 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   function remove () {
+    cancelTaskNotifications()
     setRemoval(true)
     setProgress(1)
     const tempTask = combined[taskIndex]
@@ -2058,9 +2119,10 @@ export default function HomeScreen ({ route, navigation }) {
           </SpeedDial>
           {selectable === false ? (
             <Overlay
-              onBackdropPress={() => setSelectable(true)}
+              onBackdropPress={() => pause()}
               overlayStyle={{ width: '80%', backgroundColor: colors.white }}
             >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text
                 h3
                 style={{
@@ -2072,6 +2134,24 @@ export default function HomeScreen ({ route, navigation }) {
               >
                 {combined[taskIndex].name}
               </Text>
+              {taskNotifcationToggle === true
+                ? <Icon
+                  name="notifications-active"
+                  size={25}
+                  type="material"
+                  color={colors.primary}
+                  onPress={() => { setTaskNotificationToggle(false); cancelTaskNotifications() }}
+                  style={{ padding: 10 }}
+                />
+                : <Icon
+                  name="notifications-off"
+                  size={25}
+                  type="material"
+                  color={colors.grey1}
+                  onPress={() => { setTaskNotificationToggle(true); getTaskNoticationSettings(combined[taskIndex], true) }}
+                  style={{ padding: 10 }}
+                />}
+                </View>
               {combined[taskIndex].description !== '' ? (
                 <Text
                   h4
@@ -2102,9 +2182,13 @@ export default function HomeScreen ({ route, navigation }) {
                   color: colors.grey1
                 }}
               >
-                {tasks.length > 0
-                  ? displayTimeLeft(tasks[0].length) + ' left'
-                  : null}
+                {tasks[0].pLength - tasks[0].timeUsed > 0
+                  ? displayTimeLeft(tasks[0].pLength - tasks[0].timeUsed) +
+                    ' left'
+                  : tasks[0].pLength - tasks[0].timeUsed === 0
+                    ? '0 minutes left'
+                    : displayTimeLeft(tasks[0].timeUsed - tasks[0].pLength) +
+                    ' past time'}
               </Text>
               <View
                 style={{
@@ -2119,14 +2203,14 @@ export default function HomeScreen ({ route, navigation }) {
                   type="font-awesome"
                   color={colors.grey1}
                   onPress={() => pause()}
-                  style={{ margin: 10 }}
+                  style={{ padding: 10 }}
                 />
                 <Icon
                   name="stop-circle"
                   type="font-awesome"
                   size={30}
                   onPress={() => stop()}
-                  style={{ margin: 10 }}
+                  style={{ padding: 10 }}
                   color={colors.grey1}
                 />
                 <Icon
@@ -2137,7 +2221,7 @@ export default function HomeScreen ({ route, navigation }) {
                     pause()
                     editTask()
                   }}
-                  style={{ margin: 10 }}
+                  style={{ padding: 10 }}
                   color={colors.grey1}
                 />
               </View>
