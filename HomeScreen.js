@@ -259,8 +259,10 @@ export default function HomeScreen ({ route, navigation }) {
       timeLeft > 0;
       timeLeft -= lengthBetweenNotifications
     ) {
+      console.log(timeLeft)
       taskNotifications.push(await scheduleTaskNotification(task, timeLeft))
     }
+    console.log(0)
     taskNotifications.push(await scheduleTaskNotification(task, 0))
     await AsyncStorage.setItem(
       'taskNotifications',

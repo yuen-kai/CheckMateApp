@@ -171,8 +171,8 @@ export default function SettingsScreen ({ navigation }) {
     try {
       getSyncPref()
       getNotiPref()
-      getThemePref()
       getTaskNotificationSettings()
+      await getThemePref()
       setReady(true)
     } catch (e) {
       setAlert({
@@ -421,8 +421,20 @@ export default function SettingsScreen ({ navigation }) {
     return token
   }
 
-  async function handleSave () {
-    // schedule push notifications
+  async function saveTaskNotificationSettings () {
+    setTaskNotiView(false)
+    await AsyncStorage.setItem(
+      'taskNotificationSettings',
+      JSON.stringify({
+        times: taskNotiTimes,
+        min: taskNotiMin,
+        max: taskNotiMax,
+        default: taskNotiDefault
+      })
+    )
+  }
+
+  async function saveNotificationReminders () {
     for (let i = 0; i < notiPref.length; i++) {
       const notification = notiPref[i]
       for (let j = 0; j < 7; j++) {
@@ -450,14 +462,35 @@ export default function SettingsScreen ({ navigation }) {
         }
       }
     }
-
-    // save settings to AsyncStorage
-    await AsyncStorage.setItem('syncEvents5', JSON.stringify(syncPref))
     await AsyncStorage.setItem('notiPref', JSON.stringify(notiPref))
-    await AsyncStorage.setItem('themePref', JSON.stringify(themePref))
+    setNotiView(false)
+  }
 
-    // return to homescreen
-    navigation.navigate('Home', { editName: '' })
+  async function saveThemePref () {
+    let saveThemePrefValue = 'system'
+    if (checkedT === 1) {
+      setColorScheme('light')
+      setColors(theme.lightColors)
+      saveThemePrefValue = 'light'
+    } else if (checkedT === 2) {
+      setColorScheme('dark')
+      setColors(theme.darkColors)
+      saveThemePrefValue = 'dark'
+    } else {
+      if (Appearance.getColorScheme() == null) {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      } else if (Appearance.getColorScheme() === 'dark') {
+        setColorScheme('dark')
+        setColors(theme.darkColors)
+      } else {
+        setColorScheme('light')
+        setColors(theme.lightColors)
+      }
+      saveThemePrefValue = 'system'
+    }
+    await AsyncStorage.setItem('themePref', JSON.stringify(saveThemePrefValue))
+    setThemeView(false)
   }
 
   if (!ready) {
@@ -545,14 +578,16 @@ export default function SettingsScreen ({ navigation }) {
             <Dialog.Button
               title="CONFIRM"
               titleStyle={{ color: colors.grey1 }}
-              onPress={() => {
+              onPress={async () => {
+                let saveSyncPrefValue = 'never'
                 if (checked === 1) {
-                  setSyncPref('never')
+                  saveSyncPrefValue = 'never'
                 } else if (checked === 2) {
-                  setSyncPref('review')
+                  saveSyncPrefValue = 'review'
                 } else {
-                  setSyncPref('always')
+                  saveSyncPrefValue = 'always'
                 }
+                await AsyncStorage.setItem('syncEvents5', JSON.stringify(saveSyncPrefValue))
                 setSyncView(false)
               }}
             />
@@ -570,7 +605,9 @@ export default function SettingsScreen ({ navigation }) {
           />
 
           <ListItem containerStyle={{ backgroundColor: colors.white }}>
-            <ListItem.Title style={{ color: colors.grey1 }}>Default:</ListItem.Title>
+            <ListItem.Title style={{ color: colors.grey1, fontSize: 20 }}>
+              Default:
+            </ListItem.Title>
             <Switch
               value={taskNotiDefault}
               onValueChange={() => setTaskNotiDefault(!taskNotiDefault)}
@@ -596,13 +633,14 @@ export default function SettingsScreen ({ navigation }) {
                   placeholderTextColor={colors.grey2}
                   keyboardType="numeric"
                   onChangeText={(min) => setTaskNotiTimes(min)}
-                  value={
-                    taskNotiTimes !== 0 && !isNaN(taskNotiTimes)
-                      ? taskNotiTimes.toString()
-                      : null
-                  }
+                  value={taskNotiTimes.toString()}
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
                   renderErrorMessage={false}
+                  errorMessage={
+                    taskNotiTimes > 0 && !isNaN(taskNotiTimes)
+                      ? null
+                      : 'Enter a non-zero number'
+                  }
                   inputContainerStyle={{ borderBottomWidth: 0 }}
                   selectionColor={colors.primary}
                 />
@@ -629,13 +667,14 @@ export default function SettingsScreen ({ navigation }) {
                   placeholderTextColor={colors.grey2}
                   keyboardType="numeric"
                   onChangeText={(min) => setTaskNotiMin(min)}
-                  value={
-                    taskNotiMin !== 0 && !isNaN(taskNotiMin)
-                      ? taskNotiMin.toString()
-                      : null
-                  }
+                  value={taskNotiMin.toString()}
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
                   renderErrorMessage={false}
+                  errorMessage={
+                    taskNotiMin > 0 && !isNaN(taskNotiMin)
+                      ? null
+                      : 'Enter a positive number'
+                  }
                   inputContainerStyle={{ borderBottomWidth: 0 }}
                   selectionColor={colors.primary}
                 />
@@ -656,17 +695,19 @@ export default function SettingsScreen ({ navigation }) {
                   placeholder="Max"
                   placeholderTextColor={colors.grey2}
                   renderErrorMessage={false}
-                  errorStyle={{ color: colors.error }}
                   keyboardType="numeric"
                   onChangeText={(max) => setTaskNotiMax(max)}
-                  value={
-                    taskNotiMax !== 0 && !isNaN(taskNotiMax)
-                      ? taskNotiMax.toString()
-                      : null
-                  }
+                  value={taskNotiMax.toString()}
                   inputStyle={{ color: colors.grey1, fontSize: 17 }}
                   inputContainerStyle={{ borderBottomWidth: 0 }}
                   selectionColor={colors.primary}
+                  errorMessage={
+                    taskNotiMax > 0 && !isNaN(taskNotiMax)
+                      ? parseFloat(taskNotiMax) > parseFloat(taskNotiMin)
+                        ? null
+                        : 'max must be greater than min'
+                      : 'Enter a positive number'
+                  }
                 />
               </Section>
             </View>
@@ -675,7 +716,18 @@ export default function SettingsScreen ({ navigation }) {
             <Dialog.Button
               title="CONFIRM"
               titleStyle={{ color: colors.grey1 }}
-              onPress={() => {}} // insert function here
+              disabled={
+                !(
+                  taskNotiTimes > 0 &&
+                  !isNaN(taskNotiTimes) &&
+                  taskNotiMin > 0 &&
+                  !isNaN(taskNotiMin) &&
+                  taskNotiMax > 0 &&
+                  !isNaN(taskNotiMax) &&
+                  parseFloat(taskNotiMax) > parseFloat(taskNotiMin)
+                )
+              }
+              onPress={() => saveTaskNotificationSettings()}
             />
           </Dialog.Actions>
         </Dialog>
@@ -812,9 +864,7 @@ export default function SettingsScreen ({ navigation }) {
             <Dialog.Actions>
               <Dialog.Button
                 title="Done"
-                onPress={() => {
-                  setNotiView(false)
-                }}
+                onPress={() => saveNotificationReminders()}
               />
               <Dialog.Button
                 title="New"
@@ -867,30 +917,7 @@ export default function SettingsScreen ({ navigation }) {
           <Dialog.Actions>
             <Dialog.Button
               title="CONFIRM"
-              onPress={() => {
-                if (checkedT === 1) {
-                  setColorScheme('light')
-                  setColors(theme.lightColors)
-                  setThemePref('light')
-                } else if (checkedT === 2) {
-                  setColorScheme('dark')
-                  setColors(theme.darkColors)
-                  setThemePref('dark')
-                } else {
-                  if (Appearance.getColorScheme() == null) {
-                    setColorScheme('light')
-                    setColors(theme.lightColors)
-                  } else if (Appearance.getColorScheme() === 'dark') {
-                    setColorScheme('dark')
-                    setColors(theme.darkColors)
-                  } else {
-                    setColorScheme('light')
-                    setColors(theme.lightColors)
-                  }
-                  setThemePref('system')
-                }
-                setThemeView(false)
-              }}
+              onPress={() => saveThemePref()}
             />
           </Dialog.Actions>
         </Dialog>
@@ -909,7 +936,7 @@ export default function SettingsScreen ({ navigation }) {
         ))}
 
         <Button
-          title="Save"
+          title="Done"
           titleStyle={{ color: colors.white }}
           buttonStyle={{
             backgroundColor: colors.primary,
@@ -920,7 +947,7 @@ export default function SettingsScreen ({ navigation }) {
             paddingVertical: 5,
             borderRadius: 8
           }}
-          onPress={() => handleSave()}
+          onPress={() => navigation.navigate('Home', { editName: '' })}
         />
       </SafeAreaView>
     </ThemeProvider>
