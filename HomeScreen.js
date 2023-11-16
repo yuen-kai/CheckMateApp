@@ -235,7 +235,8 @@ export default function HomeScreen ({ route, navigation }) {
   async function getTaskNoticationSettings (task, overrideDefault) {
     const JsonValue = await AsyncStorage.getItem('taskNotificationSettings')
     const taskNotificationSettings =
-      JsonValue != null ? JSON.parse(JsonValue) : { times: 4, min: 1, max: 30, default: false }
+      JsonValue != null ? JSON.parse(JsonValue) : { times: 4, min: 15, max: 30, default: true }
+    setTaskNotificationToggle(taskNotificationSettings.default)
     if (overrideDefault || taskNotificationSettings.default === true) {
       const lengthBetweenNotifications = Math.max(
         Math.min(
@@ -2119,7 +2120,6 @@ export default function HomeScreen ({ route, navigation }) {
           </SpeedDial>
           {selectable === false ? (
             <Overlay
-              onBackdropPress={() => pause()}
               overlayStyle={{ width: '80%', backgroundColor: colors.white }}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>

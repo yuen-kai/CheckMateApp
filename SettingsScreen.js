@@ -30,8 +30,10 @@ import {
   createTheme,
   ThemeProvider,
   Header,
-  Switch
+  Switch,
+  Input
 } from '@rneui/themed'
+import Section from './Section'
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -84,7 +86,10 @@ export default function SettingsScreen ({ navigation }) {
   const [checkedT, setCheckedT] = useState(1)
   const [alert, setAlert] = useState({ show: false })
 
-  const [taskNotiOn, setTaskNotiOn] = useState(false) // TODO: use saved settings
+  const [taskNotiTimes, setTaskNotiTimes] = useState(4)
+  const [taskNotiMin, setTaskNotiMin] = useState(15)
+  const [taskNotiMax, setTaskNotiMax] = useState(30)
+  const [taskNotiDefault, setTaskNotiDefault] = useState(false)
 
   const list = [
     {
@@ -122,7 +127,9 @@ export default function SettingsScreen ({ navigation }) {
   const review = async () => {
     if (Platform.OS === 'android') {
       const androidPackageName = 'com.yuenkai.CheckMate'
-      Linking.openURL(`market://details?id=${androidPackageName}&showAllReviews=true`)
+      Linking.openURL(
+        `market://details?id=${androidPackageName}&showAllReviews=true`
+      )
     } else if (Platform.OS === 'ios') {
       Linking.openURL(
         `itms-apps://itunes.apple.com/app/viewContentsUserReviews/id${1570727502}?action=write-review`
@@ -162,10 +169,10 @@ export default function SettingsScreen ({ navigation }) {
 
   const getData = async () => {
     try {
-      await getSyncPref()
-      await getNotiPref()
-      await getThemePref()
-
+      getSyncPref()
+      getNotiPref()
+      getThemePref()
+      getTaskNotificationSettings()
       setReady(true)
     } catch (e) {
       setAlert({
@@ -253,6 +260,18 @@ export default function SettingsScreen ({ navigation }) {
     } catch (e) {
       console.log(e)
     }
+  }
+
+  async function getTaskNotificationSettings () {
+    const JsonValue = await AsyncStorage.getItem('taskNotificationSettings')
+    const taskNotificationSettings =
+      JsonValue != null
+        ? JSON.parse(JsonValue)
+        : { times: 4, min: 15, max: 30, default: true }
+    setTaskNotiTimes(taskNotificationSettings.times)
+    setTaskNotiMin(taskNotificationSettings.min)
+    setTaskNotiMax(taskNotificationSettings.max)
+    setTaskNotiDefault(taskNotificationSettings.default)
   }
 
   async function changeNoti (i, j) {
@@ -550,13 +569,108 @@ export default function SettingsScreen ({ navigation }) {
             titleStyle={{ color: colors.grey1 }}
           />
 
-          <ListItem>
-            <ListItem.Title>Default:</ListItem.Title>
+          <ListItem containerStyle={{ backgroundColor: colors.white }}>
+            <ListItem.Title style={{ color: colors.grey1 }}>Default:</ListItem.Title>
             <Switch
-              value={taskNotiOn}
-              onValueChange={() => setTaskNotiOn(!taskNotiOn)}
+              value={taskNotiDefault}
+              onValueChange={() => setTaskNotiDefault(!taskNotiDefault)}
             />
           </ListItem>
+          <View style={styles.section}>
+            <Icon name="tag" type="material" color={colors.grey1} size={30} />
+            <View style={[styles.section, { width: '83%' }]}>
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.white }}
+                label="Times"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{
+                  borderColor: colors.grey2,
+                  paddingHorizontal: 5,
+                  paddingVertical: 8,
+                  justifyContent: 'center'
+                }}
+                containerStyle={{ flex: 3, marginRight: 5 }}
+              >
+                <Input
+                  placeholder="Times"
+                  placeholderTextColor={colors.grey2}
+                  keyboardType="numeric"
+                  onChangeText={(min) => setTaskNotiTimes(min)}
+                  value={
+                    taskNotiTimes !== 0 && !isNaN(taskNotiTimes)
+                      ? taskNotiTimes.toString()
+                      : null
+                  }
+                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                  renderErrorMessage={false}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
+                  selectionColor={colors.primary}
+                />
+              </Section>
+            </View>
+          </View>
+          <View style={styles.section}>
+            <Icon name="timer" type="material" color={colors.grey1} size={30} />
+            <View style={[styles.section, { width: '83%' }]}>
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.white }}
+                label="Min"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{
+                  borderColor: colors.grey2,
+                  paddingHorizontal: 5,
+                  paddingVertical: 8,
+                  justifyContent: 'center'
+                }}
+                containerStyle={{ flex: 3, marginRight: 5 }}
+              >
+                <Input
+                  placeholder="Min"
+                  placeholderTextColor={colors.grey2}
+                  keyboardType="numeric"
+                  onChangeText={(min) => setTaskNotiMin(min)}
+                  value={
+                    taskNotiMin !== 0 && !isNaN(taskNotiMin)
+                      ? taskNotiMin.toString()
+                      : null
+                  }
+                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                  renderErrorMessage={false}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
+                  selectionColor={colors.primary}
+                />
+              </Section>
+              <Section
+                labelContainerStyle={{ backgroundColor: colors.white }}
+                label="Max"
+                labelStyle={{ color: colors.grey2 }}
+                contentStyle={{
+                  borderColor: colors.grey2,
+                  paddingHorizontal: 5,
+                  paddingVertical: 8,
+                  justifyContent: 'center'
+                }}
+                containerStyle={{ flex: 3, marginRight: 5 }}
+              >
+                <Input
+                  placeholder="Max"
+                  placeholderTextColor={colors.grey2}
+                  renderErrorMessage={false}
+                  errorStyle={{ color: colors.error }}
+                  keyboardType="numeric"
+                  onChangeText={(max) => setTaskNotiMax(max)}
+                  value={
+                    taskNotiMax !== 0 && !isNaN(taskNotiMax)
+                      ? taskNotiMax.toString()
+                      : null
+                  }
+                  inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                  inputContainerStyle={{ borderBottomWidth: 0 }}
+                  selectionColor={colors.primary}
+                />
+              </Section>
+            </View>
+          </View>
           <Dialog.Actions>
             <Dialog.Button
               title="CONFIRM"
@@ -823,5 +937,12 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     color: '#8a939c'
+  },
+  section: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 15,
+    marginBottom: 5
   }
 })
