@@ -235,8 +235,12 @@ export default function HomeScreen ({ route, navigation }) {
   async function getTaskNoticationSettings (task, overrideDefault) {
     const JsonValue = await AsyncStorage.getItem('taskNotificationSettings')
     const taskNotificationSettings =
-      JsonValue != null ? JSON.parse(JsonValue) : { times: 4, min: 15, max: 30, default: true }
-    setTaskNotificationToggle(taskNotificationSettings.default)
+      JsonValue != null
+        ? JSON.parse(JsonValue)
+        : { times: 4, min: 15, max: 30, default: true }
+    if (!overrideDefault) {
+      setTaskNotificationToggle(taskNotificationSettings.default)
+    }
     if (overrideDefault || taskNotificationSettings.default === true) {
       const lengthBetweenNotifications = Math.max(
         Math.min(
@@ -253,16 +257,16 @@ export default function HomeScreen ({ route, navigation }) {
     task,
     lengthBetweenNotifications
   ) {
-    const taskNotifications = []
+    const JsonValue = await AsyncStorage.getItem('taskNotifications')
+    const taskNotifications = JsonValue != null ? JSON.parse(JsonValue) : []
     for (
       let timeLeft = task.length - lengthBetweenNotifications;
       timeLeft > 0;
       timeLeft -= lengthBetweenNotifications
     ) {
-      console.log(timeLeft)
       taskNotifications.push(await scheduleTaskNotification(task, timeLeft))
+      console.log(timeLeft)
     }
-    console.log(0)
     taskNotifications.push(await scheduleTaskNotification(task, 0))
     await AsyncStorage.setItem(
       'taskNotifications',
@@ -274,7 +278,10 @@ export default function HomeScreen ({ route, navigation }) {
     return await Notifications.scheduleNotificationAsync({
       content: {
         title:
-          task.name + ': ' + Math.round((1 - timeLeft / task.length) * 100) + '% done',
+          task.name +
+          ': ' +
+          Math.round((1 - timeLeft / task.length) * 100) +
+          '% done',
         body: displayTimeLeft(timeLeft) + ' left'
       },
       trigger: {
@@ -324,6 +331,13 @@ export default function HomeScreen ({ route, navigation }) {
       Notifications.setNotificationChannelAsync('Events', {
         name: 'Events',
         importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+        bypassDnd: true
+      })
+      Notifications.setNotificationChannelAsync('Tasks', {
+        name: 'Tasks',
+        importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
         bypassDnd: true
@@ -1285,7 +1299,10 @@ export default function HomeScreen ({ route, navigation }) {
         hours = Math.floor(time / 60) + ' hours'
       }
     }
-    if ((Math.floor(time / 60) > 0 && time % 60 > 0) || (Math.floor(time / 60) === 0 && time % 60 >= 0)) {
+    if (
+      (Math.floor(time / 60) > 0 && time % 60 > 0) ||
+      (Math.floor(time / 60) === 0 && time % 60 >= 0)
+    ) {
       if (Math.floor(time % 60) === 1) {
         minutes = '1 minute'
       } else {
@@ -1779,6 +1796,7 @@ export default function HomeScreen ({ route, navigation }) {
   // Editing
   async function editTask () {
     try {
+      cancelTaskNotifications()
       saveTasks()
       if (
         combined[taskIndex].sortValue !== undefined &&
@@ -1844,6 +1862,7 @@ export default function HomeScreen ({ route, navigation }) {
                 size={23}
                 onPress={() => setInstructionIndex(0)}
                 color={colors.grey1}
+                style={{ padding: 5 }}
               />
               <View>
                 {!error ? (
@@ -1854,7 +1873,7 @@ export default function HomeScreen ({ route, navigation }) {
                     color={colors.grey1}
                     onPress={() => reviewEvents()}
                     onLongPress={() => getSyncEvents(true)}
-                    style={{ marginLeft: 20 }}
+                    style={{ marginLeft: 20, padding: 5 }}
                   />
                 ) : (
                   <Icon
@@ -1866,7 +1885,7 @@ export default function HomeScreen ({ route, navigation }) {
                       reviewEvents()
                     }}
                     onLongPress={() => getSyncEvents(true)}
-                    style={{ marginLeft: 20 }}
+                    style={{ marginLeft: 20, padding: 5 }}
                   />
                 )}
               </View>
@@ -1877,7 +1896,7 @@ export default function HomeScreen ({ route, navigation }) {
                 onPress={() => navigation.navigate('Settings')}
                 solid={true}
                 color={colors.grey1}
-                style={{ marginLeft: 20 }}
+                style={{ marginLeft: 20, padding: 5 }}
               />
             </View>
           }
@@ -2124,36 +2143,49 @@ export default function HomeScreen ({ route, navigation }) {
             <Overlay
               overlayStyle={{ width: '80%', backgroundColor: colors.white }}
             >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text
-                h3
+              <View
                 style={{
-                  fontSize: 30,
-                  margin: 5,
-                  marginBottom: 0,
-                  color: colors.grey1
+                  flexDirection: 'row',
+                  justifyContent: 'space-between'
                 }}
               >
-                {combined[taskIndex].name}
-              </Text>
-              {taskNotifcationToggle === true
-                ? <Icon
-                  name="notifications-active"
-                  size={25}
-                  type="material"
-                  color={colors.primary}
-                  onPress={() => { setTaskNotificationToggle(false); cancelTaskNotifications() }}
-                  style={{ padding: 10 }}
-                />
-                : <Icon
-                  name="notifications-off"
-                  size={25}
-                  type="material"
-                  color={colors.grey1}
-                  onPress={() => { setTaskNotificationToggle(true); getTaskNoticationSettings(combined[taskIndex], true) }}
-                  style={{ padding: 10 }}
-                />}
-                </View>
+                <Text
+                  h3
+                  style={{
+                    fontSize: 30,
+                    margin: 5,
+                    marginBottom: 0,
+                    color: colors.grey1
+                  }}
+                >
+                  {combined[taskIndex].name}
+                </Text>
+                {taskNotifcationToggle === true ? (
+                  <Icon
+                    name="notifications-active"
+                    size={25}
+                    type="material"
+                    color={colors.primary}
+                    onPress={() => {
+                      setTaskNotificationToggle(false)
+                      cancelTaskNotifications()
+                    }}
+                    style={{ padding: 10 }}
+                  />
+                ) : (
+                  <Icon
+                    name="notifications-off"
+                    size={25}
+                    type="material"
+                    color={colors.grey1}
+                    onPress={() => {
+                      setTaskNotificationToggle(true)
+                      getTaskNoticationSettings(combined[taskIndex], true)
+                    }}
+                    style={{ padding: 10 }}
+                  />
+                )}
+              </View>
               {combined[taskIndex].description !== '' ? (
                 <Text
                   h4

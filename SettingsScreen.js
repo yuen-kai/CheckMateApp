@@ -863,11 +863,13 @@ export default function SettingsScreen ({ navigation }) {
 
             <Dialog.Actions>
               <Dialog.Button
-                title="Done"
+                title="Confirm"
+                titleStyle={{ color: colors.grey1 }}
                 onPress={() => saveNotificationReminders()}
               />
               <Dialog.Button
                 title="New"
+                titleStyle={{ color: colors.grey1 }}
                 onPress={() => {
                   const tempPref = [...notiPref]
                   tempPref.push({
@@ -917,6 +919,7 @@ export default function SettingsScreen ({ navigation }) {
           <Dialog.Actions>
             <Dialog.Button
               title="CONFIRM"
+              titleStyle={{ color: colors.grey1 }}
               onPress={() => saveThemePref()}
             />
           </Dialog.Actions>
