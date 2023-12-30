@@ -50,8 +50,6 @@ export default function SettingsScreen ({ navigation }) {
   const [notiView, setNotiView] = useState(false)
   const [themeView, setThemeView] = useState(false)
   const [taskNotiView, setTaskNotiView] = useState(false)
-
-  const [syncPref, setSyncPref] = useState(false)
   const [checked, setChecked] = useState(2)
 
   const [notiPref, setNotiPref] = useState([])
@@ -82,7 +80,6 @@ export default function SettingsScreen ({ navigation }) {
 
   const [colors, setColors] = useState(theme.lightColors)
   const [colorScheme, setColorScheme] = useState(useColorScheme())
-  const [themePref, setThemePref] = useState('system')
   const [checkedT, setCheckedT] = useState(1)
   const [alert, setAlert] = useState({ show: false })
 
@@ -189,7 +186,6 @@ export default function SettingsScreen ({ navigation }) {
       const value = await AsyncStorage.getItem('syncEvents5')
       const pref = value != null ? JSON.parse(value) : null
       if (pref != null) {
-        setSyncPref(pref)
         if (pref === 'never') {
           setChecked(1)
         } else if (pref === 'review') {
@@ -234,7 +230,6 @@ export default function SettingsScreen ({ navigation }) {
     try {
       const value = await AsyncStorage.getItem('themePref')
       if (value !== null && JSON.parse(value) !== 'system') {
-        setThemePref(JSON.parse(value))
         if (JSON.parse(value) === 'light') {
           setCheckedT(1)
           setColorScheme('light')
@@ -267,7 +262,7 @@ export default function SettingsScreen ({ navigation }) {
     const taskNotificationSettings =
       JsonValue != null
         ? JSON.parse(JsonValue)
-        : { times: 4, min: 15, max: 30, default: true }
+        : { times: 4, min: 15, max: 30, default: false }
     setTaskNotiTimes(taskNotificationSettings.times)
     setTaskNotiMin(taskNotificationSettings.min)
     setTaskNotiMax(taskNotificationSettings.max)

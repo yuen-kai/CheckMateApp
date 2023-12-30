@@ -37,11 +37,11 @@ import {
   LinearProgress,
   ThemeProvider,
   createTheme,
-  Header
+  Header,
+  Input
 } from '@rneui/themed'
+import Section from './Section'
 import logo from './assets/Icon.png'
-import lightLogo from './assets/FadedIconLight.png'
-import darkLogo from './assets/FadedIconDark.png'
 import controls from './assets/Controls.png'
 import eventScreen from './assets/EventScreen.png'
 import taskScreen from './assets/TaskScreen.png'
@@ -163,7 +163,12 @@ export default function HomeScreen ({ route, navigation }) {
   const [removal, setRemoval] = useState(false)
   const [alert, setAlert] = useState({ show: false })
   const [firstOpen, setFirstOpen] = useState(-1)
-  const [taskNotifcationToggle, setTaskNotificationToggle] = useState(false)
+  const [taskNotifcationToggle, setTaskNotiToggle] = useState(false)
+  const [taskNotiView, setTaskNotiView] = useState(false)
+  const [taskNotificationOverrideType, setTaskNotificationOverrideType] =
+    useState('frequency')
+  const [taskNotiTimes, setTaskNotiTimes] = useState(4)
+  const [taskNotiFrequency, setTaskNotiFrequency] = useState(15)
 
   // get data
   useEffect(() => {
@@ -237,18 +242,27 @@ export default function HomeScreen ({ route, navigation }) {
     const taskNotificationSettings =
       JsonValue != null
         ? JSON.parse(JsonValue)
-        : { times: 4, min: 15, max: 30, default: true }
+        : { times: 4, min: 15, max: 30, default: false }
+    let lengthBetweenNotifications = Math.max(
+      Math.min(
+        task.length / taskNotificationSettings.times,
+        taskNotificationSettings.max
+      ),
+      taskNotificationSettings.min
+    )
+    if (taskNotificationOverrideType === 'none') {
+      setTaskNotiTimes(taskNotificationSettings.times)
+      setTaskNotiFrequency(lengthBetweenNotifications)
+    } else if (taskNotificationOverrideType === 'times') {
+      lengthBetweenNotifications = tasks[0].length / taskNotiTimes
+    } else {
+      lengthBetweenNotifications = taskNotiFrequency
+    }
+
     if (!overrideDefault) {
-      setTaskNotificationToggle(taskNotificationSettings.default)
+      setTaskNotiToggle(taskNotificationSettings.default)
     }
     if (overrideDefault || taskNotificationSettings.default === true) {
-      const lengthBetweenNotifications = Math.max(
-        Math.min(
-          task.length / taskNotificationSettings.times,
-          taskNotificationSettings.max
-        ),
-        taskNotificationSettings.min
-      )
       scheduleAllTaskNotifications(task, lengthBetweenNotifications)
     }
   }
@@ -265,7 +279,6 @@ export default function HomeScreen ({ route, navigation }) {
       timeLeft -= lengthBetweenNotifications
     ) {
       taskNotifications.push(await scheduleTaskNotification(task, timeLeft))
-      console.log(timeLeft)
     }
     taskNotifications.push(await scheduleTaskNotification(task, 0))
     await AsyncStorage.setItem(
@@ -275,9 +288,26 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   async function scheduleTaskNotification (task, timeLeft) {
+    console.log(
+      displayTime(
+        new Date(
+          new Date(task.start).getTime() +
+            task.length * 60 * 1000 -
+            timeLeft * 60 * 1000
+        )
+      )
+    )
     return await Notifications.scheduleNotificationAsync({
       content: {
         title:
+          displayTime(
+            new Date(
+              new Date(task.start).getTime() +
+                task.length * 60 * 1000 -
+                timeLeft * 60 * 1000
+            )
+          ) +
+          ' - ' +
           task.name +
           ': ' +
           Math.round((1 - timeLeft / task.length) * 100) +
@@ -298,6 +328,23 @@ export default function HomeScreen ({ route, navigation }) {
   async function registerForPushNotificationsAsync () {
     let token
     if (Device.isDevice) {
+      if (Platform.OS === 'android') {
+        Notifications.setNotificationChannelAsync('Events', {
+          name: 'Events',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+          bypassDnd: true
+        })
+        Notifications.setNotificationChannelAsync('Tasks', {
+          name: 'Tasks',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+          bypassDnd: true
+        })
+        Notifications.deleteNotificationChannelAsync('default')
+      }
       const settings = await Notifications.getPermissionsAsync()
       const existingStatus =
         settings.granted ||
@@ -325,24 +372,6 @@ export default function HomeScreen ({ route, navigation }) {
         message: 'A physical device is neccesary for Push Notifications',
         buttons: [{ title: 'OK', action: () => setAlert({ show: false }) }]
       })
-    }
-
-    if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('Events', {
-        name: 'Events',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-        bypassDnd: true
-      })
-      Notifications.setNotificationChannelAsync('Tasks', {
-        name: 'Tasks',
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-        bypassDnd: true
-      })
-      Notifications.deleteNotificationChannelAsync('default')
     }
 
     return token
@@ -1599,6 +1628,7 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   async function cancelTaskNotifications () {
+    setTaskNotificationOverrideType('none')
     const JsonValue = await AsyncStorage.getItem('taskNotifications')
     const taskNotifications = JsonValue != null ? JSON.parse(JsonValue) : []
     for (const notification of taskNotifications) {
@@ -1762,6 +1792,19 @@ export default function HomeScreen ({ route, navigation }) {
     setTasks.sort(function (a, b) {
       return new Date(a.start).getTime() - new Date(b.start).getTime()
     })
+  }
+
+  async function saveTaskNotificationSettings () {
+    setTaskNotiView(false)
+    setTaskNotiToggle(true)
+    cancelTaskNotifications()
+    let timeBetweenNotifications
+    if (taskNotificationOverrideType === 'times') {
+      timeBetweenNotifications = tasks[0].length / taskNotiTimes
+    } else {
+      timeBetweenNotifications = taskNotiFrequency
+    }
+    scheduleAllTaskNotifications(tasks[0], timeBetweenNotifications)
   }
 
   // Get task information
@@ -2167,8 +2210,12 @@ export default function HomeScreen ({ route, navigation }) {
                     type="material"
                     color={colors.primary}
                     onPress={() => {
-                      setTaskNotificationToggle(false)
+                      setTaskNotiToggle(false)
                       cancelTaskNotifications()
+                    }}
+                    onLongPress={() => {
+                      setTaskNotificationOverrideType('times')
+                      setTaskNotiView(true)
                     }}
                     style={{ padding: 10 }}
                   />
@@ -2179,12 +2226,155 @@ export default function HomeScreen ({ route, navigation }) {
                     type="material"
                     color={colors.grey1}
                     onPress={() => {
-                      setTaskNotificationToggle(true)
+                      setTaskNotiToggle(true)
                       getTaskNoticationSettings(combined[taskIndex], true)
+                    }}
+                    onLongPress={() => {
+                      setTaskNotificationOverrideType('times')
+                      setTaskNotiView(true)
                     }}
                     style={{ padding: 10 }}
                   />
                 )}
+                <Dialog
+                  isVisible={taskNotiView}
+                  onBackdropPress={() => setTaskNotiView(false)}
+                  overlayStyle={{ backgroundColor: colors.white }}
+                >
+                  <Dialog.Title
+                    title="Task Notification settings"
+                    titleStyle={{ color: colors.grey1 }}
+                  />
+                  <ListItem containerStyle={{ backgroundColor: colors.white }}>
+                    {taskNotificationOverrideType === 'frequency' ? (
+                      <Button
+                        style={{ color: colors.grey1, fontSize: 20 }}
+                        onPress={() => setTaskNotificationOverrideType('times')}
+                      >
+                        Set number of notifications
+                      </Button>
+                    ) : (
+                      <Button
+                        style={{ color: colors.grey1, fontSize: 20 }}
+                        onPress={() =>
+                          setTaskNotificationOverrideType('frequency')
+                        }
+                      >
+                        Set frequency of notifications
+                      </Button>
+                    )}
+                  </ListItem>
+                  {taskNotificationOverrideType === 'times' ? (
+                    <View style={[styles.section]}>
+                      <Icon
+                        name="tag"
+                        type="material"
+                        color={colors.grey1}
+                        size={30}
+                      />
+                      <View style={[styles.section, { width: '83%' }]}>
+                        <Section
+                          labelContainerStyle={{
+                            backgroundColor: colors.white
+                          }}
+                          label="Times"
+                          labelStyle={{ color: colors.grey2 }}
+                          contentStyle={{
+                            borderColor: colors.grey2,
+                            paddingHorizontal: 5,
+                            paddingVertical: 8,
+                            justifyContent: 'center'
+                          }}
+                          containerStyle={{ flex: 3, marginRight: 5 }}
+                        >
+                          <Input
+                            placeholder="Times"
+                            placeholderTextColor={colors.grey2}
+                            keyboardType="numeric"
+                            onChangeText={(min) => setTaskNotiTimes(min)}
+                            value={taskNotiTimes.toString()}
+                            inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                            renderErrorMessage={false}
+                            errorMessage={
+                              taskNotiTimes > 0 && !isNaN(taskNotiTimes)
+                                ? null
+                                : 'Enter a non-zero number'
+                            }
+                            inputContainerStyle={{ borderBottomWidth: 0 }}
+                            selectionColor={colors.primary}
+                          />
+                        </Section>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.section}>
+                      <Icon
+                        name="timer"
+                        type="material"
+                        color={colors.grey1}
+                        size={30}
+                      />
+                      <View style={[styles.section, { width: '83%' }]}>
+                        <Section
+                          labelContainerStyle={{
+                            backgroundColor: colors.white
+                          }}
+                          label="Interval"
+                          labelStyle={{ color: colors.grey2 }}
+                          contentStyle={{
+                            borderColor: colors.grey2,
+                            paddingHorizontal: 5,
+                            paddingVertical: 8,
+                            justifyContent: 'center'
+                          }}
+                          containerStyle={{ flex: 3, marginRight: 5 }}
+                        >
+                          <Input
+                            placeholder="Interval"
+                            placeholderTextColor={colors.grey2}
+                            keyboardType="numeric"
+                            onChangeText={(min) => setTaskNotiFrequency(min)}
+                            value={taskNotiFrequency.toString()}
+                            inputStyle={{ color: colors.grey1, fontSize: 17 }}
+                            renderErrorMessage={false}
+                            errorMessage={
+                              taskNotiFrequency > 0 && !isNaN(taskNotiFrequency)
+                                ? null
+                                : 'Enter a positive number'
+                            }
+                            inputContainerStyle={{ borderBottomWidth: 0 }}
+                            selectionColor={colors.primary}
+                          />
+                        </Section>
+                      </View>
+                    </View>
+                  )}
+                  <Dialog.Actions>
+                    <Dialog.Button
+                      title="CONFIRM"
+                      titleStyle={{ color: colors.grey1 }}
+                      disabled={
+                        !(
+                          (taskNotificationOverrideType === 'times' &&
+                            taskNotiTimes > 0 &&
+                            !isNaN(taskNotiTimes)) ||
+                          (taskNotificationOverrideType === 'frequency' &&
+                            taskNotiFrequency > 0 &&
+                            !isNaN(taskNotiFrequency))
+                        )
+                      }
+                      onPress={() => saveTaskNotificationSettings()}
+                    />
+                    <Dialog.Button
+                      title="CANCEL"
+                      titleStyle={{ color: colors.grey1 }}
+                      onPress={() => {
+                        setTaskNotiView(false)
+                        setTaskNotificationOverrideType('none')
+                      }}
+                    />
+                  </Dialog.Actions>
+                </Dialog>
               </View>
               {combined[taskIndex].description !== '' ? (
                 <Text
@@ -2359,5 +2549,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-around'
+  },
+  section: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 15,
+    marginBottom: 5
   }
 })
