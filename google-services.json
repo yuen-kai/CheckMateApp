@@ -1,36 +1,26 @@
 {
   "project_info": {
-    "project_number": "247676397762",
-    "project_id": "checkmate-55a72",
-    "storage_bucket": "checkmate-55a72.appspot.com"
+    "project_number": "775677239947",
+    "project_id": "checkmate-e11d6",
+    "storage_bucket": "checkmate-e11d6.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:247676397762:android:21714677552166749d735b",
+        "mobilesdk_app_id": "1:775677239947:android:84ed39c28979a47d776a8e",
         "android_client_info": {
           "package_name": "com.yuenkai.CheckMate"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "247676397762-sfn9m63cbjb9cbvju9erpr76h16vbl4h.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDz64wfzqQ_tAncjJ8zVwAP2z2_gKhHDY8"
+          "current_key": "AIzaSyDSWp4ipsSjjGrV1H-z92YPu6kuSn7G_ao"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "247676397762-sfn9m63cbjb9cbvju9erpr76h16vbl4h.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

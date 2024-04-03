@@ -251,8 +251,10 @@ export default function HomeScreen ({ route, navigation }) {
       taskNotificationSettings.min
     )
     if (taskNotificationOverrideType === 'none') {
-      setTaskNotiTimes(taskNotificationSettings.times)
-      setTaskNotiFrequency(lengthBetweenNotifications)
+      setTaskNotiTimes(
+        Math.round(tasks[0].length / lengthBetweenNotifications)
+      )
+      setTaskNotiFrequency(Math.round(lengthBetweenNotifications))
     } else if (taskNotificationOverrideType === 'times') {
       lengthBetweenNotifications = tasks[0].length / taskNotiTimes
     } else {
@@ -288,26 +290,14 @@ export default function HomeScreen ({ route, navigation }) {
   }
 
   async function scheduleTaskNotification (task, timeLeft) {
-    console.log(
-      displayTime(
-        new Date(
-          new Date(task.start).getTime() +
-            task.length * 60 * 1000 -
-            timeLeft * 60 * 1000
-        )
-      )
-    )
-    return await Notifications.scheduleNotificationAsync({
+    console.log('Scheduling notification: ' + displayTime(new Date(
+      new Date(task.start).getTime() +
+        task.length * 60 * 1000 -
+        timeLeft * 60 * 1000
+    )))
+    const a = await Notifications.scheduleNotificationAsync({
       content: {
         title:
-          displayTime(
-            new Date(
-              new Date(task.start).getTime() +
-                task.length * 60 * 1000 -
-                timeLeft * 60 * 1000
-            )
-          ) +
-          ' - ' +
           task.name +
           ': ' +
           Math.round((1 - timeLeft / task.length) * 100) +
@@ -323,6 +313,8 @@ export default function HomeScreen ({ route, navigation }) {
         channelId: 'Tasks'
       }
     })
+    console.log(a)
+    return a
   }
 
   async function registerForPushNotificationsAsync () {
@@ -697,47 +689,27 @@ export default function HomeScreen ({ route, navigation }) {
     try {
       const JsonValue = await AsyncStorage.getItem('firsty')
       const first = JsonValue != null ? JSON.parse(JsonValue) : null
-      const removeJsonValue = await AsyncStorage.getItem('removeNotifications')
-      const removeNotifications =
-        removeJsonValue != null ? JSON.parse(removeJsonValue) : null
-      const dragJsonValue = await AsyncStorage.getItem('drag')
-      const drag = dragJsonValue != null ? JSON.parse(dragJsonValue) : null
+      const updateJsonValue = await AsyncStorage.getItem('tasknotifications')
+      const update =
+        updateJsonValue != null ? JSON.parse(updateJsonValue) : null
       if (first == null) {
         setInstructionIndex(0)
         const jsonValue = JSON.stringify(0)
         await AsyncStorage.setItem('firsty', jsonValue)
-        await AsyncStorage.setItem('removeNotifications', jsonValue)
+        await AsyncStorage.setItem('tasknotifications', JSON.stringify(true))
         setFirst(true)
-      } else if (removeNotifications == null) {
-        Notifications.cancelAllScheduledNotificationsAsync()
+      } else if (update == null) {
         setAlert({
           show: true,
-          title: 'Notification Changes',
-          message: 'noti',
+          title: 'New feature: task notifications!',
+          message:
+            'CheckMate can now send you periodic notifications to keep you on track for your task. You can modify settings for these notifications in the settings screen or after starting the task.',
           buttons: [
             {
               title: 'OK',
               action: async () => {
                 setAlert({ show: false })
-                await AsyncStorage.setItem(
-                  'removeNotifications',
-                  JSON.stringify(true)
-                )
-              }
-            }
-          ]
-        })
-      } else if (drag == null) {
-        setAlert({
-          show: true,
-          title: 'New update',
-          message: 'To change the order of tasks, you now drag and drop tasks.',
-          buttons: [
-            {
-              title: 'OK',
-              action: async () => {
-                setAlert({ show: false })
-                await AsyncStorage.setItem('drag', JSON.stringify(true))
+                await AsyncStorage.setItem('tasknotifications', JSON.stringify(true))
               }
             }
           ]
